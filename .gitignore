@@ -1,0 +1,14 @@
+# Dependencias
+node_modules/
+
+# Archivos de build y compilación
+dist/
+build/
+coverage/
+
+# Variables de entorno (¡MUY IMPORTANTE!)
+.env
+.env.local
+
+# Archivos del sistema operativo
+.DS_Store
