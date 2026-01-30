@@ -17,13 +17,7 @@ export class Rider {
   @Column({ name: 'is_feu_active', default: false })
   isFeuActive: boolean;
 
-  @Column({ 
-    name: 'current_weight', 
-    type: 'decimal', 
-    precision: 5, 
-    scale: 2, 
-    default: 0 
-  })
+  @Column({ name: 'current_weight', type: 'decimal', precision: 5, scale: 2, default: 0 })
   currentWeight: number;
 
   @CreateDateColumn({ name: 'created_at' })
