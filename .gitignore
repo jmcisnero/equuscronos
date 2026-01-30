@@ -1,14 +1,84 @@
-# Dependencias
+# ==========================================
+# EQUUSCRONOS - PROFESSIONAL GITIGNORE
+# ==========================================
+
+# --- Dependencias ---
 node_modules/
+jspm_packages/
+.pnp
+.pnp.js
 
-# Archivos de build y compilación
-dist/
-build/
-coverage/
-
-# Variables de entorno (¡MUY IMPORTANTE!)
+# --- Variables de Entorno (SEGURIDAD CRÍTICA) ---
+# Nunca subir credenciales, llaves de API o contraseñas de DB
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env.bak
+*.env.example
+!*.env.template # Se permite subir plantillas vacías como guía
 
-# Archivos del sistema operativo
+# --- Compilación y Salida (Build) ---
+dist/
+build/
+.next/
+out/
+bin/
+obj/
+*.tsbuildinfo
+
+# --- Logs y Debugging ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+logs/
+*.log
+npm-debug.log.1
+
+# --- Móvil (Expo & React Native) ---
+.expo/
+.expo-shared/
+web-build/
+android/
+ios/
+*.jks
+*.p12
+*.key
+*.keystore
+*.mobileprovision
+
+# --- Base de Datos & Docker ---
+# Evitar subir datos locales de la DB o volumenes de Docker
+docker/data/
+pgdata/
+.docker-data/
+*.sql.gz
+*.sql.bak
+
+# --- IDEs y Editores ---
+.vscode/
+!.vscode/extensions.json # Útil para sugerir extensiones al equipo
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# --- Sistema Operativo ---
 .DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# --- Tests ---
+coverage/
+.nyc_output
+
+# --- Otros ---
+.turbo/
+.cache/
