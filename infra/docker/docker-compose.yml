@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Base de Datos Principal: El corazón de EquusCronos
+  db:
+    image: postgres:15-alpine
+    container_name: equuscronos-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-equuscronos}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistencia de datos (Ignorado en Git por nuestro .gitignore)
+      - pgdata:/var/lib/postgresql/data
+      # Inicialización automática: Carga el schema v1.11 al arrancar por primera vez
+      - ../../libs/database/src/migrations/001_init_schema.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
+      - ../../libs/database/src/seeds/01_initial_seed.sql:/docker-entrypoint-initdb.d/002_initial_seed.sql
+    networks:
+      - equus-network
+
+  # Cache y Live Clocks: Para los tiempos en vivo y cuentas regresivas
+  redis:
+    image: redis:7-alpine
+    container_name: equuscronos-cache
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - equus-network
+
+networks:
+  equus-network:
+    driver: bridge
+
+volumes:
+  pgdata:
