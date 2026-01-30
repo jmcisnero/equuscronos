@@ -20,9 +20,3 @@ export enum CompetitionStatus {
   COMPLETED = 'COMPLETED', // Cruce de meta finalizado (Pre-oficial)
   OFFICIAL = 'OFFICIAL'    // Resultados firmados e inmutables
 }
-
-export enum DisciplineType {
-  ENDURANCE = 'ENDURANCE', // Apto para Raid y Endurance
-  FLAT_RACING = 'FLAT_RACING', // Apto para Turf y Pencas
-  DUAL = 'DUAL'            // Ejemplares polivalentes
-}
