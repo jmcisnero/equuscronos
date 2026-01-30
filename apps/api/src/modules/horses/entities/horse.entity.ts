@@ -6,15 +6,21 @@ export class Horse {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 100 })
   name: string;
 
   @Column({ name: 'feu_id', unique: true, nullable: true })
   feuId: string;
-
+  
   @Column({ name: 'chip_id', unique: true, nullable: true })
   chipId: string;
 
+  @Column({ name: 'birth_date', type: 'date', nullable: true })
+  birthDate: Date;
+  
+  @Column({ type: 'varchar', nullable: true })
+  gender: string;
+  
   @Column({ name: 'is_feu_active', default: false })
   isFeuActive: boolean;
 
@@ -24,4 +30,7 @@ export class Horse {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }
