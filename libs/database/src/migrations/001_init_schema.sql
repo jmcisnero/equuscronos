@@ -15,6 +15,8 @@ CREATE TYPE final_status AS ENUM ('IN_PROGRESS', 'CLASSIFIED', 'ABANDONED', 'DIS
 CREATE TYPE clinical_status AS ENUM ('NORMAL', 'DEHYDRATED', 'OBSERVED', 'FAILED');
 CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
+CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'FINISHED', 'DQ', 'DNF', 'WD');
+CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT');
 
 -- 2. ENTIDADES MAESTRAS (Datos Persistentes)
 CREATE TABLE tenants (
@@ -91,6 +93,33 @@ CREATE TABLE stages (
     distance_km DECIMAL(6,2) NOT NULL,
     neutralization_minutes INT DEFAULT 0, -- Tiempo de descanso post-etapa
     UNIQUE(competition_id, stage_number)
+);
+
+CREATE TABLE competition_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    competition_id UUID REFERENCES competitions(id) ON DELETE CASCADE,
+    rider_id UUID REFERENCES riders(id) ON DELETE RESTRICT,
+    horse_id UUID REFERENCES horses(id) ON DELETE RESTRICT,
+    bib_number INTEGER NOT NULL,
+    status participant_status DEFAULT 'IN_RACE',
+    ballast_weight DECIMAL(5, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    -- Un mismo dorsal no puede repetirse en la misma competencia
+    UNIQUE(competition_id, bib_number)
+);
+
+CREATE TABLE timing_records (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entry_id UUID REFERENCES competition_entries(id) ON DELETE CASCADE,
+    stage_order INTEGER NOT NULL,
+    record_type time_record_type NOT NULL,
+    recorded_at TIMESTAMP NOT NULL, -- Hora del evento capturada por el juez
+    heart_rate INTEGER,              -- Pulsaciones (solo para VET_IN)
+    is_approved BOOLEAN DEFAULT true, -- Resultado de la inspección veterinaria
+    elimination_reason VARCHAR(255), -- Motivo si is_approved es false
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE checkpoints (
@@ -185,3 +214,5 @@ CREATE INDEX idx_registrations_lookup ON registrations(competition_id, number);
 CREATE INDEX idx_audit_chrono ON audit_logs(created_at DESC);
 CREATE INDEX idx_riders_ids ON riders(national_id, feu_id);
 CREATE INDEX idx_horses_ids ON horses(chip_id, feu_id);
+CREATE INDEX idx_timing_entry ON timing_records(entry_id);
+CREATE INDEX idx_entry_competition ON competition_entries(competition_id);
