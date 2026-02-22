@@ -20,3 +20,22 @@ export enum CompetitionStatus {
   COMPLETED = 'COMPLETED', // Cruce de meta finalizado (Pre-oficial)
   OFFICIAL = 'OFFICIAL'    // Resultados firmados e inmutables
 }
+
+//Estado dinámico del binomio durante la carrera 
+export enum ParticipantStatus {
+  IN_RACE = 'IN_RACE',       // Compitiendo en etapa
+  VET_CHECK = 'VET_CHECK',   // En inspección veterinaria
+  RESTING = 'RESTING',       // Cumpliendo tiempo de neutralización
+  FINISHED = 'FINISHED',     // Carrera completada con éxito
+  DQ = 'DQ',                 // Descalificado (Pulso, Cojera, etc.)
+  DNF = 'DNF',               // No terminó (Retiro voluntario)
+  WD = 'WD'                  // Retiro antes de iniciar
+}
+
+//Tipos de eventos cronometrados 
+export enum TimeRecordType {
+  START = 'START',           // Largada de etapa
+  ARRIVAL = 'ARRIVAL',       // Cruce de meta (Llegada)
+  VET_IN = 'VET_IN',         // Entrada a inspección (Cierra tiempo de recuperación)
+  VET_OUT = 'VET_OUT'        // Salida de inspección / Re-inspección
+}
