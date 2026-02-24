@@ -17,6 +17,14 @@ CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
 CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'FINISHED', 'DQ', 'DNF', 'WD');
 CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT');
+CREATE TYPE elimination_code AS ENUM (
+    'GAIT',          -- Cojera/Claudicación
+    'METABOLIC',     -- Pulso alto / Deshidratación
+    'TIME',          -- Fuera de tiempo límite
+    'RET',           -- Retiro voluntario (Retired)
+    'DISQ',          -- Descalificación por falta ética/reglamento
+    'FAIL_WEIGHT'    -- No dio el peso mínimo al finalizar
+);
 
 -- 2. ENTIDADES MAESTRAS (Datos Persistentes)
 CREATE TABLE tenants (
@@ -102,7 +110,10 @@ CREATE TABLE competition_entries (
     horse_id UUID REFERENCES horses(id) ON DELETE RESTRICT,
     bib_number INTEGER NOT NULL,
     status participant_status DEFAULT 'IN_RACE',
+    check_in_weight DECIMAL(5, 2), 
+    check_out_weight DECIMAL(5, 2),
     ballast_weight DECIMAL(5, 2) DEFAULT 0.00,
+    current_stage_id UUID REFERENCES stages(id), -- Optimización de consultas live
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     -- Un mismo dorsal no puede repetirse en la misma competencia
@@ -112,12 +123,16 @@ CREATE TABLE competition_entries (
 CREATE TABLE timing_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     entry_id UUID REFERENCES competition_entries(id) ON DELETE CASCADE,
-    stage_order INTEGER NOT NULL,
+    stage_id UUID REFERENCES stages(id) ON DELETE RESTRICT,
     record_type time_record_type NOT NULL,
     recorded_at TIMESTAMP NOT NULL, -- Hora del evento capturada por el juez
     heart_rate INTEGER,              -- Pulsaciones (solo para VET_IN)
     is_approved BOOLEAN DEFAULT true, -- Resultado de la inspección veterinaria
-    elimination_reason VARCHAR(255), -- Motivo si is_approved es false
+    elimination_type elimination_code, -- Motivo estandarizado
+    elimination_reason TEXT,           -- Detalles adicionales
+    -- Auditoría de registros
+    is_void BOOLEAN DEFAULT false,
+    void_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -216,3 +231,5 @@ CREATE INDEX idx_riders_ids ON riders(national_id, feu_id);
 CREATE INDEX idx_horses_ids ON horses(chip_id, feu_id);
 CREATE INDEX idx_timing_entry ON timing_records(entry_id);
 CREATE INDEX idx_entry_competition ON competition_entries(competition_id);
+CREATE INDEX idx_timing_stage ON timing_records(stage_id);
+CREATE INDEX idx_entry_status ON competition_entries(status);
