@@ -1,33 +1,20 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
-import { Horse } from '../../horses/entities/horse.entity';
-
-export enum OwnerType {
-  PERSON = 'PERSON',
-  STUD = 'STUD',
-  HARAS = 'HARAS',
-}
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { OwnerType } from '@equuscronos/shared';
 
 @Entity('owners')
 export class Owner {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({
-    type: 'enum',
-    enum: OwnerType,
-    default: OwnerType.PERSON,
-  })
+  @Column({ type: 'enum', enum: OwnerType, default: OwnerType.PERSON })
   type: OwnerType;
 
-  @Column({ name: 'contact_info', nullable: true })
+  @Column({ name: 'contact_info', type: 'varchar', length: 255, nullable: true })
   contactInfo: string;
 
-  @OneToMany(() => Horse, (horse) => horse.owner)
-  horses: Horse[];
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 }
