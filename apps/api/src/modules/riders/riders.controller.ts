@@ -1,23 +1,26 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { RidersService } from './riders.service';
-import { Rider } from './entities/rider.entity';
+import { CreateRiderDto } from './dto/create-rider.dto';
+import { UpdateRiderDto } from './dto/update-rider.dto';
 
-@Controller('riders')
+@Controller('admin/riders')
 export class RidersController {
   constructor(private readonly ridersService: RidersService) {}
 
-  @Get()
-  async getAllRiders() {
-    return await this.ridersService.findAll();
-  }
-
-  @Get(':nationalId')
-  async getByNationalId(@Param('nationalId') nationalId: string) {
-    return await this.ridersService.findByNationalId(nationalId);
-  }
-
   @Post()
-  async createRider(@Body() riderData: Partial<Rider>) {
-    return await this.ridersService.create(riderData);
+  create(@Body() createRiderDto: CreateRiderDto) { return this.ridersService.create(createRiderDto); }
+
+  @Get()
+  findAll() { return this.ridersService.findAll(); }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string) { return this.ridersService.findOne(id); }
+
+  @Patch(':id')
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateRiderDto: UpdateRiderDto) {
+    return this.ridersService.update(id, updateRiderDto);
   }
+
+  @Delete(':id')
+  remove(@Param('id', ParseUUIDPipe) id: string) { return this.ridersService.remove(id); }
 }
