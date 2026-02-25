@@ -1,23 +1,26 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { HorsesService } from './horses.service';
-import { Horse } from './entities/horse.entity';
+import { CreateHorseDto } from './dto/create-horse.dto';
+import { UpdateHorseDto } from './dto/update-horse.dto';
 
-@Controller('horses')
+@Controller('admin/horses')
 export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}
 
-  @Get()
-  async getAllHorses() {
-    return await this.horsesService.findAll();
-  }
-
-  @Get('chip/:id')
-  async getByChip(@Param('id') id: string) {
-    return await this.horsesService.findByChip(id);
-  }
-
   @Post()
-  async createHorse(@Body() horseData: Partial<Horse>) {
-    return await this.horsesService.create(horseData);
+  create(@Body() createHorseDto: CreateHorseDto) { return this.horsesService.create(createHorseDto); }
+
+  @Get()
+  findAll() { return this.horsesService.findAll(); }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string) { return this.horsesService.findOne(id); }
+
+  @Patch(':id')
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateHorseDto: UpdateHorseDto) {
+    return this.horsesService.update(id, updateHorseDto);
   }
+
+  @Delete(':id')
+  remove(@Param('id', ParseUUIDPipe) id: string) { return this.horsesService.remove(id); }
 }
