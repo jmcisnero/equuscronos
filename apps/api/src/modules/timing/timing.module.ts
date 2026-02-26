@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TimingController } from './timing.controller';
 import { TimingService } from './timing.service';
 import { TimingRecord } from '../competitions/entities/timing-record.entity';
-import { CompetitionEntry } from '../competitions/entities/competition-entry.entity';
+import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
 import { Stage } from '../competitions/entities/stage.entity';
 
 @Module({
