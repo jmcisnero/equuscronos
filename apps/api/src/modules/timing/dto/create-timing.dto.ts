@@ -1,44 +1,51 @@
 import { IsInt, IsUUID, IsEnum, IsDateString, IsOptional, IsBoolean, IsString, ValidateIf } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TimeRecordType, EliminationCode } from '@equuscronos/shared';
 
 export class CreateTimingRecordDto {
-  @IsUUID()
+  @ApiProperty({ description: 'UUID de la Carrera activa' }) 
+  @IsUUID() 
   competitionId: string;
 
-  @IsUUID()
+  @ApiProperty({ description: 'UUID de la Etapa en curso' }) 
+  @IsUUID() 
   stageId: string;
 
-  // Validación Condicional: Debe venir el Dorsal O el Chip RFID
-  @ValidateIf(o => !o.chipId)
-  @IsInt()
+  @ApiPropertyOptional({ description: 'Ingreso Manual: Dorsal digitado por el Juez (Requerido si no hay chipId)', example: 102 })
+  @ValidateIf(o => !o.chipId) 
+  @IsInt() 
   bibNumber?: number;
 
-  @ValidateIf(o => !o.bibNumber)
-  @IsString()
+  @ApiPropertyOptional({ description: 'Ingreso Automático: Lectura de Antena RFID (Requerido si no hay bibNumber)', example: 'CHIP-985121001' })
+  @ValidateIf(o => !o.bibNumber) 
+  @IsString() 
   chipId?: string;
 
-  @IsEnum(TimeRecordType)
+  @ApiProperty({ description: 'Hito en pista (Largada, Llegada, Vet In, Vet Out)', enum: TimeRecordType, example: TimeRecordType.ARRIVAL })
+  @IsEnum(TimeRecordType) 
   recordType: TimeRecordType;
 
-  // CRÍTICO: Hora exacta capturada por el hardware o dispositivo móvil.
-  // Formato ISO 8601 (Ej: 2026-03-15T08:30:15.450Z - Incluye milisegundos)
-  @IsDateString()
+  @ApiProperty({ description: 'Timestamp exacto del evento capturado por el hardware (ISO 8601 con milisegundos)', example: '2026-03-15T08:29:40.150Z' })
+  @IsDateString() 
   recordedAt: string;
 
-  // --- Opcionales (Flujo Veterinario o Control Manual) ---
-  @IsOptional()
-  @IsInt()
+  @ApiPropertyOptional({ description: 'Pulsaciones por minuto (BPM). Solo aplica para VET_IN.', example: 56 }) 
+  @IsOptional() 
+  @IsInt() 
   heartRate?: number;
 
-  @IsOptional()
-  @IsBoolean()
+  @ApiPropertyOptional({ description: 'Dictamen de la inspección. FALSE desencadena la descalificación.', default: true }) 
+  @IsOptional() 
+  @IsBoolean() 
   isApproved?: boolean;
 
-  @IsOptional()
-  @IsEnum(EliminationCode)
+  @ApiPropertyOptional({ description: 'Código si fue descalificado', enum: EliminationCode }) 
+  @IsOptional() 
+  @IsEnum(EliminationCode) 
   eliminationType?: EliminationCode;
 
-  @IsOptional()
-  @IsString()
+  @ApiPropertyOptional({ description: 'Justificación médica o técnica de la eliminación' }) 
+  @IsOptional() 
+  @IsString() 
   eliminationReason?: string;
 }
