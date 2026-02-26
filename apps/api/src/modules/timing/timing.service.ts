@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { TimingRecord } from '../competitions/entities/timing-record.entity';
-import { CompetitionEntry } from '../competitions/entities/competition-entry.entity';
+import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
 import { Stage } from '../competitions/entities/stage.entity';
 import { CreateTimingRecordDto } from './dto/create-timing.dto';
 import { ParticipantStatus, TimeRecordType } from '@equuscronos/shared';
