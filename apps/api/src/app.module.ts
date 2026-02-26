@@ -9,6 +9,7 @@ import { CompetitionTypesModule } from './modules/competition-types/competition-
 import { HorsesModule } from './modules/horses/horses.module';
 import { RidersModule } from './modules/riders/riders.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
+import { CompetitionEntriesModule } from './modules/competition-entries/competition-entries.module';
 import { TimingModule } from './modules/timing/timing.module';
 
 @Module({
@@ -37,6 +38,7 @@ import { TimingModule } from './modules/timing/timing.module';
     HorsesModule,
     RidersModule,
     CompetitionsModule,
+    CompetitionEntriesModule,
     TimingModule,
   ],
 })
