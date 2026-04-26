@@ -16,8 +16,8 @@ CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
 
 -- Estados de la Inscripción y Tiempos (Core Logic)
-CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'FINISHED', 'DQ', 'DNF', 'WD');
-CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT');
+CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD');
+CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT', 'OLYMPIC_PRESENTATION');
 CREATE TYPE elimination_code AS ENUM (
     'GAIT',          -- Cojera/Claudicación
     'METABOLIC',     -- Pulso alto / Deshidratación
@@ -64,6 +64,7 @@ CREATE TABLE horses (
     feu_id VARCHAR(50) UNIQUE,
     chip_id VARCHAR(100) UNIQUE,
     is_feu_active BOOLEAN DEFAULT FALSE,
+	health_records_expiration DATE, -- Sanidad MGAP
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -73,6 +74,7 @@ CREATE TABLE riders (
     national_id VARCHAR(50) NOT NULL UNIQUE,
     feu_id VARCHAR(50) UNIQUE,
     is_feu_active BOOLEAN DEFAULT FALSE,
+    medical_card_expiration DATE, -- Carnet de Salud / Ficha Médica	
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -127,7 +129,6 @@ CREATE TABLE competition_entries (
     initial_rider_weight DECIMAL(5, 2),
     initial_equipment_weight DECIMAL(5, 2),
     check_in_weight DECIMAL(5, 2),  
-    check_out_weight DECIMAL(5, 2),
     ballast_weight DECIMAL(5, 2) DEFAULT 0.00,
     
     current_stage_id UUID REFERENCES stages(id), 
@@ -136,6 +137,17 @@ CREATE TABLE competition_entries (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(competition_id, bib_number),
     UNIQUE(competition_id, rider_id, horse_id) -- Binomio único por carrera
+);
+
+-- Auditoría de Pesajes Dinámicos (Sorteos y Final)
+CREATE TABLE weight_controls (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
+    stage_id UUID REFERENCES stages(id) ON DELETE CASCADE,
+    weight_recorded DECIMAL(5,2) NOT NULL,
+    control_type VARCHAR(50) NOT NULL, -- Ej: 'STAGE_END', 'RANDOM_CHECK'
+    recorded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Log Transaccional de Tiempos
@@ -155,6 +167,7 @@ CREATE TABLE timing_records (
     
     -- Caché algorítmico (Calculado por el Backend)
     scheduled_departure_time TIMESTAMP WITH TIME ZONE, 
+    recovery_time_seconds INTEGER, -- Rendimiento para Leaderboard
     
     -- Auditoría de Modificaciones de Jueces
     is_void BOOLEAN DEFAULT false,
@@ -214,6 +227,7 @@ CREATE INDEX idx_timing_entry ON timing_records(entry_id, recorded_at);
 CREATE INDEX idx_timing_stage ON timing_records(stage_id);
 CREATE INDEX idx_entry_competition ON competition_entries(competition_id, status);
 CREATE INDEX idx_vet_timing ON vet_inspections(timing_record_id);
+CREATE INDEX idx_weight_controls_entry ON weight_controls(entry_id);
 
 -- Consultas rápidas de Autenticación y Búsqueda
 CREATE INDEX idx_users_email ON users(email);
