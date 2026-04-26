@@ -182,7 +182,8 @@ CREATE TABLE timing_records (
 CREATE TABLE vet_inspections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     timing_record_id UUID NOT NULL REFERENCES timing_records(id) ON DELETE CASCADE,
-    
+
+	clinic_heart_rate INT, -- (Pulso clínico)
     temperature DECIMAL(4,1),
     motricity motricity_status DEFAULT 'APTO',
     metabolic clinical_status DEFAULT 'NORMAL',
