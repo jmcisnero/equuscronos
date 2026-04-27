@@ -1,12 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique, OneToMany } from 'typeorm';
 import { ParticipantStatus } from '@equuscronos/shared';
-// Importaciones relativas (ajustar según estructura real)
-import { Competition } from './competition.entity';
+import { Competition } from '../../competitions/entities/competition.entity';
 import { Rider } from '../../riders/entities/rider.entity';
 import { Horse } from '../../horses/entities/horse.entity';
 import { Tenant } from '../../tenants/entities/tenant.entity';
-import { Stage } from './stage.entity';
-import { TimingRecord } from './timing-record.entity';
+import { Stage } from '../../competitions/entities/stage.entity';
+import { TimingRecord } from '../../competitions/entities/timing-record.entity';
 
 @Entity('competition_entries')
 @Unique(['competition', 'bibNumber'])
@@ -42,28 +41,14 @@ export class CompetitionEntry {
   @Column({ name: 'final_position', type: 'int', nullable: true })
   finalPosition: number;
 
-  // --- Control de Pesajes ---
-  @Column({ name: 'initial_rider_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  initialRiderWeight: number;
-
-  @Column({ name: 'initial_equipment_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  initialEquipmentWeight: number;
-
-  @Column({ name: 'check_in_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  checkInWeight: number;
-
-  @Column({ name: 'check_out_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  checkOutWeight: number;
-
+  // Único peso estático permitido (Lastre)
   @Column({ name: 'ballast_weight', type: 'decimal', precision: 5, scale: 2, default: 0.00 })
   ballastWeight: number;
 
-  // --- Caché Dinámico ---
   @ManyToOne(() => Stage, { nullable: true })
   @JoinColumn({ name: 'current_stage_id' })
   currentStage: Stage;
 
-  // --- Relaciones Inversas ---
   @OneToMany(() => TimingRecord, (record) => record.entry)
   timingRecords: TimingRecord[];
 
