@@ -37,4 +37,7 @@ export class LeaderboardEntryDto {
 
   @ApiPropertyOptional({ description: 'Última frecuencia cardíaca registrada en clínica (ppm)', example: 48 })
   heartRate?: number;
+
+  @ApiPropertyOptional({ description: 'Hora oficial calculada para largar la SIGUIENTE etapa. Solo visible durante la neutralización.', example: '2026-03-15T09:13:19Z' })
+  nextStageDepartureTime?: Date;
 }
