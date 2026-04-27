@@ -11,6 +11,9 @@ export class VetInspection {
   @JoinColumn({ name: 'timing_record_id' })
   timingRecord: TimingRecord;
 
+  @Column({ name: 'heart_rate', type: 'int' })
+  heartRate: number;
+
   @Column({ type: 'decimal', precision: 4, scale: 1, nullable: true })
   temperature: number;
 
