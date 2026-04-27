@@ -32,10 +32,23 @@ export class LeaderboardService {
       // Extraemos la última hora de llegada registrada
       const lastArrival = entry.timingRecords
         .filter(r => r.recordType === TimeRecordType.ARRIVAL)
-        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0];
-    
+        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0];    
       const lastArrivalTime = lastArrival ? new Date(lastArrival.recordedAt) : null;
       const nextVetControlTime = this.calculateTargetVetTime(entry.timingRecords);
+
+      // Extraemos la hora de próxima largada calculada previamente.
+      // Solo la enviamos si existe y si el caballo no ha largado la etapa siguiente aún.
+      let nextStageDepartureTime = null;
+      if (lastArrival && lastArrival.scheduledDepartureTime) {
+        // Verificamos si ya hay un START posterior a esta llegada
+        const hasStartedNextStage = entry.timingRecords.some(r => 
+          r.recordType === TimeRecordType.START && 
+          new Date(r.recordedAt).getTime() > new Date(lastArrival.recordedAt).getTime()
+        );    
+        if (!hasStartedNextStage) {
+          nextStageDepartureTime = new Date(lastArrival.scheduledDepartureTime);
+        }
+      }
       
       return {
         bibNumber: entry.bibNumber,
@@ -50,6 +63,7 @@ export class LeaderboardService {
         heartRate: latestHeartRate,
         rank: 0,
         gapToLeaderMs: 0,
+        nextStageDepartureTime: nextStageDepartureTime,
       };
     });
 
