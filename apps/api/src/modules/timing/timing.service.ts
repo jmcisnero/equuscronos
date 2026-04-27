@@ -4,12 +4,14 @@ import { TimingRecord } from './entities/timing-record.entity';
 import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
 import { CreateTimingRecordDto } from './dto/create-timing.dto';
 import { TimeRecordType, ParticipantStatus } from '@equuscronos/shared';
+import { TimeCalculationService } from './services/time-calculation.service';
 
 @Injectable()
 export class TimingService {
   constructor(
     // Inyectamos DataSource para controlar transacciones seguras
     private readonly dataSource: DataSource,
+    private readonly timeCalcService: TimeCalculationService,
   ) {}
 
   /**
@@ -59,6 +61,16 @@ export class TimingService {
 
       // 5. Persistencia del Tiempo 
       try {
+        // Obtenemos la etapa actual completa para saber su neutralización
+        const stage = await manager.findOne(Stage, { where: { id: dto.stageId } });
+        let scheduledDepartureTime = null;
+        // Si es LLEGADA, calculamos la hora en que debe largar la siguiente etapa
+        if (dto.recordType === TimeRecordType.ARRIVAL) {
+          scheduledDepartureTime = this.timeCalcService.calculateNextDepartureTime(
+            new Date(dto.recordedAt), 
+            stage
+          );
+        }        
         const newRecord = manager.create(TimingRecord, {
           entry,
           stage: { id: dto.stageId },
