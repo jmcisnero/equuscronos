@@ -125,12 +125,7 @@ CREATE TABLE competition_entries (
     qualifies_for_points BOOLEAN DEFAULT FALSE,
     final_position INT, -- Se llena al finalizar la carrera
     
-    -- Control de Pesaje Oficial
-    initial_rider_weight DECIMAL(5, 2),
-    initial_equipment_weight DECIMAL(5, 2),
-    check_in_weight DECIMAL(5, 2),  
-    ballast_weight DECIMAL(5, 2) DEFAULT 0.00,
-    
+    ballast_weight DECIMAL(5, 2) DEFAULT 0.00,    
     current_stage_id UUID REFERENCES stages(id), 
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -158,16 +153,13 @@ CREATE TABLE timing_records (
     
     record_type time_record_type NOT NULL,
     recorded_at TIMESTAMP WITH TIME ZONE NOT NULL, 
-    
-    -- Veredicto Principal (La clínica detallada va en vet_inspections)
-    heart_rate INTEGER,              
+
     is_approved BOOLEAN DEFAULT true, 
     elimination_type elimination_code, 
     elimination_reason TEXT,          
     
     -- Caché algorítmico (Calculado por el Backend)
     scheduled_departure_time TIMESTAMP WITH TIME ZONE, 
-    recovery_time_seconds INTEGER, -- Rendimiento para Leaderboard
     
     -- Auditoría de Modificaciones de Jueces
     is_void BOOLEAN DEFAULT false,
@@ -183,7 +175,7 @@ CREATE TABLE vet_inspections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     timing_record_id UUID NOT NULL REFERENCES timing_records(id) ON DELETE CASCADE,
 
-	clinic_heart_rate INT, -- (Pulso clínico)
+	heart_rate INT NOT NULL, 
     temperature DECIMAL(4,1),
     motricity motricity_status DEFAULT 'APTO',
     metabolic clinical_status DEFAULT 'NORMAL',
