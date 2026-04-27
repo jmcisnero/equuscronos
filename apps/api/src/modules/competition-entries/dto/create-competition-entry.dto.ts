@@ -5,16 +5,16 @@ export class CreateCompetitionEntryDto {
   @ApiProperty({ description: 'UUID de la Carrera a la que se inscribe' }) 
   @IsUUID() 
   competitionId: string;
-  
+
   @ApiProperty({ description: 'UUID del Jinete' }) 
   @IsUUID() 
   riderId: string;
-  
+
   @ApiProperty({ description: 'UUID del Caballo' }) 
   @IsUUID() 
   horseId: string;
 
-  @ApiPropertyOptional({ description: 'UUID del Club que este binomio representa (para tabla por equipos)' }) 
+  @ApiPropertyOptional({ description: 'UUID del Club que este binomio representa' }) 
   @IsOptional() 
   @IsUUID() 
   representedTenantId?: string;
@@ -24,27 +24,13 @@ export class CreateCompetitionEntryDto {
   @Min(1) 
   bibNumber: number;
 
-  @ApiPropertyOptional({ description: 'Indica si este binomio califica para puntos en el campeonato', default: false }) 
+  @ApiPropertyOptional({ description: 'Indica si este binomio califica para puntos', default: false }) 
   @IsOptional() 
   @IsBoolean() 
   qualifiesForPoints?: boolean;
 
-  @ApiPropertyOptional({ description: 'Peso base del jinete (Kg)', example: 68.0 }) 
-  @IsOptional() 
-  @IsNumber({ maxDecimalPlaces: 2 }) 
-  initialRiderWeight?: number;
-
-  @ApiPropertyOptional({ description: 'Peso de la montura/recado (Kg)', example: 8.5 }) 
-  @IsOptional() 
-  @IsNumber({ maxDecimalPlaces: 2 }) 
-  initialEquipmentWeight?: number;
-
-  @ApiPropertyOptional({ description: 'Peso total en balanza oficial (Jinete + Equipo)', example: 76.5 }) 
-  @IsOptional() 
-  @IsNumber({ maxDecimalPlaces: 2 }) 
-  checkInWeight?: number;
-
-  @ApiPropertyOptional({ description: 'Peso muerto (Lastre en plomo) asignado para alcanzar el mínimo reglamentario', example: 7.0 }) 
+  // ÚNICO PESO PERMITIDO EN LA INSCRIPCIÓN (El resto va por weight_controls)
+  @ApiPropertyOptional({ description: 'Peso muerto (Lastre en plomo) asignado', example: 7.0 }) 
   @IsOptional() 
   @IsNumber({ maxDecimalPlaces: 2 }) 
   ballastWeight?: number;
