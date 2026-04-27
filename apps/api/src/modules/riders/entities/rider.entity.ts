@@ -17,6 +17,9 @@ export class Rider {
   @Column({ name: 'is_feu_active', type: 'boolean', default: false })
   isFeuActive: boolean;
 
+  @Column({ name: 'medical_card_expiration', type: 'date', nullable: true })
+  medicalCardExpiration: Date;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 }
