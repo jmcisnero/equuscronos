@@ -20,6 +20,12 @@ export class LeaderboardEntryDto {
   @ApiProperty({ description: 'Etapa actual o última etapa completada', example: 2 })
   currentStage: number;
 
+  @ApiPropertyOptional({ description: 'Hora exacta en la que cruzó la meta en la última etapa', example: '2026-03-15T08:13:19Z' })
+  lastArrivalTime?: Date;
+
+  @ApiPropertyOptional({ description: 'Hora objetivo para el control veterinario (Llegada + 20 min)' })
+  nextVetControlTime?: Date;
+  
   @ApiProperty({ description: 'Tiempo total neto de carrera (Milisegundos)' })
   totalRaceTimeMs: number;
 
