@@ -23,9 +23,6 @@ export class TimingRecord {
   @Column({ name: 'recorded_at', type: 'timestamp with time zone' })
   recordedAt: Date;
 
-  @Column({ name: 'heart_rate', type: 'int', nullable: true })
-  heartRate: number;
-
   @Column({ name: 'is_approved', type: 'boolean', default: true })
   isApproved: boolean;
 
@@ -38,14 +35,12 @@ export class TimingRecord {
   @Column({ name: 'scheduled_departure_time', type: 'timestamp with time zone', nullable: true })
   scheduledDepartureTime: Date;
 
-  // --- Auditoría ---
   @Column({ name: 'is_void', type: 'boolean', default: false })
   isVoid: boolean;
 
   @Column({ name: 'void_reason', type: 'text', nullable: true })
   voidReason: string;
 
-  // --- Relación 1:1 con la Clínica Veterinaria ---
   @OneToOne(() => VetInspection, (vet) => vet.timingRecord)
   vetInspection: VetInspection;
 
