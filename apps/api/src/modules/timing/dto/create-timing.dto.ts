@@ -11,30 +11,25 @@ export class CreateTimingRecordDto {
   @IsUUID() 
   stageId: string;
 
-  @ApiPropertyOptional({ description: 'Ingreso Manual: Dorsal digitado por el Juez (Requerido si no hay chipId)', example: 102 })
+  @ApiPropertyOptional({ description: 'Ingreso Manual: Dorsal digitado por el Juez', example: 102 })
   @ValidateIf(o => !o.chipId) 
   @IsInt() 
   bibNumber?: number;
 
-  @ApiPropertyOptional({ description: 'Ingreso Automático: Lectura de Antena RFID (Requerido si no hay bibNumber)', example: 'CHIP-985121001' })
+  @ApiPropertyOptional({ description: 'Ingreso Automático: Lectura de Antena RFID', example: 'CHIP-985121001' })
   @ValidateIf(o => !o.bibNumber) 
   @IsString() 
   chipId?: string;
 
-  @ApiProperty({ description: 'Hito en pista (Largada, Llegada, Vet In, Vet Out)', enum: TimeRecordType, example: TimeRecordType.ARRIVAL })
+  @ApiProperty({ description: 'Hito en pista (Largada, Llegada, Vet In, Vet Out)', enum: TimeRecordType })
   @IsEnum(TimeRecordType) 
   recordType: TimeRecordType;
 
-  @ApiProperty({ description: 'Timestamp exacto del evento capturado por el hardware (ISO 8601 con milisegundos)', example: '2026-03-15T08:29:40.150Z' })
+  @ApiProperty({ description: 'Timestamp exacto del evento (ISO 8601)', example: '2026-03-15T08:29:40.150Z' })
   @IsDateString() 
   recordedAt: string;
 
-  @ApiPropertyOptional({ description: 'Pulsaciones por minuto (BPM). Solo aplica para VET_IN.', example: 56 }) 
-  @IsOptional() 
-  @IsInt() 
-  heartRate?: number;
-
-  @ApiPropertyOptional({ description: 'Dictamen de la inspección. FALSE desencadena la descalificación.', default: true }) 
+  @ApiPropertyOptional({ description: 'Dictamen de la inspección de tiempo. FALSE desencadena la descalificación.', default: true }) 
   @IsOptional() 
   @IsBoolean() 
   isApproved?: boolean;
@@ -44,7 +39,7 @@ export class CreateTimingRecordDto {
   @IsEnum(EliminationCode) 
   eliminationType?: EliminationCode;
 
-  @ApiPropertyOptional({ description: 'Justificación médica o técnica de la eliminación' }) 
+  @ApiPropertyOptional({ description: 'Justificación técnica de la eliminación' }) 
   @IsOptional() 
   @IsString() 
   eliminationReason?: string;
