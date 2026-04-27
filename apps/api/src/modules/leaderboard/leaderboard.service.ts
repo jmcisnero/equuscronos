@@ -28,6 +28,14 @@ export class LeaderboardService {
     const leaderboard: LeaderboardEntryDto[] = entries.map(entry => {
       const stats = this.calculateCompetitorStats(entry.timingRecords);
       const latestHeartRate = this.extractLatestHeartRate(entry.timingRecords);
+
+      // Extraemos la última hora de llegada registrada
+      const lastArrival = entry.timingRecords
+        .filter(r => r.recordType === TimeRecordType.ARRIVAL)
+        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0];
+    
+      const lastArrivalTime = lastArrival ? new Date(lastArrival.recordedAt) : null;
+      const nextVetControlTime = this.calculateTargetVetTime(entry.timingRecords);
       
       return {
         bibNumber: entry.bibNumber,
@@ -35,6 +43,8 @@ export class LeaderboardService {
         horseName: entry.horse.name,
         status: entry.status,
         currentStage: entry.currentStage?.stageNumber || 1,
+        lastArrivalTime: lastArrivalTime, 
+        nextVetControlTime: nextVetControlTime,
         totalRaceTimeMs: stats.totalTimeMs,
         averageSpeed: stats.averageSpeed,
         heartRate: latestHeartRate,
