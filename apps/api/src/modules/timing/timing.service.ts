@@ -56,7 +56,6 @@ export class TimingService {
       stage: stage,
       recordType: dto.recordType,
       recordedAt: new Date(dto.recordedAt), 
-      heartRate: dto.heartRate,
       isApproved: dto.isApproved ?? true,
       eliminationType: dto.eliminationType,
       eliminationReason: dto.eliminationReason,
