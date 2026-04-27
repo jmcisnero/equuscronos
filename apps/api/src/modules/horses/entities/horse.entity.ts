@@ -22,6 +22,9 @@ export class Horse {
   @Column({ name: 'is_feu_active', type: 'boolean', default: false })
   isFeuActive: boolean;
 
+  @Column({ name: 'health_records_expiration', type: 'date', nullable: true })
+  healthRecordsExpiration: Date;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 }
