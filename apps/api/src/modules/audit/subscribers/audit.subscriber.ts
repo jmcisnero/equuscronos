@@ -1,5 +1,6 @@
 import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent, RemoveEvent } from 'typeorm';
 import { AuditLog } from '../entities/audit-log.entity';
+import { AuditAction } from '@equuscronos/shared';
 
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
@@ -14,7 +15,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
     const auditLog = event.manager.create(AuditLog, {
-      action: 'INSERT',
+      action: AuditAction.INSERT,
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity),
       newData: event.entity,
@@ -29,7 +30,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
     const auditLog = event.manager.create(AuditLog, {
-      action: 'UPDATE',
+      action: AuditAction.UPDATE,
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity) || this.extractEntityId(event.databaseEntity),
       oldData: event.databaseEntity, // Estado anterior (Ej: { maxHeartRate: 65 })
@@ -43,7 +44,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
     const auditLog = event.manager.create(AuditLog, {
-      action: 'DELETE',
+      action: AuditAction.DELETE,
       entityName: event.metadata.tableName,
       entityId: event.entityId,
       oldData: event.databaseEntity,
