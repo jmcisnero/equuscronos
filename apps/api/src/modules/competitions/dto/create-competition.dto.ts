@@ -1,7 +1,7 @@
 import { IsString, IsUUID, IsDateString, IsBoolean, IsEnum, ValidateNested, ArrayMinSize, IsOptional, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CompStatus } from '@equuscronos/shared';
+import { CompetitionStatus } from '@equuscronos/shared';
 import { CreateStageDto } from './create-stage.dto';
 
 export class CreateCompetitionDto {
@@ -38,10 +38,10 @@ export class CreateCompetitionDto {
   @Max(80, { message: 'El límite no puede ser mayor a 80 ppm' })
   maxHeartRate?: number;
   
-  @ApiPropertyOptional({ description: 'Estado operativo del evento', enum: CompStatus, default: CompStatus.PLANNED })
+  @ApiPropertyOptional({ description: 'Estado operativo del evento', enum: CompetitionStatus, default: CompetitionStatus.PLANNED })
   @IsOptional()
-  @IsEnum(CompStatus)
-  status?: CompStatus;
+  @IsEnum(CompetitionStatus)
+  status?: CompetitionStatus;
 
   @ApiProperty({ description: 'Matriz anidada con la definición de cada etapa de la carrera', type: [CreateStageDto] })
   @ValidateNested({ each: true })
