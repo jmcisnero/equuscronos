@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { CompStatus } from '@equuscronos/shared';
+import { CompetitionStatus } from '@equuscronos/shared';
 
 export class CompetitionResponseDto {
   @Expose()
@@ -36,8 +36,8 @@ export class CompetitionResponseDto {
   maxHeartRate: number;
 
   @Expose()
-  @ApiProperty({ enum: CompStatus })
-  status: CompStatus;
+  @ApiProperty({ enum: CompetitionStatus })
+  status: CompetitionStatus;
 
   @Expose()
   @ApiProperty()
