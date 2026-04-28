@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ==========================================================
 CREATE TYPE user_role AS ENUM ('ADMIN', 'JUDGE', 'VET', 'SPECTATOR');
 CREATE TYPE owner_type AS ENUM ('PERSON', 'STUD', 'HARAS');
-CREATE TYPE comp_status AS ENUM ('PLANNED', 'ACTIVE', 'COMPLETED', 'CANCELLED');
+CREATE TYPE comp_status AS ENUM ('PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'OFFICIAL', 'CANCELLED');
 CREATE TYPE clinical_status AS ENUM ('NORMAL', 'DEHYDRATED', 'OBSERVED', 'FAILED');
 CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
