@@ -6,6 +6,8 @@ import { Stage } from './entities/stage.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { CompetitionType } from './entities/competition-type.entity';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
+import { UpdateCompetitionDto } from './dto/update-competition.dto';
+import { CompStatus } from '@equuscronos/shared';
 
 @Injectable()
 export class CompetitionsService {
@@ -80,5 +82,27 @@ export class CompetitionsService {
       order: { competitionDate: 'DESC' },
       relations: ['stages'],
     });
+  }
+
+  async update(id: string, updateDto: UpdateCompetitionDto): Promise<Competition> {
+    const competition = await this.compRepository.findOne({ 
+      where: { id } 
+    });
+    if (!competition) {
+      throw new NotFoundException(`Evento con ID ${id} no encontrado`);
+    }
+    //Verificación de integridad del pulso
+    if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competition.maxHeartRate) {
+      // Si el evento ya salió del estado 'PLANNED', prohibimos alterar la regla de salud
+      if (competition.status !== CompStatus.PLANNED) {
+        throw new BadRequestException(
+          `No se puede modificar el límite de pulsaciones. El evento se encuentra en estado: ${competition.status}`
+        );
+      }
+    }
+    // Fusionamos los cambios del DTO en la entidad existente
+    Object.assign(competition, updateDto);
+
+    return await this.compRepository.save(competition);
   }
 }
