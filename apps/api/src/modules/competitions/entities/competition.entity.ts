@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
-import { CompStatus } from '@equuscronos/shared';
+import { CompetitionStatus } from '@equuscronos/shared';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { CompetitionType } from './competition-type.entity';
 import { Stage } from './stage.entity';
@@ -33,9 +33,9 @@ export class Competition {
   @Column({ type: 'int', default: 65, name: 'max_heart_rate' })
   maxHeartRate: number;
   
-  @Column({ type: 'enum', enum: CompStatus, default: CompStatus.PLANNED })
-  status: CompStatus;
-
+  @Column({ type: 'enum', enum: CompetitionStatus, default: CompetitionStatus.PLANNED }) 
+  status: CompetitionStatus;
+  
   // Relaciones inversas útiles
   @OneToMany(() => Stage, (stage) => stage.competition)
   stages: Stage[];
