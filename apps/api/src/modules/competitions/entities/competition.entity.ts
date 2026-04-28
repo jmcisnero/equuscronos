@@ -30,6 +30,9 @@ export class Competition {
   @Column({ name: 'is_federated', type: 'boolean', default: false })
   isFederated: boolean;
 
+  @Column({ type: 'int', default: 65, name: 'max_heart_rate' })
+  maxHeartRate: number;
+  
   @Column({ type: 'enum', enum: CompStatus, default: CompStatus.PLANNED })
   status: CompStatus;
 
