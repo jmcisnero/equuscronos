@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsDateString, IsBoolean, IsEnum, ValidateNested, ArrayMinSize, IsOptional } from 'class-validator';
+import { IsString, IsUUID, IsDateString, IsBoolean, IsEnum, ValidateNested, ArrayMinSize, IsOptional, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CompStatus } from '@equuscronos/shared';
@@ -31,6 +31,13 @@ export class CreateCompetitionDto {
   @IsBoolean()
   isFederated?: boolean;
 
+  @ApiPropertyOptional({ description: 'Límite máximo de pulsaciones permitido', default: 65, minimum: 40, maximum: 80 })
+  @IsOptional()
+  @IsInt({ message: 'El límite debe ser un número entero' })
+  @Min(40, { message: 'El límite no puede ser menor a 40 ppm' })
+  @Max(80, { message: 'El límite no puede ser mayor a 80 ppm' })
+  maxHeartRate?: number;
+  
   @ApiPropertyOptional({ description: 'Estado operativo del evento', enum: CompStatus, default: CompStatus.PLANNED })
   @IsOptional()
   @IsEnum(CompStatus)
