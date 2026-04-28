@@ -11,6 +11,7 @@ import { RidersModule } from './modules/riders/riders.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
 import { CompetitionEntriesModule } from './modules/competition-entries/competition-entries.module';
 import { TimingModule } from './modules/timing/timing.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TimingModule } from './modules/timing/timing.module';
     CompetitionsModule,
     CompetitionEntriesModule,
     TimingModule,
+    AuditModule,
   ],
 })
 export class AppModule {}
