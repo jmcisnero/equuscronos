@@ -14,11 +14,12 @@ export enum CompetitionModality {
 }
 
 export enum CompetitionStatus {
-  PLANNED = 'PLANNED',     // Organización, pesaje y revisión inicial
+  PLANNED = 'PLANNED',     // Organización, pesaje, seteo de reglas (Pulsaciones)
   ACTIVE = 'ACTIVE',       // Carrera en curso y cronómetros activos
-  PAUSED = 'PAUSED',       // Suspensión temporal por fuerza mayor
-  COMPLETED = 'COMPLETED', // Cruce de meta finalizado (Pre-oficial)
-  OFFICIAL = 'OFFICIAL'    // Resultados firmados e inmutables
+  PAUSED = 'PAUSED',       // Suspensión temporal por fuerza mayor (Ej. clima)
+  COMPLETED = 'COMPLETED', // Último caballo cruzó la meta (Resultados preliminares)
+  OFFICIAL = 'OFFICIAL',   // Resultados firmados e inmutables (Auditoría cerrada)
+  CANCELLED = 'CANCELLED'  // Evento anulado definitivamente
 }
 
 //Estado dinámico del binomio durante la carrera 
