@@ -1,0 +1,7 @@
+export enum AuditAction {
+  INSERT = 'INSERT',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  LOGIN = 'LOGIN',
+  SECURITY_ALERT = 'SECURITY_ALERT'
+}
