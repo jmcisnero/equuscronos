@@ -47,7 +47,7 @@ CREATE TABLE owners (
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE RESTRICT,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255),
@@ -90,7 +90,7 @@ CREATE TABLE competition_types (
 
 CREATE TABLE competitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,,
     competition_type_id UUID NOT NULL REFERENCES competition_types(id),
     name VARCHAR(255) NOT NULL,
     competition_date DATE NOT NULL,
@@ -102,6 +102,7 @@ CREATE TABLE competitions (
 
 CREATE TABLE stages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
     stage_number INT NOT NULL,
     distance_km DECIMAL(6,2) NOT NULL,
@@ -115,6 +116,7 @@ CREATE TABLE stages (
 -- Tabla Única de Inscripción
 CREATE TABLE competition_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
     rider_id UUID NOT NULL REFERENCES riders(id) ON DELETE RESTRICT,
     horse_id UUID NOT NULL REFERENCES horses(id) ON DELETE RESTRICT,
@@ -148,6 +150,7 @@ CREATE TABLE weight_controls (
 -- Log Transaccional de Tiempos
 CREATE TABLE timing_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
     stage_id UUID NOT NULL REFERENCES stages(id) ON DELETE RESTRICT,
     
@@ -173,6 +176,7 @@ CREATE TABLE timing_records (
 -- Se vincula 1:1 o M:1 a un timing_record de tipo 'VET_IN'
 CREATE TABLE vet_inspections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     timing_record_id UUID NOT NULL REFERENCES timing_records(id) ON DELETE CASCADE,
 
 	heart_rate INT NOT NULL, 
@@ -189,6 +193,7 @@ CREATE TABLE vet_inspections (
 
 CREATE TABLE penalties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
     stage_id UUID REFERENCES stages(id) ON DELETE CASCADE,
     time_penalty_seconds INT NOT NULL,
@@ -201,6 +206,7 @@ CREATE TABLE penalties (
 -- ==========================================================
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action audit_action NOT NULL,
     entity_name VARCHAR(50) NOT NULL,
@@ -227,3 +233,44 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_riders_ids ON riders(national_id, feu_id);
 CREATE INDEX idx_horses_ids ON horses(chip_id, feu_id);
 CREATE INDEX idx_audit_chrono ON audit_logs(created_at DESC);
+
+-- ==========================================================
+-- 7. SEGURIDAD Y AISLAMIENTO (RLS)
+-- ==========================================================
+ALTER TABLE owners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE horses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE riders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competition_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competition_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE weight_controls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timing_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vet_inspections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE penalties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS UUID AS $$
+BEGIN
+  -- Si el valor no está seteado (ej. un espectador B2C), devolverá NULL sin romper la consulta
+  RETURN current_setting('app.current_tenant_id', true)::UUID;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- POLÍTICAS GLOBALES (Acceso abierto a catálogo)
+CREATE POLICY global_access_owners ON owners FOR ALL USING (true);
+CREATE POLICY global_access_horses ON horses FOR ALL USING (true);
+CREATE POLICY global_access_riders ON riders FOR ALL USING (true);
+CREATE POLICY global_access_competition_types ON competition_types FOR ALL USING (true);
+
+-- POLÍTICAS LOCALES (Aislamiento estricto B2B para Clubes)
+CREATE POLICY tenant_isolation_users ON users FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL); 
+CREATE POLICY tenant_isolation_competitions ON competitions FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_stages ON stages FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_competition_entries ON competition_entries FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_weight_controls ON weight_controls FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_timing_records ON timing_records FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_vet_inspections ON vet_inspections FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_penalties ON penalties FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_audit_logs ON audit_logs FOR ALL USING (tenant_id = current_tenant_id());
