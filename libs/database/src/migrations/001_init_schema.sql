@@ -90,7 +90,7 @@ CREATE TABLE competition_types (
 
 CREATE TABLE competitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_type_id UUID NOT NULL REFERENCES competition_types(id),
     name VARCHAR(255) NOT NULL,
     competition_date DATE NOT NULL,
