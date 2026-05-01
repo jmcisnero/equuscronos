@@ -4,6 +4,7 @@ import { CompetitionsService } from './competitions.service';
 import { CompetitionsController } from './competitions.controller';
 import { Competition } from './entities/competition.entity';
 import { Stage } from './entities/stage.entity';
+import { VetInspectionSubscriber } from './subscribers/vet-inspection.subscriber'; // <--- Importamos nuestro centinela
 
 @Module({
   imports: [
@@ -11,7 +12,10 @@ import { Stage } from './entities/stage.entity';
     TypeOrmModule.forFeature([Competition, Stage])
   ],
   controllers: [CompetitionsController],
-  providers: [CompetitionsService],
+  providers: [
+    CompetitionsService,
+    VetInspectionSubscriber // <--- Registramos el subscriber para que NestJS lo active en este módulo
+  ],
   exports: [CompetitionsService], // Lo exportamos por si otros módulos necesitan consultar datos de la carrera
 })
 export class CompetitionsModule {}
