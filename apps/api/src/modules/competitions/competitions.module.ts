@@ -5,6 +5,7 @@ import { CompetitionsController } from './competitions.controller';
 import { Competition } from './entities/competition.entity';
 import { Stage } from './entities/stage.entity';
 import { VetInspectionSubscriber } from './subscribers/vet-inspection.subscriber'; // <--- Importamos nuestro centinela
+import { WeightControlSubscriber } from './subscribers/weight-control.subscriber';
 
 @Module({
   imports: [
@@ -14,7 +15,8 @@ import { VetInspectionSubscriber } from './subscribers/vet-inspection.subscriber
   controllers: [CompetitionsController],
   providers: [
     CompetitionsService,
-    VetInspectionSubscriber // <--- Registramos el subscriber para que NestJS lo active en este módulo
+    VetInspectionSubscriber, // <--- Registramos el subscriber para que NestJS lo active en este módulo
+    WeightControlSubscriber
   ],
   exports: [CompetitionsService], // Lo exportamos por si otros módulos necesitan consultar datos de la carrera
 })
