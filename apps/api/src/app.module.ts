@@ -12,6 +12,8 @@ import { CompetitionsModule } from './modules/competitions/competitions.module';
 import { CompetitionEntriesModule } from './modules/competition-entries/competition-entries.module';
 import { TimingModule } from './modules/timing/timing.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { WeightControlsModule } from './modules/weight-controls/weight-controls.module';
+import { VetInspectionsModule } from './modules/vet-inspections/vet-inspections.module';
 
 @Module({
   imports: [
