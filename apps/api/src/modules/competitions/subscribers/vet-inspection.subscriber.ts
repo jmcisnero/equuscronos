@@ -5,7 +5,7 @@ import {
   UpdateEvent,
   DataSource,
 } from 'typeorm';
-import { VetInspection } from '../entities/vet-inspection.entity';
+import { VetInspection } from '../../vet-inspections/entities/vet-inspection.entity';
 import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 import { ParticipantStatus, EliminationCode } from '@equuscronos/shared';
 import { MotricityStatus } from '@equuscronos/shared';
