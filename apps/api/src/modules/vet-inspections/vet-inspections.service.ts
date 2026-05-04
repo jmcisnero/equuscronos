@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { VetInspection } from '../competitions/entities/vet-inspection.entity'; // Apunta a la entidad existente
+import { VetInspection } from './entities/vet-inspection.entity'; 
 import { TimingRecord } from '../competitions/entities/timing-record.entity';
 import { CreateVetInspectionDto } from './dto/create-vet-inspection.dto';
 import { TimeRecordType } from '@equuscronos/shared';
