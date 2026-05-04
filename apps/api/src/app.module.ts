@@ -44,6 +44,8 @@ import { VetInspectionsModule } from './modules/vet-inspections/vet-inspections.
     CompetitionEntriesModule,
     TimingModule,
     AuditModule,
+    WeightControlsModule,
+    VetInspectionsModule,
   ],
 })
 export class AppModule {}
