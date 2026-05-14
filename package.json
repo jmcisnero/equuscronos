@@ -1,6 +1,7 @@
 {
   "name": "equuscronos-monorepo",
   "version": "1.0.0",
+  "packageManager": "npm@11.14.1",
   "private": true,
   "description": "Sistema integral de gestión de competencias ecuestres",
   "author": "EquusCronos Team",
