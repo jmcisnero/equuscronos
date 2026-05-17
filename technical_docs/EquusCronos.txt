@@ -1,0 +1,456 @@
+EquusCronos: Un Plan Estratégico, Técnico y Comercial
+Parte I: El Imperativo Estratégico: Análisis de Mercado y de Negocio
+Esta sección establece el fundamento comercial y estratégico para el desarrollo de EquusCronos. Se analiza el mercado objetivo, se define la propuesta de valor única y se evalúa la viabilidad económica del proyecto, sentando las bases para la inversión en el desarrollo técnico.
+Sección 1: La Visión de EquusCronos y el Panorama Ecuestre Uruguayo
+1.1. Introducción: El Problema de la Gestión Analógica
+El ecosistema de competencias ecuestres en Uruguay, particularmente en la disciplina de raid, opera sobre una base de procesos predominantemente manuales y analógicos. Esta dependencia de métodos tradicionales genera ineficiencias significativas, latencia en la disponibilidad de información y un riesgo inherente de error humano. La evidencia más clara de esta situación se encuentra en las herramientas y publicaciones oficiales de la Federación Ecuestre Uruguaya (FEU).
+La herramienta central para el registro de datos en competencia es una planilla de papel, como la planilla.pdf proporcionada como referencia. Este documento, aunque funcional, requiere que los oficiales (veedores, veterinarios, cronometristas) registren manualmente datos críticos como tiempos de llegada, frecuencias cardíacas, y motivos de descalificación. Posteriormente, estos datos deben ser transcritos, calculados y consolidados, un proceso laborioso que retrasa la publicación de resultados y es susceptible a errores de transcripción y cálculo.
+Asimismo, la difusión de información clave como calendarios de eventos y resultados finales se realiza a través de documentos estáticos en formato PDF, como el "Librito FEU 2025.pdf" disponible en el sitio web de la federación. Este método carece de la inmediatez y la interactividad que el público, los competidores y los patrocinadores esperan en la era digital. No existe una fuente centralizada y dinámica para el seguimiento en tiempo real, lo que disminuye el engagement y el alcance potencial de los eventos.
+EquusCronos nace como la solución definitiva a estos desafíos. No se trata simplemente de una herramienta de cronometraje, sino de una plataforma integral de transformación digital diseñada para modernizar cada faceta de la gestión de competencias ecuestres. Al digitalizar el flujo de trabajo desde la inscripción hasta la publicación de resultados en vivo, EquusCronos se posiciona para eliminar las ineficiencias, garantizar la precisión de los datos y amplificar la experiencia para todos los involucrados.
+1.2. Deconstruyendo el Raid de la FEU: Un Análisis de Procesos
+Para que EquusCronos sea exitoso, debe codificar en su lógica de software el complejo reglamento que rige los raids de la FEU. Un análisis detallado de este reglamento revela un proceso multifásico que va mucho más allá de un simple cronometraje de inicio y fin. Cada fase representa un módulo o flujo de trabajo dentro del sistema.
+ * Fase Pre-Competencia:
+   * Marcación y Documentación: Inicia el día previo a la carrera. Los organizadores y delegados de la FEU realizan la marcación de los equinos, verifican la documentación del jinete (cédula, ficha médica) y del caballo (Pasaporte Equino FEU). EquusCronos gestionará este proceso con un checklist digital, permitiendo a los administradores marcar a cada binomio como "verificado" o "pendiente".
+   * Pesaje: Se realiza un pesaje obligatorio del jinete y su equipo, que debe alcanzar un mínimo de 85 kg. El equipo se precinta y se registra en una planilla. La plataforma permitirá registrar digitalmente el peso y los elementos precintados, asociándolos al perfil del competidor.
+ * Fase de Competencia (Etapa 1):
+   * Largada: La hora de largada es un punto de datos crucial, usualmente programada hasta 30 minutos antes del amanecer. El sistema registrará la hora de inicio oficial y permitirá la captura del tiempo de paso de cada competidor por el punto de partida.
+ * Fase de Neutralización (Checkpoint Crítico):
+   * Llegada a Neutralización: Se registra la hora de llegada de cada binomio. A partir de este momento, comienza un período de recuperación obligatorio de 60 minutos, con un control veterinario a los 20 minutos de la llegada.
+   * Control Veterinario: Este es el flujo de trabajo más complejo. Un veterinario debe medir las pulsaciones del equino, que no deben superar las 65 por minuto. Además, se realiza un examen de motricidad (trote) para detectar claudicaciones y se evalúa el estado general del animal. La planilla.pdf muestra campos para "HORA CONT. VET.", "FREC. CARD." y "MOT. DESC.". La aplicación de campo de EquusCronos guiará al veterinario a través de este proceso, ingresando los datos numéricos (pulsaciones) y categóricos (estado de motricidad), y aplicando automáticamente las reglas de descalificación si no se cumplen los parámetros.
+   * Salida de Neutralización: Los caballos que superan el control son autorizados a continuar. Se registra su hora de salida para la segunda etapa.
+ * Fase de Competencia (Etapa 2) y Llegada Final:
+   * Se registra la hora de llegada final de cada competidor. El sistema calculará automáticamente el tiempo total de carrera, los promedios de velocidad y la clasificación provisional.
+ * Fase Post-Competencia:
+   * Clasificación Final: El reglamento estipula que clasifican los equinos que llegan a la meta hasta 45 o 60 minutos después del primero, dependiendo de la distancia de la prueba. EquusCronos aplicará esta regla para generar el marcador final oficial.
+   * Presentación Olímpica: Al día siguiente de la carrera, se realiza una revisación clínica final. La no presentación o el no pasar esta revisión puede resultar en la eliminación del marcador. El sistema tendrá un estado para registrar la asistencia y el resultado de esta presentación.
+La complejidad de estas reglas interconectadas (tiempo, peso, fisiología) es lo que diferencia a un raid de otros deportes y constituye la principal barrera de entrada para soluciones de software genéricas.
+1.3. La Propuesta de Valor de EquusCronos
+EquusCronos ofrece beneficios tangibles y específicos para cada uno de los actores clave en el ecosistema de las competencias ecuestres.
+ * Para los Organizadores (Clubes Afiliados a la FEU):
+   * Eficiencia Operativa: Drástica reducción del trabajo administrativo manual, eliminando la necesidad de planillas de papel, transcripciones y cálculos manuales.
+   * Precisión y Transparencia: Minimización de errores humanos en el cronometraje y la aplicación de penalizaciones, lo que aumenta la credibilidad y el profesionalismo del evento.
+   * Nuevas Fuentes de Ingreso: La aplicación pública de seguimiento en vivo abre nuevas oportunidades para atraer patrocinadores que deseen visibilidad ante una audiencia digital y comprometida.
+ * Para los Oficiales (Jueces, Veterinarios, Cronometristas):
+   * Herramienta de Campo Optimizada: Una aplicación móvil diseñada para funcionar en condiciones de campo, incluso sin conexión a internet, que simplifica la captura de datos y automatiza la aplicación de las complejas reglas del reglamento.
+   * Eliminación del Papel: Reemplaza las planillas y los bolígrafos por una interfaz digital intuitiva, reduciendo la carga cognitiva y permitiendo a los oficiales centrarse en su juicio experto.
+ * Para los Competidores y Propietarios:
+   * Acceso a Datos en Tiempo Real: Posibilidad de seguir su rendimiento, tiempos parciales y estado en la competencia de forma inmediata.
+   * Confianza en los Resultados: Un sistema transparente y automatizado que garantiza una aplicación justa e imparcial del reglamento.
+   * Experiencia Mejorada: Una experiencia de competencia más moderna, profesional y atractiva.
+ * Para el Público y los Patrocinadores:
+   * Engagement en Vivo: La capacidad de seguir la carrera en tiempo real a través de una aplicación web pública, con clasificaciones actualizadas, perfiles de competidores y estado de la competencia.
+   * Mayor Alcance y Visibilidad: Transforma un evento local en una experiencia accesible a una audiencia global, aumentando su atractivo y valor comercial.
+Sección 2: Oportunidad de Mercado y Evaluación de Viabilidad
+2.1. Cuantificación del Mercado Objetivo (Uruguay)
+El mercado para EquusCronos en Uruguay puede segmentarse en un mercado primario, inmediato y bien definido, y un mercado secundario más amplio para la expansión futura.
+ * Mercado Primario (Foco del MVP): La Federación Ecuestre Uruguaya (FEU) cuenta con una lista de más de 50 instituciones afiliadas activas. Estos clubes son los organizadores directos de los raids hípicos que el MVP de EquusCronos está diseñado para servir. Este grupo representa el objetivo de lanzamiento ideal: un conjunto de clientes concentrado, accesible y con una necesidad homogénea dictada por un reglamento común. Cada uno de estos clubes organiza al menos un evento mayor al año, y muchos organizan múltiples pruebas de diferentes categorías.
+ * Mercado Secundario (Expansión en Uruguay): Más allá de la FEU, el sector ecuestre uruguayo es considerablemente más grande. Un informe de Uruguay XXI identifica aproximadamente 400 organizadores de actividades ecuestres y entre 300 y 350 centros ecuestres en el país. Si bien no todos organizan competencias de resistencia, este dato revela un mercado adyacente significativo para cuando EquusCronos expanda sus funcionalidades a otras disciplinas como salto, enduro o equitación, que son reguladas por la Federación Uruguaya de Deportes Ecuestres (FUDE).
+La siguiente tabla resume el tamaño estimado del mercado potencial en Uruguay.
+Tabla: Estimación del Tamaño del Mercado (Uruguay)
+| Segmento de Mercado | Número de Organizaciones (Estimado) | Eventos Anuales por Organización (Estimado) | Potencial de Adopción (MVP) | Potencial de Adopción (Post-MVP) |
+|---|---|---|---|---|
+| Clubes Afiliados a la FEU (Raids) | 52  | 1-3 | Alto | Alto |
+| Clubes Afiliados a FUDE (Otras disc.) | ~30-50  | 2-5 | Bajo | Alto |
+| Organizadores de Eventos Independientes | ~300  | 1-4 | Bajo | Medio |
+| Centros Ecuestres / Clubes Hípicos | ~350  | 1-10 | Bajo | Medio |
+2.2. Validación de la Demanda del Mercado
+La demanda de una solución como EquusCronos no es especulativa; está evidenciada por las prácticas actuales del mercado.
+ * Complejidad del Proceso Manual: La existencia de una planilla detallada como la planilla.pdf  es una prueba irrefutable de un proceso de negocio complejo que actualmente se gestiona de forma manual. La cantidad de campos, cálculos y verificaciones requeridas impone una carga operativa significativa a los organizadores.
+ * Latencia en la Información: La publicación de resultados y calendarios en formatos estáticos como PDF  demuestra la ausencia de sistemas dinámicos. Hay un desfase temporal entre la finalización de un evento y la disponibilidad pública de sus resultados, una brecha que EquusCronos puede cerrar.
+ * Carga Cognitiva sobre los Oficiales: El reglamento de la FEU  es denso y requiere que los oficiales de campo recuerden y apliquen múltiples reglas simultáneamente (límites de pulso, tolerancias de peso, tiempos de recuperación). Un software que incorpore esta lógica reduce la carga cognitiva y el riesgo de error, lo que representa un valor intrínseco para los oficiales y la integridad de la competencia.
+La transición de estos procesos analógicos a una plataforma digital centralizada es una propuesta de valor clara y convincente que responde a una necesidad latente y observable en el mercado.
+2.3. Potencial de Expansión (América Latina)
+El modelo de competencia de raid o enduro ecuestre no es exclusivo de Uruguay. Federaciones en toda América Latina, como la Federación Ecuestre Mexicana (FEM) , organizan eventos similares con reglamentos que, si bien pueden variar en detalles, comparten los mismos principios fundamentales: controles veterinarios, etapas múltiples y gestión de penalizaciones.
+Esto sugiere que el problema que EquusCronos resuelve es replicable en otros mercados. Una vez validado el modelo de negocio y la plataforma en Uruguay, la arquitectura escalable del sistema permitirá una adaptación relativamente sencilla a los reglamentos de otras federaciones. La experiencia y el prestigio ganados con la FEU servirían como un caso de estudio poderoso para la expansión internacional, apuntando a un mercado regional significativamente más grande. Plataformas de gestión de eventos en la región, aunque genéricas, muestran la existencia de una industria de eventos activa y en busca de tecnología.
+Sección 3: Entorno Competitivo y Posicionamiento Estratégico
+3.1. Análisis del Panorama Competitivo
+El análisis del mercado no revela un competidor directo que ofrezca una solución SaaS especializada para el cronometraje y gestión de raids ecuestres en Uruguay o la región. Sin embargo, es posible identificar competidores indirectos en dos categorías principales.
+ * Categoría 1: Software de Cronometraje Deportivo Genérico:
+   * Ejemplos: RACE RESULT , MYLAPS , Webscorer.
+   * Fortalezas: Son plataformas robustas y probadas para el cronometraje de una amplia gama de deportes (maratones, ciclismo, etc.). A menudo se integran con hardware de cronometraje RFID (chips).
+   * Debilidades: Su principal debilidad es su naturaleza genérica. No están diseñados para manejar la lógica de negocio específica y compleja del raid ecuestre. La implementación de flujos de trabajo como los controles veterinarios obligatorios, los límites de frecuencia cardíaca, los períodos de recuperación y las penalizaciones específicas del reglamento de la FEU  sería imposible o requeriría una personalización costosa y poco práctica. No son una solución "llave en mano" para este nicho.
+ * Categoría 2: Software de Gestión Ecuestre Internacional:
+   * Ejemplos: Pegasus , ShowPro , Equicty , BarnManager.
+   * Fortalezas: Poseen un profundo conocimiento del mundo ecuestre. Sus plataformas están diseñadas para gestionar aspectos como la salud del caballo, la facturación de pupilaje, la inscripción a eventos y la comunicación con los propietarios.
+   * Debilidades: Su enfoque principal está en la gestión de establos (Barn Management) y en disciplinas como el salto (Show Jumping), la doma clásica (Dressage) o el concurso completo (Eventing). No ofrecen la funcionalidad específica de cronometraje y gestión de procesos en tiempo real para competencias de resistencia por etapas como el raid.
+La oportunidad para EquusCronos reside precisamente en el espacio vacío entre estas dos categorías: la combinación de un cronometraje deportivo robusto con la lógica de negocio especializada y profunda del raid ecuestre.
+3.2. Matriz de Características Competitivas
+La siguiente tabla visualiza el posicionamiento único de EquusCronos en comparación con los competidores indirectos.
+| Característica | EquusCronos (Propuesta) | RACE RESULT (Genérico) | Pegasus (Gestión Ecuestre) |
+|---|---|---|---|
+| Lógica de Resistencia Multi-Etapa | Nativo | No Soportado | No Soportado |
+| Controles Veterinarios Integrados (Pulso, etc.) | Nativo | No Soportado | No Soportado |
+| Cumplimiento de Reglas FEU | Nativo | No Soportado | No Soportado |
+| Captura de Datos de Campo Offline | Sí | Limitado/Dependiente del Hardware | No |
+| Clasificación Pública en Tiempo Real | Sí | Sí | Limitado/Diferido |
+| Gestión de Suscripciones (Multitenant SaaS) | Sí | No | Sí |
+| Enfoque Principal | Gestión y Cronometraje de Competencias | Cronometraje Deportivo de Alto Rendimiento | Gestión de Establos y Eventos de Salto/Doma |
+3.3. Análisis FODA
+Un análisis de Fortalezas, Oportunidades, Debilidades y Amenazas (FODA) proporciona una visión equilibrada del proyecto.
+ * Fortalezas (Strengths):
+   * Enfoque de Nicho Altamente Especializado: La plataforma está diseñada para resolver un problema específico que las soluciones genéricas no abordan.
+   * "Foso" Regulatorio: La incorporación de la lógica del reglamento de la FEU  crea una barrera de entrada significativa para la competencia.
+   * Capacidad Offline: La funcionalidad offline de la aplicación de campo es una ventaja competitiva crucial, adaptada a la realidad de los eventos [User Query].
+   * Ausencia de Competidores Directos: El mercado objetivo inmediato carece de una solución similar.
+ * Debilidades (Weaknesses):
+   * Recursos Limitados: El desarrollo inicial depende de un único recurso, lo que puede alargar los plazos [User Query].
+   * Dependencia del Mercado Inicial: El éxito del MVP está fuertemente ligado a la adopción por parte de un único grupo de clientes (clubes de la FEU).
+   * Reconocimiento de Marca Nulo: Como producto nuevo, EquusCronos debe construir su reputación desde cero.
+ * Oportunidades (Opportunities):
+   * Demanda Clara de Digitalización: El sector muestra una clara necesidad de modernizar sus procesos analógicos.
+   * Expansión a Nuevas Disciplinas y Mercados: Potencial para escalar la plataforma para servir a otras disciplinas ecuestres y federaciones en América Latina.
+   * Alianzas Estratégicas: Posibilidad de asociarse con proveedores de hardware (monitores de frecuencia cardíaca, sistemas RFID) para ofrecer una solución más integrada.
+   * Monetización de Datos: Los datos agregados y anonimizados sobre el rendimiento de los equinos podrían tener valor para veterinarios, criadores e investigadores.
+ * Amenazas (Threats):
+   * Entrada de un Competidor Mayor: Un actor establecido podría decidir desarrollar una solución para este nicho si percibe que es rentable.
+   * Adopción Lenta: La naturaleza tradicionalista de algunos clubes podría ralentizar la adopción de una nueva tecnología.
+   * Cambios Regulatorios: Modificaciones en el reglamento de la FEU podrían requerir actualizaciones de software para mantener la conformidad.
+3.4. Declaración de Posicionamiento Estratégico
+"Para los organizadores de competencias ecuestres en América Latina que se ven agobiados por procesos manuales y propensos a errores, EquusCronos es la única plataforma SaaS especializada y todo en uno que digitaliza el ciclo de vida completo del evento, desde la inscripción hasta los resultados en tiempo real, al incorporar las reglas específicas de las competencias de resistencia directamente en su software."
+Sección 4: Modelo de Negocio, Precios y Proyecciones Financieras
+4.1. Modelo de Negocio Freemium y por Suscripción
+El modelo de negocio propuesto combina una oferta gratuita para atraer usuarios y demostrar valor, con niveles de suscripción de pago que desbloquean las funcionalidades principales.
+ * Nivel Gratuito ("EquusCronos Basic"):
+   * Funcionalidad: Permite a un organizador (club) registrar su organización, crear un perfil de competencia y, lo más importante, ingresar manualmente los resultados finales de una competencia por mes.
+   * Objetivo Estratégico: Actúa como una potente herramienta de generación de leads. Permite que los clubes más pequeños o aquellos que desconfían de la tecnología se familiaricen con la plataforma sin costo. Crea una base de datos de usuarios a los que se les puede ofrecer la versión de pago.
+ * Nivel Profesional ("EquusCronos Pro"):
+   * Funcionalidad: Desbloquea el valor principal de la plataforma: el cronometraje en vivo y la gestión integral del evento. Incluye el uso de la aplicación de campo para oficiales, la sincronización de datos en tiempo real y la publicación de clasificaciones en vivo.
+   * Activación: Requiere contacto directo con la empresa para la habilitación y el aprovisionamiento de usuarios, lo que permite una incorporación controlada y un servicio personalizado durante la fase inicial.
+ * Nivel Empresarial ("EquusCronos Federations"):
+   * Funcionalidad: Un plan personalizado diseñado para organismos rectores como la FEU. Ofrecería una vista agregada de todas las competencias de sus clubes afiliados, herramientas de análisis a nivel federativo, gestión centralizada de reglamentos y personalización de marca.
+   * Objetivo Estratégico: Posiciona a EquusCronos como un socio tecnológico estratégico a largo plazo para las federaciones nacionales, asegurando un contrato de alto valor y una adopción masiva.
+4.2. Estrategia de Precios y Justificación
+El análisis de software de cronometraje y gestión de eventos revela varios modelos de precios, incluyendo tarifas por participante, suscripciones anuales y compras únicas. Para EquusCronos Pro, se recomienda un modelo híbrido que combine ingresos predecibles con escalabilidad.
+ * Modelo Recomendado para EquusCronos Pro:
+   * Cuota de Suscripción Anual por Organización: Una tarifa fija que da acceso a la plataforma y sus funcionalidades Pro. Esto proporciona un flujo de ingresos recurrentes y predecibles.
+   * Tarifa por Participante Registrado: Una pequeña tarifa por cada binomio que se inscribe en un evento cronometrado con el sistema. Esto permite que los ingresos escalen con el tamaño y el éxito de los eventos del cliente.
+ * Ejemplo de Estructura de Precios (Valores referenciales en USD):
+   * Suscripción Anual: 300 USD por club/organización.
+   * Tarifa por Participante: 2.50 USD por binomio inscrito.
+ * Justificación: Este modelo es justo tanto para el proveedor como para el cliente. Un club pequeño que organiza un raid con 30 participantes pagará menos en tarifas de uso que un club grande que organiza un evento con 100 participantes, aunque ambos se beneficien del mismo software. La suscripción anual garantiza un compromiso mínimo y cubre los costos fijos de mantenimiento y soporte.
+4.3. Proyecciones Financieras Preliminares (Perspectiva a 3 Años)
+Las siguientes proyecciones se basan en un escenario realista de adopción, comenzando con el mercado primario de la FEU.
+ * Supuestos Clave (Escenario Realista):
+   * Tasa de Adquisición de Clientes (Clubes Pro): Año 1: 8 clubes (15% del mercado FEU), Año 2: 18 clubes, Año 3: 30 clubes.
+   * Eventos Promedio por Club al Año: 1.5
+   * Participantes Promedio por Evento: 40
+   * Tasa de Abandono (Churn): 10% anual.
+   * Costos: Incluyen desarrollo (basado en la estimación del MVP), hosting en la nube (escalable), marketing digital básico y gastos administrativos.
+Tabla: Proyección de Ingresos a 3 Años (Escenario Realista)
+| Métrica | Año 1 | Año 2 | Año 3 |
+|---|---|---|---|
+| Clubes Suscritos (Pro) | 8 | 18 | 30 |
+| Total de Participantes Cronometrados | 480 (8 * 1.5 * 40) | 1,080 | 1,800 |
+| Ingresos por Suscripción (@ 300 USD) | 2,400 USD | 5,400 USD | 9,000 USD |
+| Ingresos por Tarifa de Participante (@ 2.50 USD) | 1,200 USD | 2,700 USD | 4,500 USD |
+| Ingresos Totales | 3,600 USD | 8,100 USD | 13,500 USD |
+| Costos Estimados (Desarrollo, Hosting, etc.) | (15,000 USD) | (5,000 USD) | (6,000 USD) |
+| Beneficio/Pérdida Neta | (11,400 USD) | 3,100 USD | 7,500 USD |
+Esta proyección indica una inversión inicial en el primer año (principalmente costos de desarrollo) seguida de una transición a la rentabilidad en el segundo año, a medida que la base de clientes crece. Los escenarios optimistas y conservadores variarían principalmente en la tasa de adquisición de clientes.
+Parte II: La Fundación Técnica: Arquitectura del Sistema y Diseño de Ingeniería
+Esta sección traduce los objetivos estratégicos en un plan técnico concreto. Es el plano para el equipo de desarrollo, detallando el "qué" y el "cómo" de la construcción de EquusCronos, asegurando que la plataforma no solo satisfaga las necesidades del MVP, sino que también sea robusta, segura y escalable para el futuro.
+Sección 5: Análisis del Sistema: Actores, Escenarios y Componentes Centrales
+5.1. Actores y Roles del Sistema
+Un sistema de esta naturaleza involucra a múltiples tipos de usuarios, cada uno con permisos y funciones específicas. La gestión de roles es fundamental para la seguridad y la usabilidad.
+ * Super Administrador: Un rol interno de la empresa EquusCronos. Tiene control total sobre la plataforma, incluyendo la gestión de todos los tenants (organizaciones), la configuración global del sistema y el acceso a la facturación.
+ * Administrador de Organización (Tenant): El rol principal para un club u organizador. Puede gestionar el perfil de su organización, la suscripción, crear y configurar sus propias competencias, y administrar los usuarios de su organización (asignando los roles de Juez, Veterinario, etc.).
+ * Gestor de Competencia: Un rol dentro de una organización. Tiene permisos para configurar los detalles de un evento específico: definir etapas, checkpoints, horarios, y gestionar la lista de competidores inscritos.
+ * Oficial de Campo (Juez/Veedor): Usuario de la aplicación móvil. Su función es registrar datos oficiales en los puntos de control, como tiempos de paso, penalizaciones por infracciones al reglamento y abandonos.
+ * Veterinario: Un tipo especializado de Oficial de Campo. Utiliza la aplicación móvil para realizar y registrar los datos de los controles veterinarios, como la frecuencia cardíaca, el estado de motricidad y otros parámetros clínicos definidos en el reglamento.
+ * Competidor/Jinete: Un rol futuro. Podría tener un portal para gestionar su perfil, ver su historial de competencias e inscribirse en nuevos eventos. No es parte del MVP.
+ * Usuario Público: Cualquier persona que acceda a la aplicación web pública. Es un rol anónimo con permisos de solo lectura para ver los datos de las competencias activas y los resultados finales.
+5.2. Escenarios de Alto Nivel (Historias de Usuario)
+Estos escenarios describen las interacciones clave con el sistema desde la perspectiva del usuario.
+ * HU-01 (Admin de Organización): "Como Administrador de Organización, quiero crear una nueva competencia de raid de resistencia, especificando sus etapas (ej. 40 km y 20 km), checkpoints (largada, neutralización, llegada) y horarios, para poder preparar el evento de acuerdo con el reglamento de la FEU."
+ * HU-02 (Veterinario): "Como Veterinario en el punto de neutralización, con una conexión a internet inestable, quiero abrir la aplicación de campo, seleccionar un competidor por su número, e ingresar su frecuencia cardíaca (ej. 64 ppm) y su estado de motricidad ('Apto'), para que el dato quede registrado de forma segura en mi dispositivo y se sincronice automáticamente cuando recupere la conexión."
+ * HU-03 (Usuario Público): "Como aficionado al raid, quiero acceder a la página web de EquusCronos desde mi teléfono móvil y ver una tabla de clasificación en vivo para la carrera 'Batalla de Sarandí', que se actualice automáticamente a medida que los competidores pasan por los checkpoints, para poder seguir el progreso de la competencia."
+ * HU-04 (Juez de Pesaje): "Como Juez en el control de peso final, quiero registrar que un competidor ha perdido más peso del permitido, para que el sistema aplique automáticamente la descalificación según el Artículo 20 del reglamento."
+5.3. Visión General de los Componentes Arquitectónicos
+El sistema EquusCronos se compondrá de varios componentes desacoplados que se comunican a través de APIs, una arquitectura moderna que facilita el mantenimiento y la escalabilidad.
+ * Aplicación de Administración (Web): Una Single-Page Application (SPA) robusta, accesible a través de un navegador web, destinada a los Administradores de Organización y Gestores de Competencia.
+ * Aplicación de Campo (Móvil): Una aplicación móvil multiplataforma (iOS y Android) diseñada con una arquitectura "offline-first". Es la herramienta de trabajo para los Oficiales de Campo y Veterinarios.
+ * Aplicación Pública (Web): Una aplicación web ligera (WebApp) de solo lectura, optimizada para la visualización en dispositivos móviles y de escritorio, que muestra los datos públicos de la competencia.
+ * API Backend (Núcleo SaaS): El cerebro del sistema. Una API RESTful central que gestiona toda la lógica de negocio, la persistencia de datos, la autenticación, la autorización y la comunicación entre los diferentes componentes.
+ * Servicio de Tiempo Real: Un servicio basado en WebSockets que se encarga de empujar (push) las actualizaciones de datos en tiempo real (nuevos tiempos, cambios en la clasificación) a los clientes conectados, principalmente la Aplicación Pública.
+ * Base de Datos: Una base de datos relacional PostgreSQL que almacena todos los datos de la plataforma, diseñada con un esquema multitenant.
+Sección 6: Requisitos Detallados del Sistema
+6.1. Requisitos Funcionales (RF)
+Estos requisitos definen qué debe hacer el sistema. Se derivan directamente de la solicitud del usuario y del análisis del reglamento de la FEU.
+| ID | Requisito | Fuente | Prioridad (MVP) |
+|---|---|---|---|
+| RF-01 | El sistema debe permitir que un Super Administrador cree y gestione tenants (Organizaciones). | User Query (SaaS) | Crítica |
+| RF-02 | Un Administrador de Organización debe poder gestionar los usuarios de su propia organización, asignando roles (Juez, Veterinario). | User Query (SaaS) | Alta |
+| RF-03 | El sistema debe permitir la creación de competencias, definiendo tipo (inicialmente solo "Raid FEU"), nombre, fecha y estado. | User Query, | Crítica |
+| RF-04 | Para una competencia, se debe poder definir sus etapas con distancias y sus checkpoints con tipo (Largada, Neutralización, Llegada). | (Art. 28, 52) | Crítica |
+| RF-05 | Se debe poder inscribir manualmente a los binomios (jinete y equino) en una competencia, asignándoles un número. | (Art. 24) | Alta |
+| RF-10 | La App de Campo debe permitir a un oficial registrar la hora de paso de un competidor por un checkpoint. |  | Crítica |
+| RF-11 | La App de Campo debe permitir a un Veterinario registrar los datos del control en la neutralización: pulso, estado de motricidad, temperatura. | (Art. 31), | Crítica |
+| RF-12 | El sistema debe validar automáticamente si el pulso registrado en la neutralización excede el límite reglamentario (65 ppm) y marcar al competidor para revisión/descalificación. | (Art. 31) | Crítica |
+| RF-13 | El sistema debe permitir registrar una descalificación o abandono de un competidor en cualquier punto, con un motivo asociado. |  | Alta |
+| RF-20 | La App de Campo debe funcionar completamente sin conexión a internet. Los datos capturados deben almacenarse localmente. | User Query | Crítica |
+| RF-21 | La App de Campo debe sincronizar automáticamente los datos locales con el servidor cuando se restablezca la conexión a internet. | User Query | Crítica |
+| RF-30 | La App Pública debe mostrar una tabla de clasificación en tiempo real para las competencias activas. | User Query | Alta |
+| RF-31 | El sistema debe calcular los tiempos totales, promedios de velocidad y la clasificación final aplicando las reglas de la FEU (ej. tiempo máximo después del ganador). | (Art. 32) | Alta |
+6.2. Requisitos No Funcionales (RNF)
+Estos requisitos definen cómo debe funcionar el sistema, estableciendo atributos de calidad.
+| ID | Requisito | Atributo | Prioridad |
+|---|---|---|---|
+| RNF-01 | Seguridad: Toda la comunicación entre clientes y servidor debe estar cifrada mediante HTTPS y WSS. Las contraseñas deben almacenarse hasheadas (e.g., con bcrypt). | Seguridad | Crítica |
+| RNF-02 | Aislamiento de Datos (Multitenancy): Los datos de un tenant (organización) deben ser inaccesibles para cualquier otro tenant. Esta separación debe ser forzada a nivel de base de datos (RLS). | Seguridad | Crítica |
+| RNF-03 | Rendimiento: Las respuestas de la API para operaciones de lectura deben tener una latencia media inferior a 300 ms. La actualización de la clasificación en la App Pública debe ser visible en menos de 2 segundos tras la sincronización del dato. | Rendimiento | Alta |
+| RNF-04 | Escalabilidad: La arquitectura debe ser modular para permitir la adición de nuevos tipos de competencia (ej. Salto, Enduro FEI) en el futuro sin necesidad de rediseñar la base de datos o el núcleo de la API. | Escalabilidad | Alta |
+| RNF-05 | Disponibilidad: El sistema debe tener un tiempo de actividad (uptime) del 99.5% o superior. | Fiabilidad | Media |
+| RNF-06 | Usabilidad (App de Campo): La interfaz de la App de Campo debe ser de alto contraste para ser legible bajo la luz solar directa. Los botones y campos de entrada deben ser grandes para facilitar su uso, incluso con guantes. | Usabilidad | Alta |
+| RNF-07 | Compatibilidad: La App de Campo debe ser compatible con las dos últimas versiones principales de iOS y Android. Las aplicaciones web deben ser compatibles con las últimas versiones de Chrome, Firefox y Safari. | Compatibilidad | Alta |
+Sección 7: Arquitectura SaaS Propuesta
+La arquitectura de EquusCronos se basará en principios modernos de desarrollo de software para garantizar la robustez, seguridad y escalabilidad requeridas por un producto SaaS.
+7.1. Pila Tecnológica Recomendada
+ * Backend: NestJS (Node.js / TypeScript). Se elige NestJS por su arquitectura modular y opinada, que fomenta un código organizado y mantenible, ideal para proyectos complejos. Su excelente soporte para TypeScript proporciona tipado estático, reduciendo errores en tiempo de ejecución. Además, se integra de forma nativa con herramientas esenciales para este proyecto, como TypeORM para la interacción con la base de datos, Passport.js para la autenticación con JWT, y WebSockets para la comunicación en tiempo real.
+ * Frontend (Admin y Pública): React (con TypeScript). React es un estándar de la industria para construir Single-Page Applications (SPAs) interactivas. Su ecosistema maduro, su enfoque basado en componentes y su rendimiento lo hacen una elección sólida. El uso de TypeScript también en el frontend asegura la coherencia y la seguridad de tipos en todo el stack.
+ * Móvil (App de Campo): React Native. Esta elección es estratégica. Permite desarrollar para iOS y Android desde una única base de código, lo cual es crucial dado el recurso de desarrollo limitado. Más importante aún, React Native cuenta con un ecosistema robusto y probado para construir aplicaciones "offline-first". Librerías como @react-native-community/netinfo para la detección de red, y la capacidad de integrar bases de datos locales como SQLite, son fundamentales para cumplir con el requisito RNF-20.
+ * Base de Datos: PostgreSQL. Se selecciona PostgreSQL por ser una base de datos relacional de código abierto, potente y extremadamente fiable. Su característica diferenciadora clave para este proyecto es su soporte nativo para Row-Level Security (RLS), que es el mecanismo de implementación recomendado para el aislamiento de datos en el modelo multitenant elegido.
+ * Comunicación en Tiempo Real: WebSockets (vía Socket.IO). Para las actualizaciones en vivo de la App Pública, los WebSockets proporcionan una comunicación bidireccional y persistente entre el cliente y el servidor. Esto es mucho más eficiente que el polling HTTP, ya que el servidor puede "empujar" los datos a los clientes tan pronto como estén disponibles, cumpliendo con el requisito de rendimiento RNF-03.
+7.2. Arquitectura Multitenancy
+ * Patrón: Base de Datos Compartida, Esquema Compartido. Para el MVP y las etapas iniciales de crecimiento, este es el patrón más eficiente en costos y gestión. Todos los tenants (organizaciones) compartirán la misma instancia de base de datos y el mismo conjunto de tablas.
+ * Implementación: El aislamiento de datos se logrará mediante una columna tenant_id en todas las tablas que contengan datos específicos de un tenant (ej. competitions, users, results, horses, etc.). Esta columna será una clave foránea que apunta a una tabla central tenants.
+ * Mecanismo de Aislamiento: La seguridad y el aislamiento de los datos se garantizarán a nivel de base de datos utilizando PostgreSQL Row-Level Security (RLS). Se creará una política de seguridad en cada tabla protegida. Esta política funcionará de la siguiente manera:
+   * Cuando un usuario se autentica en la API, su tenant_id se incluye en el token JWT.
+   * En cada solicitud a la API, un middleware extrae el tenant_id del token y lo establece como una variable de sesión en la conexión de la base de datos (ej. SET app.current_tenant_id = '...').
+   * La política RLS en la tabla (ej. ON competitions) permitirá operaciones (SELECT, INSERT, UPDATE, DELETE) únicamente en las filas donde competitions.tenant_id = current_setting('app.current_tenant_id').
+     Este enfoque es superior a depender únicamente de cláusulas WHERE en la lógica de la aplicación, ya que previene fugas de datos incluso en caso de un error de programación en el backend.
+7.3. Arquitectura de Sincronización Offline
+El funcionamiento offline de la App de Campo es una característica central, no un añadido. Su arquitectura se basará en los siguientes principios :
+ * Almacenamiento Local: La aplicación React Native utilizará una base de datos SQLite local para almacenar todos los datos necesarios para operar sin conexión (lista de competencias, competidores, y los nuevos datos generados). La estructura de las tablas locales reflejará la del servidor para facilitar la sincronización.
+ * Cola de Acciones (Action Queue): Cuando el dispositivo está offline, cada operación que modifica datos (ej. registrar un tiempo, guardar un control veterinario) se ejecuta en dos pasos:
+   a. Se guarda el dato final en la tabla local correspondiente (ej. en la tabla vet_checks de SQLite).
+   b. Se registra la acción realizada en una tabla de "cola de sincronización" (sync_queue) con el tipo de acción (CREATE, UPDATE), los datos asociados y un estado "pending".
+ * Detección de Red: La aplicación utilizará la librería @react-native-community/netinfo para escuchar activamente los cambios en el estado de la red.
+ * Proceso de Sincronización:
+   a. Cuando netinfo detecta que la conexión se ha restablecido, notifica a un servicio de sincronización en segundo plano.
+   b. El servicio de sincronización lee las acciones de la sync_queue con estado "pending".
+   c. Envía las acciones a la API del backend en orden cronológico.
+   d. Al recibir una respuesta exitosa (ej. HTTP 201 Created) de la API para una acción, actualiza el estado de esa acción en la sync_queue local a "synced".
+ * Resolución de Conflictos: Para el MVP, se adoptará una estrategia simple de "el último en escribir, gana" (Last-Write-Wins). Dado que los oficiales de campo suelen tener roles distintos y operan en checkpoints diferentes, el riesgo de conflictos directos (dos usuarios modificando el mismo dato exacto al mismo tiempo) es bajo. La API procesará las solicitudes a medida que lleguen. Estrategias más complejas como la transformación operacional pueden evaluarse si surgen casos de uso que las requieran.
+7.4. Diagrama: Arquitectura de Componentes de Alto Nivel
+(Descripción textual del diagrama)
+El diagrama muestra tres tipos de clientes a la izquierda: Admin Web App (React), Public Web App (React) y Field Mobile App (React Native).
+Todos los clientes se comunican con una capa de API Gateway o Load Balancer en la nube (ej. AWS).
+El Gateway dirige el tráfico a los dos servicios principales del backend:
+ * Backend API (NestJS): Un contenedor o instancia de servidor que ejecuta la aplicación NestJS. Este servicio maneja la autenticación, la lógica de negocio y las operaciones CRUD. Se comunica directamente con la base de datos.
+ * Real-time Service (NestJS con WebSockets): Un servicio separado, también basado en NestJS, que gestiona las conexiones WebSocket persistentes con la Public Web App. Cuando el Backend API recibe un dato que debe ser público y en tiempo real (ej. un nuevo tiempo de llegada), notifica a este servicio (por ejemplo, a través de un bus de mensajes como Redis Pub/Sub) para que lo difunda a todos los clientes conectados.
+Ambos servicios de backend se comunican con la Base de Datos PostgreSQL (con RLS), que es el único almacén de estado persistente.
+Adicionalmente, se muestra un Object Storage (ej. AWS S3), conectado al Backend API, para almacenar archivos estáticos como documentos de los competidores o imágenes de los caballos en el futuro.
+La Field Mobile App contiene en su interior la Base de Datos SQLite Local y el Módulo de Sincronización, destacando su capacidad de operar de forma autónoma.
+Sección 8: Diagramas de Lenguaje de Modelado Unificado (UML)
+8.1. Diagrama de Casos de Uso
+Este diagrama ilustra las interacciones principales entre los actores y el sistema.
+ * Actores:
+   * Administrador de Organización
+   * Oficial de Campo (incluye Juez y Veterinario)
+   * Usuario Público
+ * Casos de Uso Principales:
+   * Gestionar Organización: (Iniciado por Admin. de Org.) Incluye Gestionar Usuarios, Gestionar Suscripción.
+   * Gestionar Competencia: (Iniciado por Admin. de Org.) Incluye Crear Competencia, Definir Etapas/Checkpoints, Inscribir Competidores.
+   * Registrar Datos de Campo: (Iniciado por Oficial de Campo) Incluye Registrar Tiempo de Paso, Registrar Control Veterinario, Registrar Penalización. Este caso de uso clave se ejecuta offline.
+   * Ver Resultados en Vivo: (Iniciado por Usuario Público).
+   * Sincronizar Datos Offline: (Iniciado por el Sistema/App de Campo).
+8.2. Diagrama de Clases
+Modela las entidades de dominio centrales y sus relaciones.
+ * Tenant: id, name, subscription_status. Tiene una relación 1 a N con User y Competition.
+ * User: id, tenant_id, name, email, password_hash, role.
+ * Competition: id, tenant_id, name, start_date, status, competition_type_id. Tiene una relación 1 a N con Stage y Registration.
+ * CompetitionType: id, name (ej. "FEU Endurance Raid"), rules_config (JSONB para parámetros específicos).
+ * Stage: id, competition_id, stage_number, distance_km. Tiene una relación 1 a N con Checkpoint.
+ * Checkpoint: id, stage_id, name, type (ENUM: 'START', 'VET_GATE', 'FINISH'). Tiene una relación 1 a N con Result.
+ * Registration: id, competition_id, rider_id, horse_id, number.
+ * Rider: id, name, federation_id.
+ * Horse: id, name, chip_id, passport_id.
+ * Result: id, registration_id, checkpoint_id, timestamp. Puede tener una relación 1 a 1 con VetCheck.
+ * VetCheck: id, result_id, check_time, heart_rate, is_lame, status (ENUM: 'PASSED', 'FAILED').
+ * Penalty: id, registration_id, reason, time_penalty_seconds.
+8.3. Diagrama de Secuencia - "Registrar Control Veterinario Offline"
+Este diagrama detalla el flujo para un escenario crítico.
+ * Actor Veterinario interactúa con Objeto :FieldApp_UI.
+ * Veterinario -> seleccionarCompetidor(numero)
+ * Veterinario -> ingresarDatosVet(pulso: 62, motricidad: 'OK')
+ * Veterinario -> presionarBoton("Guardar")
+ * :FieldApp_UI -> Llama a guardarControlVet(...) en Objeto :VetCheckController (en la app).
+ * :VetCheckController -> Llama a validarDatos(...) en sí mismo.
+ * :VetCheckController -> Llama a insert(...) en Objeto :LocalDBService con los datos del control.
+ * :LocalDBService -> Ejecuta una transacción SQL INSERT INTO vet_checks... en la Base de Datos SQLite.
+ * :LocalDBService -> Retorna success a :VetCheckController.
+ * :VetCheckController -> Llama a enqueueAction(...) en Objeto :SyncQueueService con los detalles de la acción (tipo: 'CREATE_VET_CHECK', payload: datos).
+ * :SyncQueueService -> Ejecuta INSERT INTO sync_queue... en la Base de Datos SQLite.
+ * :SyncQueueService -> Retorna success a :VetCheckController.
+ * :VetCheckController -> Notifica a :FieldApp_UI para que muestre un mensaje de "Guardado localmente" y un ícono de estado offline.
+8.4. Diagrama de Secuencia - "Sincronización de Datos"
+Este diagrama muestra el proceso cuando la app vuelve a estar online.
+ * Objeto :NetInfoService detecta un cambio de estado a isConnected: true.
+ * :NetInfoService -> Llama a triggerSync() en Objeto :SyncService.
+ * :SyncService -> Llama a getPendingActions() en Objeto :LocalDBService.
+ * :LocalDBService -> Ejecuta SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY created_at.
+ * :LocalDBService -> Retorna una lista de acciones a :SyncService.
+ * Loop [para cada acción en la lista]:
+   a. :SyncService -> Llama a post('/vet-checks', action.payload) en Objeto :ApiClient.
+   b. :ApiClient -> Realiza una solicitud HTTP POST a la Entidad Externa :BackendAPI.
+   c. :BackendAPI -> Procesa la solicitud, valida los datos y los guarda en la Base de Datos PostgreSQL.
+   d. :BackendAPI -> Retorna una respuesta HTTP 201 Created a :ApiClient.
+   e. :ApiClient -> Retorna success a :SyncService.
+   f. :SyncService -> Llama a markActionAsSynced(action.id) en :LocalDBService.
+   g. :LocalDBService -> Ejecuta UPDATE sync_queue SET status = 'synced' WHERE id =....
+ * Fin del Loop.
+ * :SyncService -> Notifica a la UI que la sincronización ha finalizado.
+Sección 9: Diseño de la Base de Datos
+9.1. Modelo Entidad-Relación (MER/ERD)
+(Descripción textual del diagrama ERD)
+El diagrama ERD visualiza las tablas y relaciones descritas en el Diagrama de Clases. En el centro se encuentra la tabla tenants. De ella se desprenden las tablas principales que llevan una clave foránea tenant_id, como users y competitions.
+La tabla competitions es central para los eventos. Se relaciona con competition_types para definir su lógica, y con registrations para saber quiénes compiten. La tabla registrations actúa como una tabla de unión entre competitions, riders y horses.
+El flujo de la competencia se modela a través de stages y checkpoints, que dependen jerárquicamente de competitions.
+El corazón del cronometraje es la tabla results, que vincula una registration con un checkpoint y un timestamp. La tabla vet_checks tiene una relación específica de uno a uno (o cero) con un result que ocurre en un checkpoint de tipo VET_GATE. Finalmente, penalties se asocia a una registration para registrar infracciones.
+9.2. Modelo Lógico / Diccionario de Datos (Tablas Clave)
+Tabla: tenants
+ * id (UUID, PK): Identificador único del tenant.
+ * name (VARCHAR(255), NOT NULL): Nombre de la organización/club.
+ * created_at (TIMESTAMP, DEFAULT NOW())
+Tabla: users
+ * id (UUID, PK): Identificador único del usuario.
+ * tenant_id (UUID, FK -> tenants.id, NOT NULL, INDEX): Identificador del tenant al que pertenece el usuario.
+ * email (VARCHAR(255), UNIQUE, NOT NULL): Email para el login.
+ * password_hash (VARCHAR(255), NOT NULL): Hash de la contraseña.
+ * role (VARCHAR(50), NOT NULL): Rol del usuario (e.g., 'ADMIN', 'JUDGE', 'VET').
+Tabla: competitions
+ * id (UUID, PK): Identificador único de la competencia.
+ * tenant_id (UUID, FK -> tenants.id, NOT NULL, INDEX): Tenant que organiza la competencia.
+ * name (VARCHAR(255), NOT NULL): Nombre del evento (ej. "Raid Grito de Asencio").
+ * competition_type_id (UUID, FK -> competition_types.id, NOT NULL): Define el reglamento a aplicar.
+ * start_date (TIMESTAMP, NOT NULL): Fecha y hora de inicio.
+ * status (VARCHAR(50), NOT NULL, DEFAULT 'PLANNED'): Estado actual (PLANNED, ACTIVE, COMPLETED).
+Tabla: vet_checks
+ * id (UUID, PK): Identificador único del control veterinario.
+ * result_id (UUID, FK -> results.id, NOT NULL, UNIQUE): Vínculo con el registro de tiempo en el checkpoint.
+ * check_time (TIMESTAMP, NOT NULL): Hora exacta del control.
+ * heart_rate (INTEGER): Pulsaciones por minuto.
+ * is_lame (BOOLEAN, DEFAULT false): Indicador de claudicación.
+ * metabolic_status (VARCHAR(100)): Estado metabólico.
+ * status (VARCHAR(50), NOT NULL): Resultado del control (PASSED, FAILED, OBSERVED).
+ * notes (TEXT): Observaciones del veterinario.
+Sección 10: Diseño de Interfaz y Experiencia de Usuario (UI/UX)
+10.1. Wireframes (Bocetos de Baja Fidelidad)
+Los wireframes se centrarán en la estructura, el flujo y la funcionalidad, no en la estética.
+ * Admin App - Pantalla de Creación de Competencia:
+   * Un formulario con campos para "Nombre del Evento", "Fecha", un selector para "Tipo de Competencia" (pre-seleccionado "FEU Endurance Raid").
+   * Una sección para "Etapas", donde el usuario puede hacer clic en "Añadir Etapa" para abrir un modal y definir el número de etapa y la distancia.
+   * Dentro de cada etapa, una sub-sección para "Checkpoints", permitiendo añadir checkpoints y seleccionar su tipo ('Largada', 'Neutralización', 'Llegada').
+ * Field App - Formulario de Entrada de Control Veterinario:
+   * Encabezado claro con el número y nombre del competidor.
+   * Campo de entrada numérico grande para "Frecuencia Cardíaca". El borde del campo se volverá rojo si el valor supera 65.
+   * Un conjunto de botones grandes y claros para "Estado de Motricidad":,, [Claudicación].
+   * Un área de texto opcional para "Notas".
+   * Un botón grande y prominente de "Guardar Control". Un pequeño ícono de nube junto al botón indicará el estado de la conexión.
+ * Public App - Vista de Clasificación en Vivo:
+   * Un encabezado con el nombre de la competencia.
+   * Una tabla simple y responsiva con las columnas: "Pos." (Posición), "N°" (Número del competidor), "Jinete/Caballo", "Último Checkpoint", "Tiempo Total".
+   * La tabla se refrescará automáticamente sin necesidad de recargar la página.
+10.2. Mockups (Bocetos de Alta Fidelidad)
+Los mockups establecerán la identidad visual de EquusCronos.
+ * Paleta de Colores: Tonos tierra (marrones, beiges) combinados con un color de acento vibrante (ej. azul o verde) para botones y elementos interactivos, evocando la naturaleza y la tecnología.
+ * Tipografía: Una fuente sans-serif clara y legible (como Inter o Lato) para garantizar la legibilidad en todas las pantallas.
+ * Mockup de la Field App: Se diseñará con un "modo oscuro" opcional para mejorar la visibilidad en condiciones de poca luz (amanecer) y un "modo claro" de alto contraste para la luz solar directa. Los elementos interactivos tendrán un área táctil generosa para ser operables con facilidad.
+ * Mockup de la Public App: Diseño limpio y minimalista, centrado en presentar la información de la clasificación de forma clara y directa. Incluirá el logo de EquusCronos y dejará espacio para los logos de los patrocinadores del evento.
+Parte III: El Plan de Acción: Desarrollo y Ejecución del MVP
+Esta parte final traduce el diseño en un plan de proyecto accionable. Define un alcance realista para el Producto Mínimo Viable (MVP), prioriza las tareas y proporciona una estimación de tiempo, creando una hoja de ruta clara para el desarrollo.
+Sección 11: Definiendo el Producto Mínimo Viable (MVP) para los Raids de la FEU
+El objetivo del MVP es entregar una solución funcional que resuelva el problema central para el mercado objetivo inicial (clubes de la FEU) de la manera más rápida y eficiente posible. Esto requiere un enfoque disciplinado en lo que se incluye y, más importante aún, en lo que se excluye.
+11.1. Funcionalidad Central del MVP (Dentro del Alcance)
+ * Backend y Arquitectura:
+   * Implementación completa de la arquitectura multitenant (Shared DB/Schema con RLS en PostgreSQL).
+   * API de autenticación basada en JWT con roles básicos (Admin, Judge, Vet).
+   * Endpoints de la API para gestionar organizaciones, usuarios, competidores y un único tipo de competencia ("FEU Endurance Raid").
+   * Endpoints para recibir y procesar los datos de la App de Campo (tiempos, controles veterinarios).
+ * Aplicación de Administración (Web):
+   * Creación y gestión de una única organización (tenant) por cuenta.
+   * Gestión de usuarios (crear/editar usuarios con roles de Juez y Veterinario).
+   * Creación y configuración de una competencia de tipo "FEU Endurance Raid".
+   * Inscripción manual de competidores (nombre del jinete, nombre del caballo, número).
+   * Una vista simple para ver los resultados consolidados después de la competencia.
+ * Aplicación de Campo (Móvil):
+   * Login seguro para Oficiales de Campo.
+   * Selección de la competencia activa.
+   * Lista de competidores para una fácil selección.
+   * Funcionalidad completa de captura de datos offline para:
+     * Hora de largada.
+     * Hora de llegada a la neutralización.
+     * Datos del control veterinario (pulso, estado).
+     * Hora de salida de la neutralización.
+     * Hora de llegada final.
+   * Almacenamiento local en SQLite y sincronización automática al recuperar la conexión.
+ * Aplicación Pública (Web):
+   * Una única página web, no interactiva, que muestre la tabla de clasificación en vivo para una competencia activa.
+   * La actualización de datos será impulsada por el servicio de WebSockets.
+11.2. Funcionalidades Post-MVP (Fuera del Alcance)
+Para mantener el enfoque y la velocidad, las siguientes funcionalidades se excluirán explícitamente del desarrollo inicial:
+ * Gestión de Suscripciones y Facturación Automatizada: La incorporación y facturación de los primeros clientes se gestionará manualmente.
+ * Soporte para Múltiples Tipos de Competencia: El MVP se centrará exclusivamente en la lógica del raid de la FEU. El soporte para carreras de velocidad u otras disciplinas se añadirá después.
+ * Informes y Analíticas Avanzadas: No se construirán dashboards de análisis complejos en la App de Administración.
+ * Portal para Competidores: Los jinetes no tendrán un login en el sistema en esta fase.
+ * Entrada Manual de Resultados (Funcionalidad del Nivel Gratuito): Aunque es parte del modelo de negocio a largo plazo, el MVP se centrará en validar la funcionalidad de cronometraje en vivo, que es el núcleo de la oferta de pago.
+Sección 12: Hoja de Ruta de Desarrollo y Estimación del MVP
+Esta hoja de ruta se basa en la restricción de un único recurso de desarrollo trabajando 4 horas por día, lo que equivale a 20 horas semanales.
+12.1. Fases de Desarrollo
+El proyecto se dividirá en cinco fases lógicas para un progreso incremental y medible.
+ * Fase 1: Fundación y Arquitectura (Semanas 1-4):
+   * Objetivo: Establecer el esqueleto técnico del proyecto.
+   * Hitos: Proyecto NestJS configurado, conexión a PostgreSQL con TypeORM, esquema de base de datos inicial implementado, sistema de autenticación JWT con roles funcionales.
+ * Fase 2: Núcleo de Administración (Semanas 5-8):
+   * Objetivo: Construir las funcionalidades mínimas de la App de Administración para que un organizador pueda configurar un evento.
+   * Hitos: CRUD de competencias, CRUD de usuarios de la organización, formulario de inscripción de competidores.
+ * Fase 3: Núcleo de la Aplicación de Campo (Semanas 9-14):
+   * Objetivo: Desarrollar la herramienta más crítica del MVP, con un enfoque intensivo en la lógica offline.
+   * Hitos: App React Native con login, lista de competidores, formularios de entrada de datos, base de datos SQLite local y mecanismo de cola de sincronización funcionales.
+ * Fase 4: Vista Pública e Integración (Semanas 15-17):
+   * Objetivo: Conectar todas las piezas y proporcionar la interfaz pública.
+   * Hitos: App Pública mostrando la clasificación, servicio WebSocket funcional, pruebas de integración end-to-end (desde la captura en campo hasta la visualización pública).
+ * Fase 5: Pruebas, Retroalimentación y Despliegue (Semanas 18-20):
+   * Objetivo: Validar el sistema en un entorno real, corregir errores y preparar el lanzamiento.
+   * Hitos: Pruebas alfa con un club amigo de la FEU, incorporación de feedback, corrección de bugs, configuración del entorno de producción y despliegue.
+12.2. Tabla: Desglose de Tareas y Estimación de Tiempo del MVP
+| ID | Tarea | Fase | Prioridad | Horas Est. |
+|---|---|---|---|---|
+| Fase 1: Fundación y Arquitectura (80h) |  |  |  |  |
+| T-01 | Configurar proyecto NestJS, TypeORM, conexión a PostgreSQL | 1 | Crítica | 12 |
+| T-02 | Implementar autenticación JWT y guardias basadas en roles | 1 | Crítica | 20 |
+| T-03 | Diseñar e implementar esquema de BD (tenants, users, competitions, etc.) | 1 | Crítica | 24 |
+| T-04 | Implementar políticas de Row-Level Security (RLS) para tenants | 1 | Crítica | 16 |
+| T-05 | Configurar proyecto React para App de Administración | 1 | Alta | 8 |
+| Fase 2: Núcleo de Administración (80h) |  |  |  |  |
+| T-10 | UI/Lógica para gestión de usuarios de la organización (CRUD) | 2 | Alta | 20 |
+| T-11 | UI/Lógica para gestión de competencias (CRUD) | 2 | Crítica | 30 |
+| T-12 | UI/Lógica para inscripción manual de competidores | 2 | Crítica | 20 |
+| T-13 | UI simple para visualización de resultados consolidados | 2 | Media | 10 |
+| Fase 3: Núcleo de la Aplicación de Campo (120h) |  |  |  |  |
+| T-20 | Configurar proyecto React Native, navegación y login | 3 | Crítica | 20 |
+| T-21 | Implementar servicio de base de datos SQLite local y esquema | 3 | Crítica | 24 |
+| T-22 | Implementar servicio de cola de sincronización y detector de red | 3 | Crítica | 20 |
+| T-23 | UI para listar competidores y seleccionar uno para registrar datos | 3 | Crítica | 16 |
+| T-24 | UI/Lógica para formularios de entrada de tiempo y control veterinario | 3 | Crítica | 32 |
+| T-25 | Implementar lógica de sincronización con la API del backend | 3 | Crítica | 8 |
+| Fase 4: Vista Pública e Integración (60h) |  |  |  |  |
+| T-30 | Desarrollar servicio WebSocket en NestJS para actualizaciones en vivo | 4 | Alta | 20 |
+| T-31 | Desarrollar App Pública (React) para mostrar clasificación en vivo | 4 | Alta | 24 |
+| T-32 | Pruebas de integración completas (flujo de datos end-to-end) | 4 | Crítica | 16 |
+| Fase 5: Pruebas y Despliegue (60h) |  |  |  |  |
+| T-40 | Preparar entorno de pruebas y datos para prueba de campo | 5 | Crítica | 12 |
+| T-41 | Soporte durante prueba de campo (alfa test) y recolección de feedback | 5 | Crítica | 16 |
+| T-42 | Iteración sobre feedback y corrección de bugs críticos | 5 | Crítica | 20 |
+| T-43 | Configurar entorno de producción y realizar despliegue final | 5 | Crítica | 12 |
+12.3. Esfuerzo Total Estimado del MVP
+El esfuerzo total estimado para el desarrollo del MVP es de 400 horas.
+Considerando un único desarrollador trabajando 20 horas efectivas por semana, el cronograma proyectado para la entrega de una versión lista para pruebas de campo es de 20 semanas, o aproximadamente 5 meses. Este cronograma es realista pero ajustado, y no contempla desviaciones significativas o la adición de nuevas funcionalidades no planificadas.
+Conclusión y Recomendaciones Finales
+El proyecto EquusCronos se presenta como una oportunidad de negocio sólida y bien definida, con un potencial significativo para transformar digitalmente un nicho de mercado desatendido. El análisis estratégico confirma la existencia de una demanda clara, un entorno competitivo favorable y un modelo de negocio viable. La hoja de ruta técnica y de desarrollo propuesta establece un camino claro y pragmático para la construcción de un MVP robusto y escalable.
+Recomendaciones Clave:
+ * Validar el MVP con la FEU: La prioridad absoluta después del desarrollo es realizar una prueba piloto en una competencia oficial de la FEU. La retroalimentación de organizadores y oficiales reales será el activo más valioso para refinar el producto antes de un lanzamiento comercial más amplio.
+ * Mantener el Enfoque: Es crucial resistir la tentación de ampliar el alcance del MVP. El éxito inicial dependerá de ejecutar excepcionalmente bien el conjunto de características definidas para el raid de la FEU.
+ * Construir Relaciones, no solo Software: El éxito en un mercado de nicho y tradicional como el ecuestre depende tanto de la calidad del producto como de las relaciones con los actores clave. Se recomienda un enfoque de ventas consultivo y de colaboración con los primeros clubes adoptantes.
+ * Planificar la Escalabilidad: Aunque el foco es el MVP, cada decisión técnica debe tomarse con la vista puesta en la futura expansión a otras disciplinas y geografías. La arquitectura modular y el diseño de base de datos genérico propuestos son fundamentales para este fin.
+EquusCronos tiene todos los ingredientes para convertirse en la plataforma de referencia para la gestión de competencias ecuestres en Uruguay y, eventualmente, en América Latina. La ejecución disciplinada de este plan será la clave para convertir esa visión en una realidad exitosa.

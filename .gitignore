@@ -82,3 +82,6 @@ coverage/
 # --- Otros ---
 .turbo/
 .cache/
+
+# --- Documentos tecnicos ---
+.technical_docs/

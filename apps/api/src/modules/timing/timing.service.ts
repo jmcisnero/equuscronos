@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { TimingRecord } from './entities/timing-record.entity';
+import { TimingRecord } from '../competitions/entities/timing-record.entity';
 import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
+import { Stage } from '../competitions/entities/stage.entity';
 import { CreateTimingRecordDto } from './dto/create-timing.dto';
 import { TimeRecordType, ParticipantStatus } from '@equuscronos/shared';
 import { TimeCalculationService } from './services/time-calculation.service';
@@ -24,6 +25,7 @@ export class TimingService {
       throw new BadRequestException('Se requiere Dorsal (bibNumber) o Chip RFID (chipId) para registrar el tiempo.');
     }
 
+    // El bloqueo pesimista y la validación de 60 minutos garantizan la integridad de la carrera y evitan sanciones de la FEU.
     // TRANSACCIÓN SEGURA: Todo se ejecuta o nada se guarda
     return await this.dataSource.transaction(async (manager: EntityManager) => {
       
@@ -44,8 +46,7 @@ export class TimingService {
       const invalidStatuses = [
         ParticipantStatus.DQ, 
         ParticipantStatus.DNF, 
-        ParticipantStatus.RETIRED, 
-        ParticipantStatus.DISQUALIFIED
+        ParticipantStatus.WD
       ];
       
       if (invalidStatuses.includes(entry.status)) {
@@ -63,20 +64,24 @@ export class TimingService {
       try {
         // Obtenemos la etapa actual completa para saber su neutralización
         const stage = await manager.findOne(Stage, { where: { id: dto.stageId } });
+        if (!stage) throw new NotFoundException('Etapa no encontrada.');
+
         let scheduledDepartureTime = null;
-        // Si es LLEGADA, calculamos la hora en que debe largar la siguiente etapa
+        // Si es LLEGADA, calculamos la hora en que debe largar la siguiente etapa garantizando la neutralización (Art. 28)
         if (dto.recordType === TimeRecordType.ARRIVAL) {
           scheduledDepartureTime = this.timeCalcService.calculateNextDepartureTime(
             new Date(dto.recordedAt), 
             stage
           );
         }        
+        
         const newRecord = manager.create(TimingRecord, {
           entry,
           stage: { id: dto.stageId },
           recordType: dto.recordType,
           recordedAt: new Date(dto.recordedAt),
           isApproved: dto.isApproved ?? true,
+          scheduledDepartureTime: scheduledDepartureTime, // AHORA SÍ GUARDAMOS EL CÁLCULO
         });
 
         const savedRecord = await manager.save(newRecord);
