@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { Owner } from './entities/owner.entity';
@@ -18,16 +18,24 @@ export class OwnersService {
   }
 
   /**
-   * Lista todos los propietarios. Soporta búsqueda por nombre insensible a mayúsculas/minúsculas para planillas FEU.
+   * Implementación de Omni-Search para el Padrón de Propietarios de la FEU.
+   * Soporta una búsqueda global insensible a mayúsculas/minúsculas (?search=...)
+   * a través de QueryBuilder, buscando coincidencias parciales por:
+   * - Nombre del propietario (persona, Stud o Haras)
+   * - Información de contacto (teléfono o email)
    */
   async findAll(search?: string): Promise<Owner[]> {
+    const query = this.ownerRepository.createQueryBuilder('owner');
+
     if (search) {
-      return await this.ownerRepository.find({
-        where: { name: ILike(`%${search}%`) },
-        order: { name: 'ASC' },
-      });
+      query.where(
+        '(LOWER(owner.name) LIKE LOWER(:search) OR LOWER(owner.contactInfo) LIKE LOWER(:search))',
+        { search: `%${search}%` }
+      );
     }
-    return await this.ownerRepository.find({ order: { name: 'ASC' } });
+
+    query.orderBy('owner.name', 'ASC');
+    return await query.getMany();
   }
 
   async findOne(id: string): Promise<Owner> {
@@ -44,6 +52,16 @@ export class OwnersService {
 
   async remove(id: string): Promise<void> {
     const owner = await this.findOne(id);
+    
+    // Control de Integridad de Negocio: Validar si el propietario posee caballos registrados
+    const horseCount = await this.ownerRepository.manager.count('Horse', {
+      where: { owner: { id } }
+    });
+
+    if (horseCount > 0) {
+      throw new BadRequestException('No se puede eliminar un propietario con caballos registrados en el padrón.');
+    }
+
     await this.ownerRepository.remove(owner);
   }
 }

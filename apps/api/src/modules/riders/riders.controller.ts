@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RidersService } from './riders.service';
 import { CreateRiderDto } from './dto/create-rider.dto';
@@ -15,8 +15,8 @@ export class RidersController {
   create(@Body() createRiderDto: CreateRiderDto) { return this.ridersService.create(createRiderDto); }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todos los jinetes' })
-  findAll() { return this.ridersService.findAll(); }
+  @ApiOperation({ summary: 'Listar todos los jinetes con búsqueda global' })
+  findAll(@Query('search') search?: string) { return this.ridersService.findAll(search); }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener jinete por ID' })

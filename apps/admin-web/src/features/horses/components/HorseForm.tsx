@@ -10,32 +10,44 @@ interface HorseFormProps {
   onCancel: () => void;
 }
 
+/**
+ * Formulario de Caballos (ModalForm) - Gestión de EquusCronos
+ * 
+ * NORMAS DE NEGOCIO Y TRAZABILIDAD (FEU):
+ * 1. PROPIETARIO OBLIGATORIO: Se integra un buscador asíncrono con autocompletado y creación en línea 
+ *    (inline create) para agilizar el flujo de inscripción sin perder consistencia relacional.
+ * 2. CHIP RFID Y PASAPORTE FEU: Control sanitario e identificativo de atletas de cuatro patas.
+ * 3. INMUTABILIDAD DE FECHAS (SANIDAD): El campo 'healthRecordsExpiration' (Vencimiento de Sanidad/Anemia) 
+ *    mantiene la lógica de persistencia inmutable (String ISO YYYY-MM-DD) para mitigar desplazamientos de
+ *    zona horaria (GMT-3 local uruguayo) al realizar conversiones a través del cliente web Next.js.
+ */
 export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onCancel }) => {
-  // Estados para búsqueda asíncrona y autocompletado
+  // Estados para búsqueda asíncrona y autocompletado de Propietarios
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOwnerName, setSelectedOwnerName] = useState('');
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Evitar conflictos entre transiciones de desenfoque (blur) y creación asíncrona en red (REST)
+  // Semáforo para evitar colisiones entre el evento 'blur' y el registro asíncrono en red
   const isCreatingOwnerRef = React.useRef(false);
 
+  // Estado del Formulario
   const [formData, setFormData] = useState<CreateHorseDto>({
     name: '',
     feuId: '',
     chipId: '',
     isFeuActive: false,
     healthRecordsExpiration: '',
-    ownerId: '', // Propietario legal obligatorio para trazabilidad FEU
+    ownerId: '', // Mandatorio
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Implementación del buscador asíncrono con Debounce (300ms)
-  // Requerido para evitar saturación de la API de propietarios en consultas repetidas
+  // Buscador asíncrono reactivo de Propietarios con 300ms de Debounce
   useEffect(() => {
     if (searchTerm === selectedOwnerName) {
-      return; // Si coincide con la selección actual, evitamos repetición de consulta
+      return; 
     }
 
     const delayDebounceFn = setTimeout(async () => {
@@ -49,7 +61,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
         const data = await OwnerService.getAll(searchTerm);
         setOwners(data);
       } catch (error) {
-        console.error('Error al realizar búsqueda asíncrona de propietarios:', error);
+        console.error('Error al buscar propietarios:', error);
       } finally {
         setIsLoadingOwners(false);
       }
@@ -58,12 +70,13 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, selectedOwnerName]);
 
-  // Sincronización inicial de datos para edición de caballos
+  // Precarga y formateo de datos para edición de caballo
   useEffect(() => {
     if (initialData) {
       let dateValue = '';
       if (initialData.healthRecordsExpiration) {
         const dateStr = initialData.healthRecordsExpiration;
+        // Garantizar formato de string inmutable YYYY-MM-DD
         dateValue = typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)
           ? dateStr.substring(0, 10)
           : new Date(dateStr).toISOString().split('T')[0];
@@ -85,27 +98,26 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
     }
   }, [initialData]);
 
-  // Carga previa de sugerencias iniciales al enfocar el campo sin búsquedas activas
+  // Carga inicial rápida de sugerencias al enfocar el input de búsqueda
   const handleInputFocus = async () => {
     setShowDropdown(true);
     if (searchTerm.trim() === '') {
       setIsLoadingOwners(true);
       try {
         const data = await OwnerService.getAll();
-        setOwners(data.slice(0, 5)); // Limitación preventiva de sugerencias rápidas
+        setOwners(data.slice(0, 5)); 
       } catch (error) {
-        console.error('Error al precargar sugerencias de propietarios:', error);
+        console.error('Error al precargar propietarios:', error);
       } finally {
         setIsLoadingOwners(false);
       }
     }
   };
 
-  // Cierre controlado de sugerencias al desenfocar, manteniendo consistencia del input
+  // Cierre preventivo del dropdown de sugerencias al desenfocar, coordinado para no abortar el alta inline
   const handleBlur = () => {
     setTimeout(() => {
       setShowDropdown(false);
-      // Evitar restaurar si estamos en proceso de alta en línea
       if (!isCreatingOwnerRef.current && searchTerm !== selectedOwnerName) {
         setSearchTerm(selectedOwnerName);
       }
@@ -122,13 +134,12 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
     setShowDropdown(false);
   };
 
-  // Creación en línea de propietario (Inline Create)
-  // Permite un flujo continuo de registro oficial para planillas de trazabilidad FEU
-  const handleCreateOwnerInline = async (name: string) => {
+  // Creación inline rápida de propietario
+  const handleCreateOwnerInline = async (nameValue: string) => {
     isCreatingOwnerRef.current = true;
     try {
       setIsLoadingOwners(true);
-      const newOwner = await OwnerService.create(name.trim());
+      const newOwner = await OwnerService.create(nameValue.trim());
       handleSelectOwner(newOwner);
     } catch (err: any) {
       alert('Error al registrar nuevo propietario: ' + err.message);
@@ -150,43 +161,87 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.ownerId) {
-      alert('Debe buscar y seleccionar o registrar un propietario legal para continuar.');
+    setFormError(null);
+
+    if (!formData.name.trim()) {
+      setFormError('El nombre del equino es requerido.');
       return;
     }
+
+    if (!formData.ownerId) {
+      setFormError('Debe buscar y asignar un propietario legal para la trazabilidad FEU.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
+    } catch (err: any) {
+      setFormError(err.message || 'Ocurrió un error al procesar el formulario.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">
-          {initialData ? 'Editar Caballo' : 'Registrar Caballo'}
-        </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      
+      <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 animate-slide-up">
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Cabecera del Modal */}
+        <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nombre del Caballo *</label>
+            <h3 className="text-base font-extrabold text-slate-800">
+              {initialData ? 'Modificar Registro de Caballo' : 'Registrar Nuevo Caballo'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Control de Registro y Trazabilidad - Federación Ecuestre</p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-all"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          {formError && (
+            <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-semibold flex items-center space-x-2">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {/* Nombre del Caballo */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Nombre del Caballo *
+            </label>
             <input
               type="text"
               name="name"
               required
               value={formData.name}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-              placeholder="Ej. Tormenta"
+              placeholder="Ej: Trueno"
+              className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
             />
           </div>
 
-          {/* Buscador Asíncrono de Propietario con Autocompletado */}
+          {/* Buscador de Propietario con Autocompletado */}
           <div className="relative">
-            <label className="block text-sm font-medium text-gray-700">Propietario *</label>
-            <div className="relative mt-1">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Propietario / Establecimiento *
+            </label>
+            <div className="relative">
               <input
                 type="text"
                 required
@@ -194,26 +249,26 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={handleInputFocus}
                 onBlur={handleBlur}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border pr-10"
-                placeholder="Escriba el nombre del propietario..."
+                placeholder="Escriba para buscar o crear inline..."
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm pr-10"
                 autoComplete="off"
               />
               {isLoadingOwners && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-equus-green"></div>
                 </div>
               )}
             </div>
 
             {showDropdown && (
-              <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto focus:outline-none border border-gray-100">
+              <div className="absolute z-50 mt-1 w-full rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto focus:outline-none border border-slate-100/50">
                 {owners.length > 0 ? (
-                  <ul className="py-1 text-base sm:text-sm">
+                  <ul className="py-1 text-sm">
                     {owners.map((owner) => (
                       <li
                         key={owner.id}
                         onMouseDown={() => handleSelectOwner(owner)}
-                        className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white text-gray-900"
+                        className="cursor-pointer select-none relative py-2.5 px-4 hover:bg-equus-green hover:text-white text-slate-700 font-medium transition-colors"
                       >
                         {owner.name}
                       </li>
@@ -221,97 +276,123 @@ export const HorseForm: React.FC<HorseFormProps> = ({ initialData, onSubmit, onC
                   </ul>
                 ) : (
                   !isLoadingOwners && (
-                    <div className="py-2 px-3 text-sm text-gray-500">
+                    <div className="py-3 px-4 text-xs text-slate-400 italic">
                       No se encontraron propietarios.
                     </div>
                   )
                 )}
 
-                {/* Opción de creación en línea (Inline Create) */}
                 {searchTerm.trim().length > 0 && !owners.some(o => o.name.toLowerCase() === searchTerm.trim().toLowerCase()) && (
                   <button
                     type="button"
                     onMouseDown={() => handleCreateOwnerInline(searchTerm)}
-                    className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 font-semibold border-t border-gray-100 flex items-center"
+                    className="w-full text-left px-4 py-2.5 text-xs text-equus-green hover:bg-slate-50 font-bold border-t border-slate-100 flex items-center"
                   >
                     <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                     </svg>
                     Crear nuevo propietario: "{searchTerm}"
                   </button>
                 )}
               </div>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              El propietario es obligatorio para la trazabilidad y las planillas oficiales de la FEU.
+            <p className="mt-1 text-[10px] text-slate-400">
+              El propietario es requerido legalmente por la FEU para la trazabilidad en planillas.
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Chip RFID</label>
-            <input
-              type="text"
-              name="chipId"
-              value={formData.chipId || ''}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-              placeholder="Ej. 982000412345678"
-            />
+          {/* Fila de Datos Identificativos */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Chip RFID */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Número de Chip RFID
+              </label>
+              <input
+                type="text"
+                name="chipId"
+                value={formData.chipId || ''}
+                onChange={handleChange}
+                placeholder="Ej: 9820004..."
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+              />
+            </div>
+
+            {/* Pasaporte FEU */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Pasaporte FEU
+              </label>
+              <input
+                type="text"
+                name="feuId"
+                value={formData.feuId || ''}
+                onChange={handleChange}
+                placeholder="Ej: URY-12345"
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+              />
+            </div>
           </div>
 
+          {/* Vencimiento de Sanidad - String YYYY-MM-DD */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Pasaporte FEU (Opcional)</label>
-            <input
-              type="text"
-              name="feuId"
-              value={formData.feuId || ''}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-              placeholder="Ej. URY-12345"
-            />
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isFeuActive"
-              checked={formData.isFeuActive || false}
-              onChange={handleChange}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <label className="ml-2 block text-sm text-gray-900">
-              ¿Está activo en la Federación Ecuestre?
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Vencimiento Sanidad / Anemia (MGAP)
             </label>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Vencimiento Anemia/Sanidad</label>
             <input
               type="date"
               name="healthRecordsExpiration"
               value={formData.healthRecordsExpiration || ''}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+              className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          {/* Estado de Habilitación FEU */}
+          <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-slate-700">Estado de Competencia</span>
+              <span className="text-[10px] text-slate-400">¿El caballo está habilitado para competir oficialmente?</span>
+            </div>
+            
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="isFeuActive"
+                checked={formData.isFeuActive || false}
+                onChange={handleChange}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-equus-green"></div>
+            </label>
+          </div>
+
+          {/* Botones de Acción */}
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="px-4 py-2 text-slate-500 hover:text-slate-700 text-sm font-bold transition-all focus:outline-none"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+              className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2"
             >
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
+              {isSubmitting && (
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              )}
+              <span>{initialData ? 'Guardar Cambios' : 'Registrar'}</span>
             </button>
           </div>
+
         </form>
+
       </div>
     </div>
   );

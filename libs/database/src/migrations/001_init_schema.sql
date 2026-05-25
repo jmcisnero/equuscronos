@@ -74,6 +74,7 @@ CREATE TABLE riders (
     national_id VARCHAR(50) NOT NULL UNIQUE,
     feu_id VARCHAR(50) UNIQUE,
     is_feu_active BOOLEAN DEFAULT FALSE,
+    birth_date DATE, -- Fecha de Nacimiento (inmutable para evitar bugs de zona horaria)
     medical_card_expiration DATE, -- Carnet de Salud / Ficha Médica	
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
