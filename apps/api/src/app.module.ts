@@ -14,6 +14,7 @@ import { TimingModule } from './modules/timing/timing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { WeightControlsModule } from './modules/weight-controls/weight-controls.module';
 import { VetInspectionsModule } from './modules/vet-inspections/vet-inspections.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { VetInspectionsModule } from './modules/vet-inspections/vet-inspections.
     AuditModule,
     WeightControlsModule,
     VetInspectionsModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

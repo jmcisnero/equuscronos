@@ -1,26 +1,54 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { DashboardService, DashboardStats } from '@/services/api/dashboard.service';
 
+/**
+ * Dashboard Central de la Consola de Administración - EquusCronos
+ * 
+ * NORMAS DE DISEÑO CORPORATIVO (ESTILO PREMIUM):
+ * 1. DISEÑO DINÁMICO CON SKELETONS: Incorpora un estado de carga animado ('animate-pulse')
+ *    que mantiene las proporciones visuales de las tarjetas de estadísticas.
+ * 2. INTEGRACIÓN COMPLETA: Consume la información del padrón en tiempo real (Caballos, Jinetes, Propietarios).
+ * 3. CONTROL DE SANIDAD INTEGRADO: Resalta las alertas operativas prioritarias (sanidades vencidas).
+ */
 export default function Home() {
-  // Datos estadísticos de alto valor operativo del Club/Haras para la FEU
+  const [statsData, setStatsData] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Consumo en tiempo real del nuevo endpoint de estadísticas
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const data = await DashboardService.getStats();
+        setStatsData(data);
+      } catch (err: any) {
+        setError(err.message || 'Error al conectar con el servidor de estadísticas.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
+
   const stats = [
     { 
       name: 'Caballos en Padrón', 
-      value: '45', 
-      change: '3 con sanidad por vencer', 
-      changeType: 'warning' 
+      value: statsData?.totalHorses.toString() || '0', 
+      change: `${statsData?.expiredHealthHorses || 0} con sanidad vencida`, 
+      changeType: (statsData?.expiredHealthHorses || 0) > 0 ? 'warning' : 'neutral' 
     },
     { 
       name: 'Jinetes Federados', 
-      value: '12', 
-      change: '100% con licencia al día', 
+      value: statsData?.totalRiders.toString() || '0', 
+      change: `${statsData?.activeRiders || 0} habilitados FEU`, 
       changeType: 'success' 
     },
     { 
       name: 'Propietarios / Haras', 
-      value: '8', 
+      value: statsData?.totalOwners.toString() || '0', 
       change: 'Registros activos', 
       changeType: 'neutral' 
     },
@@ -70,7 +98,6 @@ export default function Home() {
     }
   ];
 
-  // Helper para asignar los estilos de badge de estadísticas dinámicamente
   const getBadgeStyle = (type: string) => {
     switch (type) {
       case 'warning':
@@ -104,24 +131,47 @@ export default function Home() {
         </div>
       </div>
 
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-700 text-sm font-semibold flex items-center space-x-2">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Error al sincronizar estadísticas en vivo: {error}</span>
+        </div>
+      )}
+
       {/* Grid de Estadísticas con Valor Operativo Real */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((item) => (
-          <div
-            key={item.name}
-            className="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-5 hover:shadow-md hover:border-slate-200/60 transition-all duration-200 flex flex-col justify-between"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-normal leading-4">{item.name}</span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${getBadgeStyle(item.changeType)}`}>
-                {item.change}
-              </span>
+        {stats.map((item, idx) => {
+          // La última tarjeta es estática y rápida (Competencias)
+          const isCardLoading = isLoading && idx < 3;
+
+          return (
+            <div
+              key={item.name}
+              className="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-5 hover:shadow-md hover:border-slate-200/60 transition-all duration-200 flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-normal leading-4">{item.name}</span>
+                {isCardLoading ? (
+                  <div className="h-5 w-24 bg-slate-100 animate-pulse rounded-full"></div>
+                ) : (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${getBadgeStyle(item.changeType)}`}>
+                    {item.change}
+                  </span>
+                )}
+              </div>
+              
+              <div className="mt-4 flex items-baseline justify-between">
+                {isCardLoading ? (
+                  <div className="h-9 w-16 bg-slate-100 animate-pulse rounded-lg"></div>
+                ) : (
+                  <span className="text-3xl font-extrabold tracking-tight text-slate-950">{item.value}</span>
+                )}
+              </div>
             </div>
-            <div className="mt-4 flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold tracking-tight text-slate-950">{item.value}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Accesos Rápidos y Novedades */}
@@ -183,9 +233,15 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Control MGAP: Relámpago</h4>
+                <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Control MGAP: Alerta</h4>
                 <p className="text-[11px] text-rose-700 leading-relaxed mt-1 font-medium">
-                  El vencimiento de sanidad expira próximamente (**07/06/2026**). Es obligatorio cargar la planilla de recheck veterinario en el sistema para evitar la descalificación deportiva.
+                  {isLoading ? (
+                    <span>Verificando controles veterinarios...</span>
+                  ) : (statsData?.expiredHealthHorses || 0) > 0 ? (
+                    <span>¡Atención! Hay **{statsData?.expiredHealthHorses} caballos** con vencimientos de sanidad expira o vencida en el padrón nacional.</span>
+                  ) : (
+                    <span>Todos los equinos registrados en el padrón cuentan con controles de sanidad y anemia al día.</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -198,7 +254,7 @@ export default function Home() {
               <div>
                 <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Base de Datos FEU Sincronizada</h4>
                 <p className="text-[11px] text-emerald-800 leading-relaxed mt-1 font-medium">
-                  Sincronización nacional FEU realizada con éxito. 3 binomios habilitados para la próxima competencia oficial del fin de semana.
+                  Sincronización nacional FEU realizada con éxito. {isLoading ? '...' : statsData?.activeHorses} binomios habilitados para la próxima competencia oficial del fin de semana.
                 </p>
               </div>
             </div>
