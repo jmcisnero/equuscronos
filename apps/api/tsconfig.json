@@ -11,8 +11,6 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@equuscronos/shared": ["../../libs/shared/src"],
-      "@equuscronos/shared/*": ["../../libs/shared/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

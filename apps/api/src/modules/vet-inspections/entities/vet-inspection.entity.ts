@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn } from 'typeorm';
 import { ClinicalStatus, MotricityStatus } from '@equuscronos/shared';
-import { TimingRecord } from './timing-record.entity';
+import { TimingRecord } from '../../competitions/entities/timing-record.entity';
 
 @Entity('vet_inspections')
 export class VetInspection {

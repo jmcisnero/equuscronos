@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OwnersService } from './owners.service';
 import { CreateOwnerDto } from './dto/create-owner.dto';
@@ -15,8 +15,8 @@ export class OwnersController {
   create(@Body() createOwnerDto: CreateOwnerDto) { return this.ownersService.create(createOwnerDto); }
 
   @Get()
-  @ApiOperation({ summary: 'Listar padrón de propietarios' })
-  findAll() { return this.ownersService.findAll(); }
+  @ApiOperation({ summary: 'Listar padrón de propietarios con búsqueda por texto' })
+  findAll(@Query('search') search?: string) { return this.ownersService.findAll(search); }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener propietario por ID' })

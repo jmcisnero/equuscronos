@@ -38,12 +38,20 @@ export class HorsesService {
     return await this.horseRepository.save(newHorse);
   }
 
-  async findAll(): Promise<Horse[]> {
-    // Al listar caballos, incluimos los datos del propietario
-    return await this.horseRepository.find({
-      relations: ['owner'],
-      order: { name: 'ASC' }
-    });
+  async findAll(search?: string): Promise<Horse[]> {
+    const query = this.horseRepository.createQueryBuilder('horse')
+      .leftJoinAndSelect('horse.owner', 'owner');
+
+    if (search) {
+      const term = `%${search}%`;
+      query.where(
+        '(horse.name ILIKE :search OR horse.chipId ILIKE :search OR horse.feuId ILIKE :search OR owner.name ILIKE :search)',
+        { search: term }
+      );
+    }
+
+    query.orderBy('horse.name', 'ASC');
+    return await query.getMany();
   }
 
   async findOne(id: string): Promise<Horse> {

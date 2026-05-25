@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  --color-equus-green: #1C4F38;
+  --color-equus-tan-light: #A99677;
+  --color-equus-tan-dark: #AD8F6C;
+  --color-equus-bg: #FDFBF7;
+  --color-equus-text: #1E293B;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 
+  Double-Safe Brand Utility Classes
+  Ensures instant corporate identity rendering even if Tailwind v4's compiler is in transition or cached.
+*/
+.bg-equus-green {
+  background-color: #1C4F38 !important;
+}
+.text-equus-green {
+  color: #1C4F38 !important;
+}
+.bg-equus-bg {
+  background-color: #FDFBF7 !important;
+}
+.text-equus-text {
+  color: #1E293B !important;
+}
+.text-equus-tan-light {
+  color: #A99677 !important;
+}
+.bg-equus-tan-light {
+  background-color: #A99677 !important;
+}
+.border-equus-tan-dark {
+  border-color: #AD8F6C !important;
+}
+.border-equus-tan-light {
+  border-color: #A99677 !important;
+}
+.text-equus-tan-dark {
+  color: #AD8F6C !important;
+}
+

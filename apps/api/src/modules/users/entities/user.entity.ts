@@ -26,7 +26,7 @@ export class User {
   @Column({ name: 'apple_id', type: 'varchar', length: 255, unique: true, nullable: true })
   appleId: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.SPECTATOR })
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })

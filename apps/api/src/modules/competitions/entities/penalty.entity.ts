@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { CompetitionEntry } from './competition-entry.entity';
+import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 import { Stage } from './stage.entity';
 
 @Entity('penalties')

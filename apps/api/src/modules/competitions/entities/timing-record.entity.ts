@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { TimeRecordType, EliminationCode } from '@equuscronos/shared';
-import { CompetitionEntry } from './competition-entry.entity';
+import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 import { Stage } from './stage.entity';
-import { VetInspection } from './vet-inspection.entity';
+import { VetInspection } from '../../vet-inspections/entities/vet-inspection.entity';
 
 @Entity('timing_records')
 export class TimingRecord {

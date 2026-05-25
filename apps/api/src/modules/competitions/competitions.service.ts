@@ -4,7 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Competition } from './entities/competition.entity';
 import { Stage } from './entities/stage.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { CompetitionType } from './entities/competition-type.entity';
+import { CompetitionType } from '../competition-types/entities/competition-type.entity';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
 import { UpdateCompetitionDto } from './dto/update-competition.dto';
 import { CompetitionStatus } from '@equuscronos/shared';

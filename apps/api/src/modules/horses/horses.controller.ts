@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HorsesService } from './horses.service';
 import { CreateHorseDto } from './dto/create-horse.dto';
@@ -15,8 +15,8 @@ export class HorsesController {
   create(@Body() createHorseDto: CreateHorseDto) { return this.horsesService.create(createHorseDto); }
 
   @Get()
-  @ApiOperation({ summary: 'Listar padrón de caballos' })
-  findAll() { return this.horsesService.findAll(); }
+  @ApiOperation({ summary: 'Listar padrón de caballos con búsqueda unificada (Omni-search)' })
+  findAll(@Query('q') search?: string) { return this.horsesService.findAll(search); }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener caballo por ID' })

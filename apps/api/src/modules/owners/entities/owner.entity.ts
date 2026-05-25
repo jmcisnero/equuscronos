@@ -9,7 +9,7 @@ export class Owner {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'enum', enum: OwnerType, default: OwnerType.PERSON })
+  @Column({ type: 'enum', enum: OwnerType, default: OwnerType.INDIVIDUAL })
   type: OwnerType;
 
   @Column({ name: 'contact_info', type: 'varchar', length: 255, nullable: true })

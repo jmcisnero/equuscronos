@@ -1,9 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { CompetitionStatus } from '@equuscronos/shared';
 import { Tenant } from '../../tenants/entities/tenant.entity';
-import { CompetitionType } from './competition-type.entity';
+import { CompetitionType } from '../../competition-types/entities/competition-type.entity';
 import { Stage } from './stage.entity';
-import { CompetitionEntry } from './competition-entry.entity';
+import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 
 @Entity('competitions')
 export class Competition {

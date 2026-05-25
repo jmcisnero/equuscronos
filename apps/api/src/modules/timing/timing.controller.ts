@@ -16,6 +16,6 @@ export class TimingController {
   @ApiResponse({ status: 400, description: 'Bad Request: Faltan datos o el competidor ya está DQ.' })
   @ApiResponse({ status: 404, description: 'Not Found: Dorsal/Chip no encontrado en esta carrera.' })
   async createRecord(@Body() createTimingRecordDto: CreateTimingRecordDto) {
-    return await this.timingService.processRapidFireRecord(createTimingRecordDto);
+    return await this.timingService.create(createTimingRecordDto);
   }
 }

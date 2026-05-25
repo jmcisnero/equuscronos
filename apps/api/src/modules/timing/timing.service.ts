@@ -133,7 +133,7 @@ export class TimingService {
 
     await manager.update(CompetitionEntry, entry.id, {
       status: newStatus,
-      currentStageId: dto.stageId,
+      currentStage: { id: dto.stageId },
     });
   }
 }

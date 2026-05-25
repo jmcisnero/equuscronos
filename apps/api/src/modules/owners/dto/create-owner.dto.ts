@@ -8,9 +8,10 @@ export class CreateOwnerDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ description: 'Categoría del propietario', enum: OwnerType, example: OwnerType.HARAS })
+  @ApiPropertyOptional({ description: 'Categoría del propietario', enum: OwnerType, example: OwnerType.INDIVIDUAL, default: OwnerType.INDIVIDUAL })
+  @IsOptional()
   @IsEnum(OwnerType)
-  type: OwnerType;
+  type?: OwnerType;
 
   @ApiPropertyOptional({ description: 'Teléfono o email de contacto', example: 'contacto@elrelincho.uy' })
   @IsOptional()

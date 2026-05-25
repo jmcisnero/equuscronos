@@ -7,7 +7,7 @@ export enum UserRole {
 }
 
 export enum OwnerType {
-  INDIVIDUAL = 'INDIVIDUAL',
-  STABLE = 'STABLE', // Stud / Caballeriza
-  SYNDICATE = 'SYNDICATE'
+  INDIVIDUAL = 'PERSON',
+  STABLE = 'STUD',
+  SYNDICATE = 'HARAS'
 }

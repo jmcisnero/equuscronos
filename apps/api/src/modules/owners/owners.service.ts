@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Owner } from './entities/owner.entity';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
@@ -17,7 +17,16 @@ export class OwnersService {
     return await this.ownerRepository.save(newOwner);
   }
 
-  async findAll(): Promise<Owner[]> {
+  /**
+   * Lista todos los propietarios. Soporta búsqueda por nombre insensible a mayúsculas/minúsculas para planillas FEU.
+   */
+  async findAll(search?: string): Promise<Owner[]> {
+    if (search) {
+      return await this.ownerRepository.find({
+        where: { name: ILike(`%${search}%`) },
+        order: { name: 'ASC' },
+      });
+    }
     return await this.ownerRepository.find({ order: { name: 'ASC' } });
   }
 

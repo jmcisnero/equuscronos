@@ -142,4 +142,24 @@ export class LeaderboardService {
     
     return latestVetRecord ? latestVetRecord.vetInspection.heartRate : null;
   }
+
+  /**
+   * Calcula la hora límite de presentación en el Vet-Gate (Art. FEU).
+   * Por defecto, el reglamento suele exigir 20 minutos tras la llegada.
+   */
+  private calculateTargetVetTime(records: any[]): Date | null {
+    if (!records || records.length === 0) return null;
+    
+    const lastArrival = records
+      .filter(r => r.recordType === TimeRecordType.ARRIVAL)
+      .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0];
+      
+    if (!lastArrival) return null;
+    
+    // Tiempo reglamentario: 20 minutos (esto idealmente viene de la Stage, pero asumimos 20)
+    const targetVetTime = new Date(lastArrival.recordedAt);
+    targetVetTime.setMinutes(targetVetTime.getMinutes() + 20);
+    
+    return targetVetTime;
+  }
 }

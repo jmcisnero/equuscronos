@@ -17,7 +17,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,sql}\"",
     "db:init": "psql -U postgres -d equuscronos -f libs/database/src/migrations/001_init_schema.sql",
-    "db:seed": "psql -U postgres -d equuscronos -f libs/database/src/seeds/01_initial_seed.sql",
+    "db:seed": "node libs/database/src/seeds/run_seed.js",
     "db:status": "psql -U postgres -d equuscronos -f libs/database/src/queries/verification_queries.sql"
   },
   "devDependencies": {

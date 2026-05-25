@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUUID, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateHorseDto {
@@ -7,10 +7,11 @@ export class CreateHorseDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({ description: 'UUID del propietario legal' })
-  @IsOptional()
-  @IsUUID()
-  ownerId?: string;
+  @ApiProperty({ description: 'UUID del propietario legal del caballo', example: 'b1000000-0000-0000-0000-000000000001' })
+  @IsString()
+  @IsNotEmpty()
+  // El propietario es obligatorio para garantizar la trazabilidad de los binomios y la confección de planillas oficiales de la FEU
+  ownerId: string;
 
   @ApiPropertyOptional({ description: 'Número de pasaporte o carnet federativo (FEU)', example: 'FEU-H-101' })
   @IsOptional()
@@ -26,4 +27,9 @@ export class CreateHorseDto {
   @IsOptional()
   @IsBoolean()
   isFeuActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Fecha de vencimiento de sanidad', example: '2026-12-31' })
+  @IsOptional()
+  @IsDateString()
+  healthRecordsExpiration?: string;
 }
