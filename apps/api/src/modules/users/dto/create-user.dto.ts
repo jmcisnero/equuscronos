@@ -5,7 +5,7 @@ import { UserRole } from '@equuscronos/shared';
 export class CreateUserDto {
   @ApiPropertyOptional({ description: 'UUID del Club al que pertenece. Dejar nulo si es SuperAdministrador global.' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tenantId?: string;
 
   @ApiProperty({ description: 'Nombre completo del operador', example: 'Carlos Juez' })

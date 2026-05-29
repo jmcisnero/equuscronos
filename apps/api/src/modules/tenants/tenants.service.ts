@@ -33,6 +33,12 @@ export class TenantsService {
 
   async update(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
     const tenant = await this.findOne(id);
+    if (updateTenantDto.name && updateTenantDto.name !== tenant.name) {
+      const existing = await this.tenantRepository.findOne({ where: { name: updateTenantDto.name } });
+      if (existing) {
+        throw new ConflictException(`La organización '${updateTenantDto.name}' ya existe.`);
+      }
+    }
     const updatedTenant = Object.assign(tenant, updateTenantDto);
     return await this.tenantRepository.save(updatedTenant);
   }

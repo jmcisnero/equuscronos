@@ -6,11 +6,11 @@ import { CreateStageDto } from './create-stage.dto';
 
 export class CreateCompetitionDto {
   @ApiProperty({ description: 'UUID del Club anfitrión' })
-  @IsUUID()
+  @IsString()
   tenantId: string;
 
   @ApiProperty({ description: 'UUID de la modalidad/regla a aplicar' })
-  @IsUUID()
+  @IsString()
   competitionTypeId: string;
 
   @ApiProperty({ description: 'Nombre oficial del evento', example: 'Raid Batalla de Tupambaé' })

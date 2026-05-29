@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { UserRole } from '@equuscronos/shared';
+import { Exclude } from 'class-transformer';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('users')
@@ -18,6 +19,7 @@ export class User {
   email: string;
 
   @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true })
+  @Exclude()
   passwordHash: string;
 
   @Column({ name: 'google_id', type: 'varchar', length: 255, unique: true, nullable: true })

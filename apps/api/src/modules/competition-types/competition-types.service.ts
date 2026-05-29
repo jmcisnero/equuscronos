@@ -33,6 +33,12 @@ export class CompetitionTypesService {
 
   async update(id: string, updateCompetitionTypeDto: UpdateCompetitionTypeDto): Promise<CompetitionType> {
     const type = await this.findOne(id);
+    if (updateCompetitionTypeDto.name && updateCompetitionTypeDto.name !== type.name) {
+      const existing = await this.compTypeRepository.findOne({ where: { name: updateCompetitionTypeDto.name } });
+      if (existing) {
+        throw new ConflictException(`La categoría '${updateCompetitionTypeDto.name}' ya existe.`);
+      }
+    }
     const updatedType = Object.assign(type, updateCompetitionTypeDto);
     return await this.compTypeRepository.save(updatedType);
   }

@@ -33,7 +33,7 @@ export class WeightControlsService {
     }
 
     const rules = entry.competition.competitionType.defaultRules || {};
-    const baseMinWeight = rules.min_weight_kg || 85;
+    const baseMinWeight = Number(rules.min_weight_kg || rules.min_weight || 85);
 
     let allowedWeight = baseMinWeight;
     if (dto.controlType !== 'INITIAL') {

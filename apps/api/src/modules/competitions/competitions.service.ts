@@ -47,6 +47,7 @@ export class CompetitionsService {
       const stagesToSave = dto.stages.map(stageDto => {
         return queryRunner.manager.create(Stage, {
           competition: savedCompetition,
+          tenant: tenant,
           stageNumber: stageDto.stageNumber,
           distanceKm: stageDto.distanceKm,
           neutralizationMinutes: stageDto.neutralizationMinutes ?? 0,

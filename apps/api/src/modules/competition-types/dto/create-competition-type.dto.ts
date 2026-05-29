@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CompetitionRules } from '../interfaces/competition-rules.interface';
 
 export class CreateCompetitionTypeDto {
   @ApiProperty({ description: 'Nombre de la plantilla de reglas', example: 'Enduro FEI 120km' })
@@ -10,5 +11,5 @@ export class CreateCompetitionTypeDto {
   @ApiPropertyOptional({ description: 'JSON con parámetros reglamentarios (BPM máx, peso mínimo)', example: { max_heart_rate: 64, min_weight_kg: 75 } })
   @IsOptional()
   @IsObject()
-  defaultRules?: Record<string, any>;
+  defaultRules?: CompetitionRules;
 }

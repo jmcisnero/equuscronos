@@ -1,11 +1,16 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { Competition } from './competition.entity';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('stages')
 @Unique(['competition', 'stageNumber']) // Mapea el UNIQUE(competition_id, stage_number)
 export class Stage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @ManyToOne(() => Competition, (competition) => competition.stages, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'competition_id' })
