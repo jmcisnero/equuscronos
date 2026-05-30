@@ -32,8 +32,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       name: 'Dashboard',
       href: '/',
       icon: (
-        <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+        <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <rect x="3" y="3" width="7" height="9" rx="1" />
+          <rect x="14" y="3" width="7" height="5" rx="1" />
+          <rect x="14" y="12" width="7" height="9" rx="1" />
+          <rect x="3" y="16" width="7" height="5" rx="1" />
         </svg>
       )
     },
@@ -41,8 +44,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       name: 'Competencias',
       href: '/competitions',
       icon: (
-        <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 22h16" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a6 6 0 0 1 6 6v3c0 2.5-2.5 4.5-6 4.5S6 13.5 6 11V8a6 6 0 0 1 6-6Z" />
         </svg>
       )
     },
@@ -51,9 +58,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: '/horses',
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 11c.3-3-1.5-5.5-3.8-6.5C10.5 3.5 7.5 5.5 7.5 8c0 .5-.1 1-.3 1.5L5 12.5c-.3.5-.1 1.2.4 1.5l1.6 1c.5.3 1.1.2 1.5-.2l.7-.7c.3-.3.8-.4 1.2-.2l1.6.8c1 .5 2.2.4 3.1-.3l2.4-1.9c.4-.3.5-.8.3-1.2L17 11z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 20h6M8.5 16h8" />
-          <circle cx="12" cy="7.5" r="0.75" fill="currentColor" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10c2-1 4.5-1 6.5 0l2.5 1.5c1 .5 2.5 0 3-1l1-2c.5-1 2-1.5 3-1h1.5c.8 0 1.5.7 1.5 1.5v2.5c0 1.5-1 3-2.5 3.5l-2.5 1c-1.5.5-3 0-4-.5L9.5 14C8.5 13.5 6 13.5 5 14l-2 1" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 5c-1-1.5-2.5-2-4-2S5 4 4.5 5.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19h7" />
         </svg>
       )
     },
@@ -62,9 +69,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: '/riders',
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2 12a10 10 0 0120 0H2z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12v2a6 6 0 0012 0v-2" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2 12c3-2 6-3 10-3s7 1 10 3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 21a6 6 0 0 0-12 0" />
+          <circle cx="12" cy="10" r="4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 3.5c1-1 2.5-1.5 5-1.5s4 .5 5 1.5" />
         </svg>
       )
     },
@@ -74,7 +82,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 13v-3a3 3 0 016 0v3M8 13h8M12 8v5" />
+          <circle cx="12" cy="10" r="3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 17c0-2.5 1.5-4 4-4s4 1.5 4 4" />
         </svg>
       )
     },
@@ -83,7 +92,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: '/users',
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       )
     },
@@ -92,7 +104,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: '/tenants',
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 21V10l7-6 7 6v11" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 21v-4a3 3 0 0 1 6 0v4" />
+          <circle cx="12" cy="11" r="1.5" />
         </svg>
       )
     },
@@ -101,7 +116,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: '/competition-types',
       icon: (
         <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h10" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 10h10" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h10" />
         </svg>
       )
     }
