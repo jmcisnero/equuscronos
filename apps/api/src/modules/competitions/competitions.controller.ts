@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Patch, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompetitionsService } from './competitions.service';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
@@ -29,4 +29,10 @@ export class CompetitionsController {
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompetitionDto) {
     return this.competitionsService.update(id, updateDto);
   }  
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar una competencia y todas sus relaciones en cascada' })
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.competitionsService.remove(id);
+  }
 }

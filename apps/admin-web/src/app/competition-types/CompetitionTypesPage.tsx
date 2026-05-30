@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { CompetitionType, CompetitionRules, CreateCompetitionTypeDto } from '@/types/competition-type';
+import { CompetitionType, CreateCompetitionTypeDto } from '@/types/competition-type';
 import { CompetitionTypeService } from '@/services/api/competition-type.service';
+import { useCompetitionRulesForm } from '@/hooks/useCompetitionRulesForm';
 
 export function CompetitionTypesPage() {
   const [competitionTypes, setCompetitionTypes] = useState<CompetitionType[]>([]);
@@ -13,14 +14,29 @@ export function CompetitionTypesPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<CompetitionType | null>(null);
-
-  // Form Fields
-  const [name, setName] = useState('');
-  const [rulesJsonString, setRulesJsonString] = useState('{\n  "max_heart_rate": 64,\n  "min_weight": 75\n}');
-  const [jsonError, setJsonError] = useState<string | null>(null);
-
   const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+
+  // Custom hook for form states and synchronization logic
+  const {
+    name,
+    setName,
+    maxHeartRate,
+    minWeightKg,
+    recoveryTimeMins,
+    minSpeedKh,
+    maxTimeMins,
+    isExpertMode,
+    setIsExpertMode,
+    rulesJsonString,
+    jsonError,
+    formError,
+    setFormError,
+    resetForm,
+    loadFromType,
+    getRulesPayload,
+    handleFieldChange,
+    handleJsonChange,
+  } = useCompetitionRulesForm();
 
   // Load all competition types
   const loadCompetitionTypes = async () => {
@@ -44,14 +60,6 @@ export function CompetitionTypesPage() {
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const resetForm = () => {
-    setName('');
-    setRulesJsonString('{\n  "max_heart_rate": 64,\n  "min_weight": 75\n}');
-    setJsonError(null);
-    setFormError(null);
-    setEditingType(null);
-  };
-
   const handleOpenAddModal = () => {
     resetForm();
     setIsModalOpen(true);
@@ -59,70 +67,14 @@ export function CompetitionTypesPage() {
 
   const handleOpenEditModal = (type: CompetitionType) => {
     setEditingType(type);
-    setName(type.name);
-    const rulesJson = type.defaultRules ? JSON.stringify(type.defaultRules, null, 2) : '{}';
-    setRulesJsonString(rulesJson);
-    setJsonError(null);
-    setFormError(null);
+    loadFromType(type.name, type.defaultRules);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     resetForm();
-  };
-
-  // Live validator for raw JSON input
-  const handleJsonChange = (val: string) => {
-    setRulesJsonString(val);
-    if (!val.trim()) {
-      setJsonError(null);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(val);
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setJsonError('El JSON de reglas debe ser un objeto: {}');
-      } else {
-        setJsonError(null);
-      }
-    } catch (err: any) {
-      setJsonError(`Error de sintaxis JSON: ${err.message}`);
-    }
-  };
-
-  // Syncs standard form fields with the code-editor text area reactive value
-  const handleCommonRuleFieldChange = (key: string, value: any) => {
-    try {
-      let currentRules: Record<string, any> = {};
-      try {
-        currentRules = JSON.parse(rulesJsonString || '{}');
-      } catch (e) {
-        // If syntax is invalid, fall back to blank to prevent crash
-        currentRules = {};
-      }
-
-      if (value === '' || value === undefined) {
-        delete currentRules[key];
-      } else {
-        currentRules[key] = typeof value === 'number' ? value : Number(value);
-      }
-
-      setRulesJsonString(JSON.stringify(currentRules, null, 2));
-      setJsonError(null);
-    } catch (e) {
-      // Catch-all
-    }
-  };
-
-  // Helper to extract fields from current JSON string safely
-  const getRuleValue = (key: string): string | number => {
-    try {
-      const parsed = JSON.parse(rulesJsonString || '{}');
-      return parsed[key] !== undefined ? parsed[key] : '';
-    } catch (e) {
-      return '';
-    }
+    setEditingType(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,25 +89,15 @@ export function CompetitionTypesPage() {
       return;
     }
 
-    let parsedRules: CompetitionRules = {};
-    if (rulesJsonString.trim()) {
-      try {
-        parsedRules = JSON.parse(rulesJsonString);
-        if (typeof parsedRules !== 'object' || parsedRules === null || Array.isArray(parsedRules)) {
-          setFormError('Las reglas predefinidas deben ser un objeto JSON válido.');
-          setIsSaving(false);
-          return;
-        }
-      } catch (err: any) {
-        setFormError(`El JSON de reglas no es válido: ${err.message}`);
-        setIsSaving(false);
-        return;
-      }
+    const payloadRules = getRulesPayload();
+    if (!payloadRules) {
+      setIsSaving(false);
+      return;
     }
 
     const payload: CreateCompetitionTypeDto = {
       name: name.trim(),
-      defaultRules: parsedRules
+      defaultRules: payloadRules
     };
 
     try {
@@ -166,6 +108,7 @@ export function CompetitionTypesPage() {
       }
       setIsModalOpen(false);
       resetForm();
+      setEditingType(null);
       loadCompetitionTypes();
     } catch (err: any) {
       setFormError(err.message || 'Ocurrió un error al guardar la modalidad.');
@@ -198,12 +141,12 @@ export function CompetitionTypesPage() {
 
         <button
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center px-4 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green self-start sm:self-auto"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green whitespace-nowrap self-stretch sm:self-auto"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Nueva Modalidad
+          <span>Nueva Modalidad</span>
         </button>
       </div>
 
@@ -280,27 +223,35 @@ export function CompetitionTypesPage() {
                     ) : (
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         {rules.max_heart_rate !== undefined && (
-                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50">
+                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-400 font-semibold block">BPM Máximo</span>
                             <span className="font-bold text-slate-700 text-sm">{rules.max_heart_rate} bpm</span>
                           </div>
                         )}
-                        {rules.min_weight !== undefined && (
-                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50">
+                        {(rules.min_weight_kg !== undefined || rules.min_weight !== undefined) && (
+                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-400 font-semibold block">Peso Mínimo</span>
-                            <span className="font-bold text-slate-700 text-sm">{rules.min_weight} kg</span>
+                            <span className="font-bold text-slate-700 text-sm">
+                              {rules.min_weight_kg !== undefined ? rules.min_weight_kg : rules.min_weight} kg
+                            </span>
                           </div>
                         )}
                         {rules.recovery_time_mins !== undefined && (
-                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50">
+                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-400 font-semibold block">Tiempo Recup.</span>
                             <span className="font-bold text-slate-700 text-sm">{rules.recovery_time_mins} min</span>
                           </div>
                         )}
                         {rules.min_speed_kh !== undefined && (
-                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50">
+                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 flex flex-col justify-between">
                             <span className="text-[10px] text-slate-400 font-semibold block">Vel. Mínima</span>
                             <span className="font-bold text-slate-700 text-sm">{rules.min_speed_kh} km/h</span>
+                          </div>
+                        )}
+                        {rules.max_time_mins !== undefined && (
+                          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 flex flex-col justify-between sm:col-span-2">
+                            <span className="text-[10px] text-slate-400 font-semibold block">Tiempo Máximo</span>
+                            <span className="font-bold text-slate-700 text-sm">{rules.max_time_mins} min</span>
                           </div>
                         )}
                       </div>
@@ -308,7 +259,7 @@ export function CompetitionTypesPage() {
 
                     {/* OTHER CUSTOM RULES IN THE JSON */}
                     {ruleKeys.some(
-                      (k) => !['max_heart_rate', 'min_weight', 'recovery_time_mins', 'min_speed_kh'].includes(k)
+                      (k) => !['max_heart_rate', 'min_weight', 'min_weight_kg', 'recovery_time_mins', 'min_speed_kh', 'max_time_mins'].includes(k)
                     ) && (
                       <div className="mt-3">
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
@@ -316,7 +267,7 @@ export function CompetitionTypesPage() {
                         </span>
                         <div className="flex flex-wrap gap-1">
                           {ruleKeys
-                            .filter((k) => !['max_heart_rate', 'min_weight', 'recovery_time_mins', 'min_speed_kh'].includes(k))
+                            .filter((k) => !['max_heart_rate', 'min_weight', 'min_weight_kg', 'recovery_time_mins', 'min_speed_kh', 'max_time_mins'].includes(k))
                             .map((k) => (
                               <span
                                 key={k}
@@ -414,117 +365,171 @@ export function CompetitionTypesPage() {
                 />
               </div>
 
-              {/* DUAL MODE RULES SECTION */}
-              <div className="border-t border-slate-100 pt-4">
-                <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-3">
+              {/* STANDARD FORM FIELDS SECTION */}
+              <div className="border-t border-slate-100 pt-4 space-y-4">
+                <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
                   Configuración de Reglas Predefinidas
                 </span>
 
-                {/* Common Inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  {/* Max Heart Rate (BPM) */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Frecuencia Cardíaca Máxima (bpm) */}
+                  <div className="relative">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
                       Frecuencia Cardíaca Máx (bpm)
                     </label>
                     <input
                       type="number"
-                      value={getRuleValue('max_heart_rate')}
-                      onChange={(e) => handleCommonRuleFieldChange('max_heart_rate', e.target.value !== '' ? Number(e.target.value) : '')}
+                      value={maxHeartRate}
+                      onChange={(e) => handleFieldChange('max_heart_rate', e.target.value !== '' ? Number(e.target.value) : '')}
                       placeholder="Ej: 64"
                       className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
 
-                  {/* Min Weight (kg) */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      Peso Mínimo Jinete (kg)
+                  {/* Peso Mínimo del Jinete (kg) */}
+                  <div className="relative">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                      </svg>
+                      Peso Mínimo del Jinete (kg)
                     </label>
                     <input
                       type="number"
-                      value={getRuleValue('min_weight')}
-                      onChange={(e) => handleCommonRuleFieldChange('min_weight', e.target.value !== '' ? Number(e.target.value) : '')}
+                      value={minWeightKg}
+                      onChange={(e) => handleFieldChange('min_weight_kg', e.target.value !== '' ? Number(e.target.value) : '')}
                       placeholder="Ej: 75"
                       className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
 
-                  {/* Recovery Time (mins) */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      Tiempo de Recuperación Vet (min)
+                  {/* Tiempo de Recuperación Vet (min) */}
+                  <div className="relative">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Tiempo Recuperación Vet (min)
                     </label>
                     <input
                       type="number"
-                      value={getRuleValue('recovery_time_mins')}
-                      onChange={(e) => handleCommonRuleFieldChange('recovery_time_mins', e.target.value !== '' ? Number(e.target.value) : '')}
+                      value={recoveryTimeMins}
+                      onChange={(e) => handleFieldChange('recovery_time_mins', e.target.value !== '' ? Number(e.target.value) : '')}
                       placeholder="Ej: 20"
                       className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
 
-                  {/* Min Speed (km/h) */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  {/* Velocidad Mínima (km/h) */}
+                  <div className="relative">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
                       Velocidad Mínima (km/h)
                     </label>
                     <input
                       type="number"
-                      value={getRuleValue('min_speed_kh')}
-                      onChange={(e) => handleCommonRuleFieldChange('min_speed_kh', e.target.value !== '' ? Number(e.target.value) : '')}
+                      value={minSpeedKh}
+                      onChange={(e) => handleFieldChange('min_speed_kh', e.target.value !== '' ? Number(e.target.value) : '')}
                       placeholder="Ej: 14"
                       className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
-                </div>
 
-                {/* Advanced Editor (JSON text area with live syntax validation) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      Editor de Reglas JSON Avanzado
+                  {/* Tiempo Máximo Permitido (min) */}
+                  <div className="relative sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Tiempo Máximo Permitido (min)
                     </label>
-                    {jsonError ? (
-                      <span className="text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
-                        JSON Inválido
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                        JSON Correcto
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="relative rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                    {/* Monaco Editor lookalike Header */}
-                    <div className="bg-slate-800 text-slate-400 px-4 py-2 text-xs font-mono flex items-center justify-between border-b border-slate-700 select-none">
-                      <span className="flex items-center space-x-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                        <span className="pl-2">default_rules.json</span>
-                      </span>
-                      <span>JSONB Schema</span>
-                    </div>
-
-                    <textarea
-                      value={rulesJsonString}
-                      onChange={(e) => handleJsonChange(e.target.value)}
-                      rows={6}
-                      className="w-full block bg-slate-900 text-slate-100 p-4 font-mono text-xs focus:outline-none resize-y leading-relaxed"
-                      placeholder={'{\n  "max_heart_rate": 64\n}'}
+                    <input
+                      type="number"
+                      value={maxTimeMins}
+                      onChange={(e) => handleFieldChange('max_time_mins', e.target.value !== '' ? Number(e.target.value) : '')}
+                      placeholder="Ej: 180"
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
-                  {jsonError && (
-                    <p className="mt-1 text-[11px] font-mono text-rose-500 leading-snug">
-                      {jsonError}
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-[10px] text-slate-400 leading-relaxed">
-                    * Modificar los campos numéricos de arriba actualizará automáticamente el JSON. También puede editar el JSON directamente para añadir reglas personalizadas.
-                  </p>
                 </div>
+              </div>
+
+              {/* EXPERT MODE JSON SECTION */}
+              <div className="space-y-4 border-t border-slate-100 pt-4">
+                {/* Toggle switch for expert mode */}
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-700">Modo Experto (JSON)</span>
+                    <span className="text-[10px] text-slate-400">Edite las reglas en formato JSON bruto</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsExpertMode(!isExpertMode)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green ${
+                      isExpertMode ? 'bg-equus-green' : 'bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        isExpertMode ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Raw JSON editor (shown only when expert mode is enabled) */}
+                {isExpertMode && (
+                  <div className="space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Editor de Reglas JSON Avanzado
+                      </label>
+                      {jsonError ? (
+                        <span className="text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-100 animate-pulse">
+                          JSON Inválido
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                          JSON Correcto
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                      {/* Editor Header */}
+                      <div className="bg-slate-800 text-slate-400 px-4 py-2.5 text-xs font-mono flex items-center justify-between border-b border-slate-700 select-none">
+                        <span className="flex items-center space-x-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                          <span className="pl-2">default_rules.json</span>
+                        </span>
+                        <span>JSON Schema</span>
+                      </div>
+
+                      <textarea
+                        value={rulesJsonString}
+                        onChange={(e) => handleJsonChange(e.target.value)}
+                        rows={6}
+                        className="w-full block bg-slate-900 text-slate-100 p-4 font-mono text-xs focus:outline-none resize-y leading-relaxed"
+                        placeholder={'{\n  "max_heart_rate": 64\n}'}
+                      />
+                    </div>
+                    {jsonError && (
+                      <p className="mt-1 text-[11px] font-mono text-rose-500 leading-snug">
+                        {jsonError}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      * Los cambios realizados en el JSON actualizarán automáticamente los campos estándar de arriba. Puede agregar cualquier regla personalizada adicional aquí.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
@@ -538,7 +543,7 @@ export function CompetitionTypesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving || jsonError !== null}
+                  disabled={isSaving || (isExpertMode && jsonError !== null)}
                   className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2"
                 >
                   {isSaving && (
@@ -557,3 +562,4 @@ export function CompetitionTypesPage() {
     </div>
   );
 }
+

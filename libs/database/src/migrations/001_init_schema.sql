@@ -130,6 +130,8 @@ CREATE TABLE competition_entries (
     final_position INT, -- Se llena al finalizar la carrera
     
     ballast_weight DECIMAL(5, 2) DEFAULT 0.00,    
+    seal_number VARCHAR(255),
+    weigh_in_at TIMESTAMP WITH TIME ZONE,
     current_stage_id UUID REFERENCES stages(id), 
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -271,7 +273,7 @@ CREATE POLICY tenant_isolation_users ON users FOR ALL USING (tenant_id = current
 CREATE POLICY tenant_isolation_competitions ON competitions FOR ALL USING (tenant_id = current_tenant_id());
 CREATE POLICY tenant_isolation_stages ON stages FOR ALL USING (tenant_id = current_tenant_id());
 CREATE POLICY tenant_isolation_competition_entries ON competition_entries FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_weight_controls ON weight_controls FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_weight_controls ON weight_controls FOR ALL USING ((SELECT tenant_id FROM competition_entries WHERE id = entry_id) = current_tenant_id());
 CREATE POLICY tenant_isolation_timing_records ON timing_records FOR ALL USING (tenant_id = current_tenant_id());
 CREATE POLICY tenant_isolation_vet_inspections ON vet_inspections FOR ALL USING (tenant_id = current_tenant_id());
 CREATE POLICY tenant_isolation_penalties ON penalties FOR ALL USING (tenant_id = current_tenant_id());

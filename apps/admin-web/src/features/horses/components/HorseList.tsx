@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { HorseService } from '@/services/api/horse.service';
 import { Horse } from '@/types/horse';
 import { HorseForm } from './HorseForm';
@@ -98,9 +99,9 @@ export const HorseList: React.FC = () => {
         
         <button
           onClick={handleCreate}
-          className="inline-flex items-center justify-center px-4 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green self-start sm:self-auto"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green whitespace-nowrap self-stretch sm:self-auto"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
           Nuevo Caballo
@@ -170,7 +171,9 @@ export const HorseList: React.FC = () => {
                   return (
                     <tr key={horse.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-slate-900">
-                        {horse.name}
+                        <Link href={`/admin/horses/${horse.id}`} className="text-equus-green hover:underline">
+                          {horse.name}
+                        </Link>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">
                         {horse.owner?.name || (

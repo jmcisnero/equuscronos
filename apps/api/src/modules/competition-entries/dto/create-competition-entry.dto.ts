@@ -1,22 +1,22 @@
-import { IsUUID, IsInt, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCompetitionEntryDto {
   @ApiProperty({ description: 'UUID de la Carrera a la que se inscribe' }) 
-  @IsUUID() 
+  @IsString() 
   competitionId: string;
 
   @ApiProperty({ description: 'UUID del Jinete' }) 
-  @IsUUID() 
+  @IsString() 
   riderId: string;
 
   @ApiProperty({ description: 'UUID del Caballo' }) 
-  @IsUUID() 
+  @IsString() 
   horseId: string;
 
   @ApiPropertyOptional({ description: 'UUID del Club que este binomio representa' }) 
   @IsOptional() 
-  @IsUUID() 
+  @IsString() 
   representedTenantId?: string;
 
   @ApiProperty({ description: 'Dorsal o Chaleco numérico a utilizar en pista', example: 101 }) 
@@ -30,8 +30,16 @@ export class CreateCompetitionEntryDto {
   qualifiesForPoints?: boolean;
 
   // ÚNICO PESO PERMITIDO EN LA INSCRIPCIÓN (El resto va por weight_controls)
-  @ApiPropertyOptional({ description: 'Peso muerto (Lastre en plomo) asignado', example: 7.0 }) 
-  @IsOptional() 
+  @ApiProperty({ description: 'Peso registrado (lastre o total) en kg', example: 85.00 }) 
   @IsNumber({ maxDecimalPlaces: 2 }) 
-  ballastWeight?: number;
+  ballastWeight: number;
+
+  @ApiProperty({ description: 'Número de precinto asignado para el lastre', example: 'PREC-2026-001' })
+  @IsString()
+  sealNumber: string;
+
+  @ApiPropertyOptional({ description: 'Timestamp de marcación de pesaje inicial' })
+  @IsOptional()
+  @IsString()
+  weighInAt?: Date;
 }

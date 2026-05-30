@@ -1,6 +1,6 @@
 import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateCompetitionEntryDto } from './create-competition-entry.dto';
-import { IsEnum, IsOptional, IsInt, IsUUID, IsNumber } from 'class-validator';
+import { IsEnum, IsOptional, IsInt, IsString, IsNumber } from 'class-validator';
 import { ParticipantStatus } from '@equuscronos/shared';
 
 export class UpdateCompetitionEntryDto extends PartialType(CreateCompetitionEntryDto) {
@@ -16,7 +16,7 @@ export class UpdateCompetitionEntryDto extends PartialType(CreateCompetitionEntr
 
   @ApiPropertyOptional({ description: 'ID de la etapa actual donde se encuentra el binomio' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   currentStageId?: string;
 
   @ApiPropertyOptional({ description: 'Corrección del peso de lastre (kg)', example: 8.00 })

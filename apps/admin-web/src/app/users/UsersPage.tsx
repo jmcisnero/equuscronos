@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { User, CreateUserDto, UpdateUserDto } from '@/types/user';
 import { Tenant } from '@/types/tenant';
 import { UserService } from '@/services/api/user.service';
@@ -211,12 +212,12 @@ export function UsersPage() {
 
         <button
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center px-4 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green self-start sm:self-auto"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green whitespace-nowrap self-stretch sm:self-auto"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m4 8h-4a2 2 0 01-2-2V5a2 2 0 012-2h4l2 2h4a2 2 0 012 2v4M14 22H5a2 2 0 01-2-2V5a2 2 0 012-2h9" />
+          <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Registrar Usuario / Staff
+          Nuevo Usuario
         </button>
       </div>
 
@@ -280,7 +281,9 @@ export function UsersPage() {
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-slate-900">
-                      {user.name}
+                      <Link href={`/admin/users/${user.id}`} className="text-equus-green hover:underline">
+                        {user.name}
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">
                       {user.email}

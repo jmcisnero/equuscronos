@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CompetitionEntry } from './entities/competition-entry.entity';
@@ -8,6 +8,7 @@ import { Competition } from '../competitions/entities/competition.entity';
 import { Rider } from '../riders/entities/rider.entity';
 import { Horse } from '../horses/entities/horse.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
+import { CompetitionStatus } from '@equuscronos/shared';
 
 @Injectable()
 export class CompetitionEntriesService {
@@ -21,8 +22,32 @@ export class CompetitionEntriesService {
 
   async create(dto: CreateCompetitionEntryDto): Promise<CompetitionEntry> {
     // 1. Validar que la Competencia, Jinete y Caballo existan
-    const competition = await this.compRepo.findOne({ where: { id: dto.competitionId } });
+    const competition = await this.compRepo.findOne({ 
+      where: { id: dto.competitionId },
+      relations: ['tenant', 'competitionType']
+    });
     if (!competition) throw new NotFoundException('Competencia no encontrada.');
+
+    // Regla de Oro: Asegurar que los datos sean inmutables una vez que la competencia cambie a estado ACTIVE o posterior
+    if (
+      competition.status === CompetitionStatus.ACTIVE ||
+      competition.status === CompetitionStatus.COMPLETED ||
+      competition.status === CompetitionStatus.OFFICIAL ||
+      competition.status === CompetitionStatus.CANCELLED
+    ) {
+      throw new BadRequestException('No se pueden registrar nuevas inscripciones una vez que la competencia está ACTIVA o finalizada.');
+    }
+
+    // Regla de Negocio (Art. 20): Validar peso mínimo reglamentario si está configurado
+    const rules = competition.competitionType?.defaultRules || {};
+    const minWeightReglementary = rules.min_weight_kg ?? rules.min_weight ?? 85;
+    if (dto.ballastWeight !== undefined && dto.ballastWeight !== null) {
+      if (dto.ballastWeight < minWeightReglementary) {
+        throw new BadRequestException(
+          `Falta de peso según Art. 20: El peso registrado (${dto.ballastWeight} kg) es menor al mínimo reglamentario de la modalidad (${minWeightReglementary} kg) para la habilitación.`
+        );
+      }
+    }
 
     const rider = await this.riderRepo.findOne({ where: { id: dto.riderId } });
     if (!rider) throw new NotFoundException('Jinete no encontrado.');
@@ -54,7 +79,9 @@ export class CompetitionEntriesService {
       competition,
       rider,
       horse,
-      representedTenant
+      representedTenant,
+      tenant: competition.tenant,
+      weighInAt: dto.weighInAt ?? (dto.ballastWeight !== undefined ? new Date() : null)
     });
 
     return await this.entryRepo.save(newEntry);
@@ -71,7 +98,7 @@ export class CompetitionEntriesService {
   async findOne(id: string): Promise<CompetitionEntry> {
     const entry = await this.entryRepo.findOne({
       where: { id },
-      relations: ['competition', 'rider', 'horse', 'representedTenant', 'currentStage']
+      relations: ['competition', 'competition.competitionType', 'rider', 'horse', 'representedTenant', 'currentStage']
     });
     if (!entry) throw new NotFoundException('Inscripción no encontrada.');
     return entry;
@@ -80,6 +107,27 @@ export class CompetitionEntriesService {
   async update(id: string, dto: UpdateCompetitionEntryDto): Promise<CompetitionEntry> {
     const entry = await this.findOne(id);
     
+    // Regla de Oro: Asegurar que los datos sean inmutables una vez que la competencia cambie a estado ACTIVE o posterior
+    if (
+      entry.competition.status === CompetitionStatus.ACTIVE ||
+      entry.competition.status === CompetitionStatus.COMPLETED ||
+      entry.competition.status === CompetitionStatus.OFFICIAL ||
+      entry.competition.status === CompetitionStatus.CANCELLED
+    ) {
+      throw new BadRequestException('No se pueden modificar inscripciones una vez que la competencia está ACTIVA o finalizada.');
+    }
+
+    // Regla de Negocio (Art. 20): Validar peso mínimo reglamentario si está configurado e ingresado
+    if (dto.ballastWeight !== undefined && dto.ballastWeight !== null) {
+      const rules = entry.competition.competitionType?.defaultRules || {};
+      const minWeightReglementary = rules.min_weight_kg ?? rules.min_weight ?? 85;
+      if (dto.ballastWeight < minWeightReglementary) {
+        throw new BadRequestException(
+          `Falta de peso según Art. 20: El peso registrado (${dto.ballastWeight} kg) es menor al mínimo reglamentario de la modalidad (${minWeightReglementary} kg) para la habilitación.`
+        );
+      }
+    }
+
     // Si intentan cambiar el dorsal, validar que no choque con otro
     if (dto.bibNumber && dto.bibNumber !== entry.bibNumber) {
       const existingBib = await this.entryRepo.findOne({
@@ -88,12 +136,28 @@ export class CompetitionEntriesService {
       if (existingBib) throw new ConflictException(`El dorsal #${dto.bibNumber} ya está en uso.`);
     }
 
+    // Si agregan peso o precinto por primera vez, marcar weighInAt
+    if (dto.ballastWeight !== undefined && !entry.weighInAt) {
+      entry.weighInAt = new Date();
+    }
+
     const updatedEntry = Object.assign(entry, dto);
     return await this.entryRepo.save(updatedEntry);
   }
 
   async remove(id: string): Promise<void> {
     const entry = await this.findOne(id);
+    
+    // Regla de Oro: Asegurar que los datos sean inmutables una vez que la competencia cambie a estado ACTIVE o posterior
+    if (
+      entry.competition.status === CompetitionStatus.ACTIVE ||
+      entry.competition.status === CompetitionStatus.COMPLETED ||
+      entry.competition.status === CompetitionStatus.OFFICIAL ||
+      entry.competition.status === CompetitionStatus.CANCELLED
+    ) {
+      throw new BadRequestException('No se pueden dar de baja inscripciones una vez que la competencia está ACTIVA o finalizada.');
+    }
+
     await this.entryRepo.remove(entry);
   }
 }

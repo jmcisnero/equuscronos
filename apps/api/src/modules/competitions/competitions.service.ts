@@ -106,4 +106,75 @@ if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competiti
 
     return await this.compRepository.save(competition);
   }
+
+  async remove(id: string): Promise<void> {
+    const competition = await this.compRepository.findOne({ where: { id } });
+    if (!competition) throw new NotFoundException('Competencia no encontrada.');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Obtener todos los IDs de inscripciones (competition_entries) para esta competencia
+      const entries = await queryRunner.manager.query(
+        `SELECT id FROM competition_entries WHERE competition_id = $1`,
+        [id]
+      );
+      const entryIds = entries.map((e: any) => e.id);
+
+      if (entryIds.length > 0) {
+        // 2. Eliminar inspecciones veterinarias asociadas a los registros de tiempo de estas inscripciones
+        await queryRunner.manager.query(
+          `DELETE FROM vet_inspections WHERE timing_record_id IN (
+            SELECT id FROM timing_records WHERE entry_id = ANY($1)
+          )`,
+          [entryIds]
+        );
+
+        // 3. Eliminar los registros de tiempo (timing_records)
+        await queryRunner.manager.query(
+          `DELETE FROM timing_records WHERE entry_id = ANY($1)`,
+          [entryIds]
+        );
+
+        // 4. Eliminar los controles de peso (weight_controls)
+        await queryRunner.manager.query(
+          `DELETE FROM weight_controls WHERE entry_id = ANY($1)`,
+          [entryIds]
+        );
+
+        // 5. Eliminar las penalizaciones (penalties)
+        await queryRunner.manager.query(
+          `DELETE FROM penalties WHERE entry_id = ANY($1)`,
+          [entryIds]
+        );
+
+        // 6. Eliminar las inscripciones (competition_entries)
+        await queryRunner.manager.query(
+          `DELETE FROM competition_entries WHERE competition_id = $1`,
+          [id]
+        );
+      }
+
+      // 7. Eliminar las etapas (stages)
+      await queryRunner.manager.query(
+        `DELETE FROM stages WHERE competition_id = $1`,
+        [id]
+      );
+
+      // 8. Eliminar la competencia principal (competitions)
+      await queryRunner.manager.query(
+        `DELETE FROM competitions WHERE id = $1`,
+        [id]
+      );
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(`No se pudo eliminar la competencia debido a dependencias: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

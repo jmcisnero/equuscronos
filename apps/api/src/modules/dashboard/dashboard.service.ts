@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, Not, IsNull } from 'typeorm';
 import { Horse } from '../horses/entities/horse.entity';
 import { Rider } from '../riders/entities/rider.entity';
 import { Owner } from '../owners/entities/owner.entity';
+import { Competition } from '../competitions/entities/competition.entity';
+import { CompetitionStatus } from '@equuscronos/shared';
 
 @Injectable()
 export class DashboardService {
@@ -14,6 +16,8 @@ export class DashboardService {
     private readonly riderRepository: Repository<Rider>,
     @InjectRepository(Owner)
     private readonly ownerRepository: Repository<Owner>,
+    @InjectRepository(Competition)
+    private readonly competitionRepository: Repository<Competition>,
   ) {}
 
   /**
@@ -30,6 +34,9 @@ export class DashboardService {
       activeHorses,
       activeRiders,
       expiredHealthHorses,
+      expiringHorses,
+      activeCompetition,
+      upcomingCompetitions,
     ] = await Promise.all([
       this.horseRepository.count(),
       this.riderRepository.count(),
@@ -41,6 +48,24 @@ export class DashboardService {
           healthRecordsExpiration: LessThan(todayStr as any),
         },
       }),
+      this.horseRepository.find({
+        where: {
+          healthRecordsExpiration: Not(IsNull()),
+        },
+        order: {
+          healthRecordsExpiration: 'ASC',
+        },
+        take: 3,
+      }),
+      this.competitionRepository.findOne({
+        where: { status: CompetitionStatus.ACTIVE },
+        relations: ['competitionType'],
+      }),
+      this.competitionRepository.find({
+        order: { competitionDate: 'DESC' },
+        relations: ['competitionType'],
+        take: 5,
+      }),
     ]);
 
     return {
@@ -50,6 +75,9 @@ export class DashboardService {
       activeHorses,
       activeRiders,
       expiredHealthHorses,
+      expiringHorses,
+      activeCompetition,
+      upcomingCompetitions,
     };
   }
 }

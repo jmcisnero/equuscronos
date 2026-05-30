@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Competition, CreateCompetitionDto, CreateStageDto } from '@/types/competition';
 import { CompetitionService } from '@/services/api/competition.service';
 import { Tenant } from '@/types/tenant';
@@ -12,6 +14,7 @@ const DEFAULT_TENANT_ID = 'a1000000-0000-0000-0000-000000000001'; // Sociedad H�
 const DEFAULT_COMP_TYPE_ID = 'c1000000-0000-0000-0000-000000000001'; // Raid FEU 60km
 
 export default function CompetitionsPage() {
+  const router = useRouter();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -100,50 +103,9 @@ export default function CompetitionsPage() {
     }
   };
 
-  const runProgrammaticTest = async () => {
-    console.log('[TEST] Iniciando prueba de creación programática de competencia...');
-    try {
-      const testDto: CreateCompetitionDto = {
-        tenantId: 'a1000000-0000-0000-0000-000000000001',
-        competitionTypeId: 'c1000000-0000-0000-0000-000000000001',
-        name: `Competencia Test Programático ${new Date().toLocaleTimeString()}`,
-        competitionDate: new Date().toISOString().split('T')[0],
-        location: 'Predio de Prueba Programática',
-        isFederated: true,
-        maxHeartRate: 64,
-        stages: [
-          { stageNumber: 1, distanceKm: 40, neutralizationMinutes: 60 },
-          { stageNumber: 2, distanceKm: 20, neutralizationMinutes: 0 }
-        ]
-      };
-      
-      const created = await CompetitionService.create(testDto);
-      console.log('[TEST] Competencia creada con éxito (201 Created):', created);
-      alert(`[TEST COMPLETO] Competencia programática creada con éxito!\nID: ${created.id}\nNombre: ${created.name}`);
-      loadCompetitions();
-    } catch (err: any) {
-      console.error('[TEST ERROR] Falló la creación programática de la competencia:', err);
-      if (err.response) {
-        console.error('[TEST ERROR] Respuesta completa del servidor NestJS:', err.response);
-      }
-      alert(`[TEST ERROR] Error al crear competencia programáticamente: ${err.message}`);
-    }
-  };
-
   useEffect(() => {
     loadCompetitions();
     loadInitialData();
-
-    // Ejecutar creación programática de prueba en desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      const hasRun = sessionStorage.getItem('equuscronos_test_created');
-      if (!hasRun) {
-        sessionStorage.setItem('equuscronos_test_created', 'true');
-        setTimeout(() => {
-          runProgrammaticTest();
-        }, 1500);
-      }
-    }
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -334,16 +296,6 @@ export default function CompetitionsPage() {
         </div>
         
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-          {process.env.NODE_ENV === 'development' && (
-            <button
-              onClick={runProgrammaticTest}
-              className="inline-flex items-center justify-center px-4 py-2.5 bg-amber-500 hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
-              title="Crea una competencia usando los UUIDs del seed SQL"
-            >
-              🧪 Test Programático
-            </button>
-          )}
-          
           <button
             onClick={handleOpenAddModal}
             className="inline-flex items-center justify-center px-4 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green"
@@ -424,9 +376,19 @@ export default function CompetitionsPage() {
                 {competitions.map((comp) => {
                   const displayDate = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '-';
                   return (
-                    <tr key={comp.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr 
+                      key={comp.id} 
+                      onClick={() => router.push(`/competitions/${comp.id}`)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    >
                       <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-slate-900">
-                        {comp.name}
+                        <Link 
+                          href={`/competitions/${comp.id}`} 
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-equus-green hover:underline cursor-pointer"
+                        >
+                          {comp.name}
+                        </Link>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-mono">
                         {displayDate}
@@ -455,9 +417,23 @@ export default function CompetitionsPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
-                        <div className="flex items-center justify-end">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Link
+                            href={`/competitions/${comp.id}/start-list`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-emerald-50 rounded-lg transition-all"
+                            title={`Ver Start List / Inscripciones de ${comp.name}`}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                          </Link>
+                          
                           <button
-                            onClick={() => handleDeleteCompetition(comp.id, comp.name)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCompetition(comp.id, comp.name);
+                            }}
                             className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                             title={`Eliminar Competencia ${comp.name}`}
                           >

@@ -1,3 +1,6 @@
+import { Horse } from '@/types/horse';
+import { Competition } from '@/types/competition';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/admin';
 
 export interface DashboardStats {
@@ -7,6 +10,9 @@ export interface DashboardStats {
   activeHorses: number;
   activeRiders: number;
   expiredHealthHorses: number;
+  expiringHorses: Horse[];
+  activeCompetition: Competition | null;
+  upcomingCompetitions: Competition[];
 }
 
 export const DashboardService = {

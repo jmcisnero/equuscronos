@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { AdminLayout } from "./AdminLayout";
+import { Providers } from "./Providers";
 
 export default function RootLayout({
   children,
@@ -30,7 +31,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AdminLayout>{children}</AdminLayout>
+        <Providers>
+          <AdminLayout>{children}</AdminLayout>
+        </Providers>
       </body>
     </html>
   );

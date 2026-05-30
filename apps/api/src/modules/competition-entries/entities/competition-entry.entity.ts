@@ -29,6 +29,10 @@ export class CompetitionEntry {
   @JoinColumn({ name: 'represented_tenant_id' })
   representedTenant: Tenant;
 
+  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ name: 'bib_number', type: 'int' })
   bibNumber: number;
 
@@ -44,6 +48,12 @@ export class CompetitionEntry {
   // Único peso estático permitido (Lastre)
   @Column({ name: 'ballast_weight', type: 'decimal', precision: 5, scale: 2, default: 0.00 })
   ballastWeight: number;
+
+  @Column({ name: 'seal_number', type: 'varchar', length: 255, nullable: true })
+  sealNumber: string;
+
+  @Column({ name: 'weigh_in_at', type: 'timestamp with time zone', nullable: true })
+  weighInAt: Date;
 
   @ManyToOne(() => Stage, { nullable: true })
   @JoinColumn({ name: 'current_stage_id' })
