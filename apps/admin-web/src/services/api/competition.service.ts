@@ -65,6 +65,20 @@ export const CompetitionService = {
   },
 
   /**
+   * Da la largada oficial de la carrera bajo reglamento FEU.
+   */
+  async start(id: string): Promise<Competition> {
+    const response = await fetch(`${API_URL}/competitions/${id}/start`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || 'Error al dar la largada oficial de la carrera.');
+    }
+    return response.json();
+  },
+
+  /**
    * Elimina una competencia del sistema (si no tiene inscripciones operativas).
    */
   async delete(id: string): Promise<void> {

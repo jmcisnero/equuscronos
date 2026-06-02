@@ -30,6 +30,12 @@ export class CompetitionsController {
     return this.competitionsService.update(id, updateDto);
   }  
 
+  @Post(':id/start')
+  @ApiOperation({ summary: 'Dar largada oficial de la carrera bajo reglamento FEU' })
+  startCompetition(@Param('id', ParseUUIDPipe) id: string) {
+    return this.competitionsService.startCompetition(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar una competencia y todas sus relaciones en cascada' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

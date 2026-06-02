@@ -3,13 +3,14 @@
 import React, { use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CompetitionService } from '@/services/api/competition.service';
 
 export default function CompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Fetch de la competencia por ID
   const { data: comp, isLoading, error } = useQuery({
@@ -218,6 +219,9 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
         {/* Columna Derecha: Acciones Rápidas y Reglas */}
         <div className="space-y-8">
           
+          {/* Centro de Control de Carrera (Lógica Habilitación y Largada) */}
+          <ControlCenter comp={comp} queryClient={queryClient} router={router} />
+
           {/* Tarjeta de Acceso Rápido a Start List */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4 flex flex-col">
             <div className="p-3.5 bg-emerald-50 rounded-xl text-equus-green w-fit">
@@ -267,3 +271,239 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     </div>
   );
 }
+
+interface ControlCenterProps {
+  comp: any;
+  queryClient: any;
+  router: any;
+}
+
+function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+  const [isStarting, setIsStarting] = React.useState(false);
+  const [startError, setStartError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!comp) return null;
+
+  // Formatear fecha y hora
+  const compDateStr = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '';
+  
+  // Largada programada: 07:00 AM (local uruguayo, GMT-3)
+  const scheduledTime = new Date(`${compDateStr}T07:00:00-03:00`);
+
+  // Diferencia de milisegundos
+  const diffMs = scheduledTime.getTime() - currentTime.getTime();
+  const secondsLeft = diffMs > 0 ? Math.floor(diffMs / 1000) : 0;
+
+  // Es hoy la carrera? (Zona Horaria Uruguay America/Montevideo)
+  const getIsSameDay = () => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Montevideo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const parts = formatter.formatToParts(currentTime);
+      const getVal = (type: string) => parts.find(p => p.type === type).value;
+      const localTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+      return localTodayStr === compDateStr;
+    } catch {
+      return false;
+    }
+  };
+
+  const sameDay = getIsSameDay();
+  const pastTime = diffMs <= 0;
+  
+  // Habilitado si es el mismo día y ya pasó la hora programada (07:00 AM)
+  // o si es un día posterior (por tolerancia ante retrasos)
+  const isDateBefore = !sameDay && secondsLeft > 0;
+  const canStart = comp.status === 'PLANNED' && (pastTime || (!isDateBefore && secondsLeft === 0));
+
+  const formatCountdown = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    return [
+      String(hours).padStart(2, '0'),
+      String(minutes).padStart(2, '0'),
+      String(seconds).padStart(2, '0')
+    ].join(':');
+  };
+
+  const handleStart = async () => {
+    if (!canStart || isStarting) return;
+    
+    setIsStarting(true);
+    setStartError(null);
+    
+    try {
+      // LLAMADA OFICIAL AL BACKEND (Seguridad y Transaccionalidad FEU)
+      // Nota de cumplimiento: La llamada POST realiza una transacción ACID inmutable en el backend
+      // que actualiza el estado a ACTIVE y crea los TimingRecords de START.
+      await CompetitionService.start(comp.id);
+      
+      // Sincronizar UI con React-Query e invalidar el caché
+      queryClient.invalidateQueries({ queryKey: ['competition', comp.id] });
+      router.refresh();
+    } catch (err: any) {
+      setStartError(err.message || 'Error al iniciar la carrera.');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Renderizar feedback visual según el estado operativo
+  const renderStatus = () => {
+    if (comp.status === 'ACTIVE') {
+      return (
+        <div className="flex items-center space-x-2 text-emerald-400 font-extrabold text-xs uppercase tracking-widest bg-emerald-950/40 border border-emerald-900/50 px-3 py-1.5 rounded-full w-fit">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>Carrera en Curso</span>
+        </div>
+      );
+    }
+
+    if (comp.status === 'COMPLETED' || comp.status === 'OFFICIAL') {
+      return (
+        <div className="flex items-center space-x-2 text-blue-400 font-extrabold text-xs uppercase tracking-widest bg-blue-950/40 border border-blue-900/50 px-3 py-1.5 rounded-full w-fit">
+          <span>Finalizado</span>
+        </div>
+      );
+    }
+
+    if (comp.status !== 'PLANNED') {
+      return (
+        <div className="flex items-center space-x-2 text-slate-400 font-extrabold text-xs uppercase tracking-widest bg-slate-900/40 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
+          <span>{comp.status}</span>
+        </div>
+      );
+    }
+
+    if (isDateBefore) {
+      return (
+        <div className="flex items-center space-x-2 text-amber-400 font-extrabold text-[10px] uppercase tracking-widest bg-amber-950/40 border border-amber-900/50 px-3 py-1.5 rounded-full w-fit">
+          <span>Esperando día de carrera</span>
+        </div>
+      );
+    }
+
+    if (secondsLeft > 0) {
+      return (
+        <div className="flex items-center space-x-2 text-amber-500 font-extrabold text-[10px] uppercase tracking-widest bg-amber-950/40 border border-amber-800 px-3 py-1.5 rounded-full w-fit">
+          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+          <span>Esperando hora de largada</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center space-x-2 text-emerald-400 font-extrabold text-[10px] uppercase tracking-widest bg-emerald-950/40 border border-emerald-900/50 px-3 py-1.5 rounded-full w-fit">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span>Carrera Habilitada</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl border border-slate-850 shadow-xl p-6 space-y-5 flex flex-col relative overflow-hidden">
+      {/* Luces de fondo premium */}
+      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center space-x-2">
+          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+          </svg>
+          <h3 className="text-xs font-extrabold tracking-wider uppercase text-slate-300">Centro de Control</h3>
+        </div>
+        {renderStatus()}
+      </div>
+
+      {comp.status === 'PLANNED' && (
+        <div className="space-y-4">
+          {/* Si falta para largar el mismo día */}
+          {secondsLeft > 0 && !isDateBefore && (
+            <div className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl text-center space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Largada Oficial en</span>
+              <span className="text-2xl font-extrabold font-mono tracking-wider text-amber-500 animate-pulse block">
+                {formatCountdown(secondsLeft)}
+              </span>
+            </div>
+          )}
+
+          {/* Información del reglamento */}
+          <div className="text-[11px] text-slate-400 leading-relaxed space-y-1 bg-slate-950/20 p-3 rounded-lg border border-slate-900">
+            <p className="font-semibold text-slate-300">Reglamento FEU Art. 15:</p>
+            <p>La largada oficial de la primera etapa está planificada para las <strong className="text-white font-mono">07:00:00 UY</strong> del día <strong className="text-white font-mono">{compDateStr}</strong>.</p>
+            <p className="text-[10px] text-slate-500 italic mt-1">La validación se realiza de forma duplicada tanto en Frontend (UX) como en Backend (Seguridad).</p>
+          </div>
+
+          {/* Manejo de Errores del Backend */}
+          {startError && (
+            <div className="bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-xs text-rose-300 font-semibold leading-relaxed">
+              ⚠️ {startError}
+            </div>
+          )}
+
+          {/* Botón de Largada */}
+          <button
+            onClick={handleStart}
+            disabled={!canStart || isStarting}
+            className={`w-full inline-flex items-center justify-center px-4 py-3 text-center font-bold text-sm rounded-xl transition-all shadow-md ${
+              canStart 
+                ? 'bg-emerald-600 hover:bg-emerald-500 hover:scale-[1.01] active:scale-[0.99] text-white shadow-emerald-950/30' 
+                : 'bg-slate-850 text-slate-500 border border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            {isStarting ? (
+              <div className="flex items-center space-x-2">
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Registrando Largada...</span>
+              </div>
+            ) : (
+              <span>Dar Largada Oficial (START)</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {comp.status === 'ACTIVE' && (
+        <div className="bg-emerald-950/10 border border-emerald-900/30 p-4 rounded-xl space-y-2">
+          <p className="text-xs text-emerald-400 font-bold">La competencia se encuentra activa.</p>
+          <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+            Todos los binomios inscriptos han sido largados de la Etapa 1 a la hora oficial del servidor.
+          </p>
+        </div>
+      )}
+
+      {(comp.status === 'COMPLETED' || comp.status === 'OFFICIAL') && (
+        <div className="bg-blue-950/10 border border-blue-900/30 p-4 rounded-xl space-y-2">
+          <p className="text-xs text-blue-400 font-bold">La carrera ha concluido.</p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Se han registrado todos los tiempos de meta y los resultados finales se encuentran consolidados.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+

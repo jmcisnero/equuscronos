@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Competition } from './entities/competition.entity';
@@ -7,7 +7,9 @@ import { Tenant } from '../tenants/entities/tenant.entity';
 import { CompetitionType } from '../competition-types/entities/competition-type.entity';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
 import { UpdateCompetitionDto } from './dto/update-competition.dto';
-import { CompetitionStatus } from '@equuscronos/shared';
+import { CompetitionStatus, ParticipantStatus, TimeRecordType } from '@equuscronos/shared';
+import { TimingRecord } from './entities/timing-record.entity';
+import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
 
 @Injectable()
 export class CompetitionsService {
@@ -173,6 +175,169 @@ if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competiti
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(`No se pudo eliminar la competencia debido a dependencias: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Da la largada oficial a la competencia bajo reglamento FEU.
+   * NOTA DE SEGURIDAD / CUMPLIMIENTO:
+   * La validación temporal se realiza de forma duplicada tanto en el Frontend (para guiar la UX y countdown de precisión)
+   * como en el Backend (esta función, para garantizar la inmutabilidad y seguridad conforme al reglamento de la FEU).
+   */
+  async startCompetition(id: string): Promise<Competition> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Buscar la competencia con relaciones requeridas
+      const competition = await queryRunner.manager.findOne(Competition, {
+        where: { id },
+        relations: ['stages', 'tenant'],
+      });
+
+      if (!competition) {
+        throw new NotFoundException('Competencia no encontrada.');
+      }
+
+      // 2. Idempotencia y validación de estado actual
+      if (
+        competition.status === CompetitionStatus.ACTIVE ||
+        competition.status === CompetitionStatus.COMPLETED
+      ) {
+        throw new ConflictException(
+          `La competencia ya se encuentra en estado ${competition.status}.`
+        );
+      }
+
+      if (competition.status !== CompetitionStatus.PLANNED) {
+        throw new BadRequestException(
+          `La competencia no se puede largar. Estado actual: ${competition.status} (Requerido: PLANNED)`
+        );
+      }
+
+      // 3. Validación Temporal (Reglamentaria FEU)
+      // El servidor debe estar en el día de la competencia (competitionDate) y la hora debe ser igual o posterior a la programada (07:00:00).
+      const now = new Date();
+
+      // Formateador en zona horaria oficial uruguaya (America/Montevideo / GMT-3)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Montevideo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      const parts = formatter.formatToParts(now);
+      const getVal = (type: string) => parts.find((p) => p.type === type).value;
+      
+      const serverTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+      const serverHour = parseInt(getVal('hour'), 10);
+      const serverMinute = parseInt(getVal('minute'), 10);
+
+      // Formatear la fecha de la competencia
+      const getLocalDateString = (d: any): string => {
+        if (!d) return '';
+        if (typeof d === 'string') return d.substring(0, 10);
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const compDateStr = getLocalDateString(competition.competitionDate);
+
+      // Validación de Fecha
+      if (compDateStr !== serverTodayStr) {
+        throw new BadRequestException(
+          `LARGADA DENEGADA (Reglamento FEU): La carrera está programada para la fecha ${compDateStr}, pero hoy en Uruguay es ${serverTodayStr}. No se permiten largadas en fechas incorrectas.`
+        );
+      }
+
+      // Validación de Hora de Largada Programada (Standard FEU: 07:00:00 local)
+      const scheduledHour = 7;
+      const scheduledMinute = 0;
+
+      const currentMinutes = serverHour * 60 + serverMinute;
+      const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
+
+      if (currentMinutes < scheduledMinutes) {
+        throw new BadRequestException(
+          `LARGADA DENEGADA (Reglamento FEU): Faltan minutos para la hora programada de largada (07:00:00). Hora actual del servidor en Uruguay: ${getVal('hour')}:${getVal('minute')}:${getVal('second')}.`
+        );
+      }
+
+      // 4. Obtener la primera etapa
+      if (!competition.stages || competition.stages.length === 0) {
+        throw new BadRequestException(
+          'La competencia no tiene etapas configuradas para registrar la largada.'
+        );
+      }
+
+      const stages = [...competition.stages].sort((a, b) => a.stageNumber - b.stageNumber);
+      const firstStage = stages[0];
+
+      // 5. Prevención de Duplicados (Asegurar que no se creen múltiples START si se dispara la acción en paralelo)
+      const existingStart = await queryRunner.manager.findOne(TimingRecord, {
+        where: {
+          stage: { id: firstStage.id },
+          recordType: TimeRecordType.START,
+        },
+      });
+
+      if (existingStart) {
+        throw new ConflictException(
+          'La largada oficial ya ha sido registrada previamente para esta competencia.'
+        );
+      }
+
+      // 6. Obtener inscripciones activas (binomios en carrera / habilitados)
+      const entries = await queryRunner.manager.find(CompetitionEntry, {
+        where: { competition: { id: competition.id } },
+      });
+
+      // 7. Actualizar estado de la carrera a ACTIVE
+      competition.status = CompetitionStatus.ACTIVE;
+      await queryRunner.manager.save(Competition, competition);
+
+      // 8. Crear registros oficiales TimingRecord de tipo START para todos los binomios activos
+      const startRecords = entries
+        .filter((entry) => entry.status === ParticipantStatus.IN_RACE)
+        .map((entry) => {
+          return queryRunner.manager.create(TimingRecord, {
+            tenant: competition.tenant,
+            entry: entry,
+            stage: firstStage,
+            recordType: TimeRecordType.START,
+            recordedAt: now,
+            isApproved: true,
+          });
+        });
+
+      if (startRecords.length > 0) {
+        await queryRunner.manager.save(TimingRecord, startRecords);
+      }
+
+      await queryRunner.commitTransaction();
+
+      // Retornar la competencia actualizada
+      return await this.findOne(competition.id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException(`Error al dar la largada oficial: ${error.message}`);
     } finally {
       await queryRunner.release();
     }

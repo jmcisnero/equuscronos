@@ -16,7 +16,21 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// 3. Disable hierarchical lookup to ensure symlinked workspace packages are resolved correctly
-config.resolver.disableHierarchicalLookup = true;
+// 3. Enable hierarchical lookup (recommended in modern Metro to resolve transitive/nested dependencies)
+config.resolver.disableHierarchicalLookup = false;
+
+// 4. Force all resolutions of 'react' and 'react-native' to use the mobile app's local node_modules (React 18)
+// to prevent duplicate package versions (React 18 vs React 19) in the monorepo bundling process.
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react' || moduleName.startsWith('react/')) {
+    const redirectedName = moduleName.replace('react', path.resolve(projectRoot, 'node_modules/react'));
+    return context.resolveRequest(context, redirectedName, platform);
+  }
+  if (moduleName === 'react-native' || moduleName.startsWith('react-native/')) {
+    const redirectedName = moduleName.replace('react-native', path.resolve(projectRoot, 'node_modules/react-native'));
+    return context.resolveRequest(context, redirectedName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 module.exports = config;
