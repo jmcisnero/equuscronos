@@ -33,6 +33,7 @@ export default function CompetitionsPage() {
   const [formData, setFormData] = useState<{
     name: string;
     competitionDate: string;
+    startTime: string;
     location: string;
     isFederated: boolean;
     maxHeartRate: number;
@@ -42,6 +43,7 @@ export default function CompetitionsPage() {
   }>({
     name: '',
     competitionDate: '',
+    startTime: '07:00',
     location: '',
     isFederated: true,
     maxHeartRate: 65,
@@ -118,6 +120,7 @@ export default function CompetitionsPage() {
     setFormData({
       name: '',
       competitionDate: '',
+      startTime: '07:00',
       location: '',
       isFederated: true,
       maxHeartRate: 65,
@@ -234,6 +237,11 @@ export default function CompetitionsPage() {
       setIsSaving(false);
       return;
     }
+    if (!formData.startTime) {
+      setFormError('La hora programada de largada (Hora Cero) es obligatoria.');
+      setIsSaving(false);
+      return;
+    }
     if (formData.stages.length === 0) {
       setFormError('Debe definir al menos 1 etapa para la competencia.');
       setIsSaving(false);
@@ -246,6 +254,7 @@ export default function CompetitionsPage() {
       competitionTypeId: formData.competitionTypeId,
       name: formData.name.trim(),
       competitionDate: formData.competitionDate, // Transmitida como string simple YYYY-MM-DD
+      startTime: formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime,
       location: formData.location.trim() || undefined,
       isFederated: formData.isFederated,
       maxHeartRate: formData.maxHeartRate,
@@ -391,7 +400,8 @@ export default function CompetitionsPage() {
                         </Link>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-mono">
-                        {displayDate}
+                        <div>{displayDate}</div>
+                        <div className="text-xs text-slate-400 font-semibold">{comp.startTime ? comp.startTime.substring(0, 5) : '07:00'} hs</div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-500">
                         {comp.location || <span className="text-slate-300 italic">No especificada</span>}
@@ -548,7 +558,7 @@ export default function CompetitionsPage() {
               </div>
 
               {/* Fila de Datos Generales */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Fecha de Largada - Displazamiento de huso horario prevenido usando string YYYY-MM-DD directo */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -560,6 +570,20 @@ export default function CompetitionsPage() {
                     value={formData.competitionDate}
                     onChange={(e) => setFormData({ ...formData, competitionDate: e.target.value })}
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                  />
+                </div>
+
+                {/* Hora de Largada */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Hora de Largada *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-mono"
                   />
                 </div>
 

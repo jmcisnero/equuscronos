@@ -24,6 +24,9 @@ export class Competition {
   @Column({ name: 'competition_date', type: 'date' })
   competitionDate: Date;
 
+  @Column({ name: 'start_time', type: 'time', default: '07:00:00' })
+  startTime: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   location: string;
 

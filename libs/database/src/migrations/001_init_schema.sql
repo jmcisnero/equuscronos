@@ -99,6 +99,7 @@ CREATE TABLE competitions (
     is_federated BOOLEAN DEFAULT FALSE,
     max_heart_rate INT DEFAULT 65,
     status comp_status DEFAULT 'PLANNED',
+    start_time TIME NOT NULL DEFAULT '07:00:00',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

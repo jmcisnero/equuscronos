@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -20,9 +20,9 @@ import { Tenant } from '@/types/tenant';
 
 // Esquema de validación con Zod
 const entrySchema = z.object({
-  riderId: z.string().uuid("Debe seleccionar un jinete de la lista"),
-  horseId: z.string().uuid("Debe seleccionar un caballo de la lista"),
-  representedTenantId: z.string().uuid().optional().or(z.literal("")),
+  riderId: z.string().min(1, "Debe seleccionar un jinete de la lista"),
+  horseId: z.string().min(1, "Debe seleccionar un caballo de la lista"),
+  representedTenantId: z.string().optional().or(z.literal("")),
   bibNumber: z.number()
     .int("El dorsal debe ser un número entero")
     .min(1, "El dorsal debe ser un número entero positivo mayor a 0"),
@@ -58,6 +58,8 @@ export default function StartListPage() {
     handleSubmit,
     setValue,
     reset,
+    control,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<EntryFormValues>({
     resolver: zodResolver(entrySchema),
@@ -561,7 +563,11 @@ export default function StartListPage() {
 
               {/* 1. AUTOCOMPLETE PARA JINETES (RIDER) */}
               <div className="relative">
-                <input type="hidden" {...register('riderId')} />
+                <Controller
+                  control={control}
+                  name="riderId"
+                  render={({ field }) => <input type="hidden" {...field} />}
+                />
                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
                   Jinete (Rider) *
                 </label>
@@ -641,7 +647,11 @@ export default function StartListPage() {
 
               {/* 2. AUTOCOMPLETE PARA CABALLOS (HORSE) */}
               <div className="relative">
-                <input type="hidden" {...register('horseId')} />
+                <Controller
+                  control={control}
+                  name="horseId"
+                  render={({ field }) => <input type="hidden" {...field} />}
+                />
                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
                   Caballo (Horse) *
                 </label>

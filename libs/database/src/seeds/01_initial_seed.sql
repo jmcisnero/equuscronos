@@ -37,8 +37,8 @@ INSERT INTO riders (id, name, national_id, feu_id, is_feu_active, medical_card_e
 INSERT INTO competition_types (id, name, default_rules) VALUES 
 ('c1000000-0000-0000-0000-000000000001', 'Raid FEU 60km', '{"max_heart_rate": 64, "min_weight_kg": 85}');
 
-INSERT INTO competitions (id, tenant_id, competition_type_id, name, competition_date, location, is_federated, status) VALUES 
-('c2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Raid Batalla de Tupambaé', '2026-03-15', 'Ruta 8, Melo', TRUE, 'ACTIVE');
+INSERT INTO competitions (id, tenant_id, competition_type_id, name, competition_date, location, is_federated, status, start_time) VALUES 
+('c2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Raid Batalla de Tupambaé', '2026-03-15', 'Ruta 8, Melo', TRUE, 'ACTIVE', '07:00:00');
 
 INSERT INTO stages (id, tenant_id, competition_id, stage_number, distance_km, neutralization_minutes) VALUES 
 ('e2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 1, 40.00, 40),

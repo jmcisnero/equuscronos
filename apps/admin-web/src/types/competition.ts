@@ -9,6 +9,7 @@ export interface Competition {
   id: string;
   name: string;
   competitionDate: string;
+  startTime: string;
   location?: string;
   isFederated: boolean;
   maxHeartRate: number;
@@ -28,6 +29,7 @@ export interface CreateCompetitionDto {
   competitionTypeId: string;
   name: string;
   competitionDate: string;
+  startTime: string;
   location?: string;
   isFederated?: boolean;
   maxHeartRate?: number;

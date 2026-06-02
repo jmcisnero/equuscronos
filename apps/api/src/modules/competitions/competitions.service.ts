@@ -38,6 +38,7 @@ export class CompetitionsService {
         competitionType: compType,
         name: dto.name,
         competitionDate: new Date(dto.competitionDate),
+        startTime: dto.startTime,
         location: dto.location,
         isFederated: dto.isFederated ?? false,
         status: dto.status,
@@ -260,16 +261,17 @@ if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competiti
         );
       }
 
-      // Validación de Hora de Largada Programada (Standard FEU: 07:00:00 local)
-      const scheduledHour = 7;
-      const scheduledMinute = 0;
+      // Validación de Hora de Largada Programada (Dynamic "Hora Cero" FEU)
+      const timeParts = (competition.startTime || '07:00:00').split(':');
+      const scheduledHour = parseInt(timeParts[0], 10);
+      const scheduledMinute = parseInt(timeParts[1], 10);
 
       const currentMinutes = serverHour * 60 + serverMinute;
       const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
 
       if (currentMinutes < scheduledMinutes) {
         throw new BadRequestException(
-          `LARGADA DENEGADA (Reglamento FEU): Faltan minutos para la hora programada de largada (07:00:00). Hora actual del servidor en Uruguay: ${getVal('hour')}:${getVal('minute')}:${getVal('second')}.`
+          `LARGADA DENEGADA (Reglamento FEU): Faltan minutos para la hora programada de largada (${competition.startTime || '07:00:00'}). Hora actual del servidor en Uruguay: ${getVal('hour')}:${getVal('minute')}:${getVal('second')}.`
         );
       }
 

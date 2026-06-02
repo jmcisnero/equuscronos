@@ -130,6 +130,14 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
               </svg>
               <span>{displayDate}</span>
             </div>
+
+            {/* Hora de Largada */}
+            <div className="flex items-center space-x-1.5 font-mono">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span>{comp.startTime ? comp.startTime.substring(0, 5) : '07:00'} hs</span>
+            </div>
           </div>
         </div>
 
@@ -292,11 +300,10 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
   if (!comp) return null;
 
-  // Formatear fecha y hora
   const compDateStr = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '';
-  
-  // Largada programada: 07:00 AM (local uruguayo, GMT-3)
-  const scheduledTime = new Date(`${compDateStr}T07:00:00-03:00`);
+
+  // Largada programada: Dynamic "Hora Cero" AM (local uruguayo, GMT-3)
+  const scheduledTime = new Date(`${compDateStr}T${comp.startTime || '07:00:00'}-03:00`);
 
   // Diferencia de milisegundos
   const diffMs = scheduledTime.getTime() - currentTime.getTime();
@@ -312,7 +319,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
         day: '2-digit'
       });
       const parts = formatter.formatToParts(currentTime);
-      const getVal = (type: string) => parts.find(p => p.type === type).value;
+      const getVal = (type: string) => parts.find(p => p.type === type)?.value || '';
       const localTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
       return localTodayStr === compDateStr;
     } catch {
@@ -450,7 +457,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
           {/* Información del reglamento */}
           <div className="text-[11px] text-slate-400 leading-relaxed space-y-1 bg-slate-950/20 p-3 rounded-lg border border-slate-900">
             <p className="font-semibold text-slate-300">Reglamento FEU Art. 15:</p>
-            <p>La largada oficial de la primera etapa está planificada para las <strong className="text-white font-mono">07:00:00 UY</strong> del día <strong className="text-white font-mono">{compDateStr}</strong>.</p>
+            <p>La largada oficial de la primera etapa está planificada para las <strong className="text-white font-mono">{comp.startTime || '07:00:00'} UY</strong> del día <strong className="text-white font-mono">{compDateStr}</strong>.</p>
             <p className="text-[10px] text-slate-500 italic mt-1">La validación se realiza de forma duplicada tanto en Frontend (UX) como en Backend (Seguridad).</p>
           </div>
 

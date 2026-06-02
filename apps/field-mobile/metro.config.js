@@ -30,6 +30,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     const redirectedName = moduleName.replace('react-native', path.resolve(projectRoot, 'node_modules/react-native'));
     return context.resolveRequest(context, redirectedName, platform);
   }
+  if (moduleName === '@react-native/virtualized-lists' || moduleName.startsWith('@react-native/virtualized-lists/')) {
+    const redirectedName = moduleName.replace(
+      '@react-native/virtualized-lists',
+      path.resolve(projectRoot, 'node_modules/react-native/node_modules/@react-native/virtualized-lists')
+    );
+    return context.resolveRequest(context, redirectedName, platform);
+  }
   return context.resolveRequest(context, moduleName, platform);
 };
 

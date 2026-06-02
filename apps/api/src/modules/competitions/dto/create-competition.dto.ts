@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsDateString, IsBoolean, IsEnum, ValidateNested, ArrayMinSize, IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsUUID, IsDateString, IsBoolean, IsEnum, ValidateNested, ArrayMinSize, IsOptional, IsInt, Min, Max, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CompetitionStatus } from '@equuscronos/shared';
@@ -20,6 +20,13 @@ export class CreateCompetitionDto {
   @ApiProperty({ description: 'Fecha programada de largada (YYYY-MM-DD)', example: '2026-03-15' })
   @IsDateString()
   competitionDate: string;
+
+  @ApiProperty({ description: 'Hora programada de largada (HH:mm:ss o HH:mm)', example: '07:00:00' })
+  @IsString()
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, {
+    message: 'La hora de largada debe tener un formato de hora válido (HH:mm o HH:mm:ss)',
+  })
+  startTime: string;
 
   @ApiPropertyOptional({ description: 'Ubicación física o predio de largada', example: 'Ruta 8, Melo, Cerro Largo' })
   @IsOptional()
