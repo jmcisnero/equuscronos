@@ -276,7 +276,7 @@ export default function CompetitionFeed() {
                       <div>
                         <span className="text-slate-400 block uppercase tracking-wider text-[9px] font-bold">Distancia</span>
                         <span className="font-extrabold text-slate-200 mt-0.5 block">
-                          {comp.stages?.length || 0} Etapas ({comp.stages?.reduce((acc, curr) => acc + curr.distanceKm, 0) || 0} Km)
+                          {comp.stages?.length || 0} Etapas ({comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km)
                         </span>
                       </div>
                     </div>
@@ -362,7 +362,7 @@ export default function CompetitionFeed() {
                       <div className="flex justify-between">
                         <span className="text-slate-400 font-bold">Distancia Total:</span>
                         <span className="font-extrabold text-slate-700">
-                          {comp.stages?.reduce((acc, curr) => acc + curr.distanceKm, 0) || 0} Km ({comp.stages?.length || 0} Etapas)
+                          {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km ({comp.stages?.length || 0} Etapas)
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -448,7 +448,7 @@ export default function CompetitionFeed() {
                           <div>
                             <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Distancia Total</span>
                             <span className="text-slate-800 font-extrabold">
-                              {comp.stages?.reduce((acc, curr) => acc + curr.distanceKm, 0) || 0} Km
+                              {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km
                             </span>
                           </div>
                         </div>
@@ -527,7 +527,7 @@ export default function CompetitionFeed() {
 
                               {/* DISTANCIA */}
                               <td className="py-4 px-6 text-slate-700 font-black">
-                                {comp.stages?.reduce((acc, curr) => acc + curr.distanceKm, 0) || 0} Km
+                                {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km
                               </td>
 
                               {/* ESTADO */}

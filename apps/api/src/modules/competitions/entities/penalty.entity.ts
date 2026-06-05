@@ -1,11 +1,16 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 import { Stage } from './stage.entity';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('penalties')
 export class Penalty {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @ManyToOne(() => CompetitionEntry, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'entry_id' })

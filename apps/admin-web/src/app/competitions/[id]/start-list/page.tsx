@@ -23,12 +23,15 @@ const entrySchema = z.object({
   riderId: z.string().min(1, "Debe seleccionar un jinete de la lista"),
   horseId: z.string().min(1, "Debe seleccionar un caballo de la lista"),
   representedTenantId: z.string().optional().or(z.literal("")),
-  bibNumber: z.number()
+  bibNumber: z.number({ message: "El dorsal es requerido" })
     .int("El dorsal debe ser un número entero")
     .min(1, "El dorsal debe ser un número entero positivo mayor a 0"),
-  ballastWeight: z.number()
-    .min(0, "El peso registrado no puede ser negativo"),
-  sealNumber: z.string().min(1, "El número de precinto es obligatorio"),
+  riderWeight: z.number({ message: "Debe ingresar el peso del jinete" })
+    .min(0, "El peso del jinete no puede ser negativo"),
+  tackWeight: z.number({ message: "Debe ingresar el peso de la montura" })
+    .min(0, "El peso de la montura no puede ser negativo"),
+  sealedItems: z.array(z.string()).default([]),
+  sealNumbers: z.string().min(1, "El número de precinto es obligatorio"),
 });
 
 type EntryFormValues = z.infer<typeof entrySchema>;
@@ -62,16 +65,33 @@ export default function StartListPage() {
     watch,
     formState: { errors, isSubmitting }
   } = useForm<EntryFormValues>({
-    resolver: zodResolver(entrySchema),
+    resolver: zodResolver(entrySchema) as any,
     defaultValues: {
       riderId: '',
       horseId: '',
       representedTenantId: '',
       bibNumber: undefined,
-      ballastWeight: 0,
-      sealNumber: '',
+      riderWeight: 0,
+      tackWeight: 0,
+      sealedItems: [],
+      sealNumbers: '',
     }
   });
+
+  // Observadores para calcular el totalWeight en tiempo real
+  const riderWeight = watch('riderWeight') || 0;
+  const tackWeight = watch('tackWeight') || 0;
+  const sealedItems = watch('sealedItems') || [];
+  const totalWeight = Number((riderWeight + tackWeight).toFixed(2));
+
+  // Manejador para checkboxes de elementos precintados
+  const handleCheckboxChange = (item: string, checked: boolean) => {
+    if (checked) {
+      setValue('sealedItems', [...sealedItems, item], { shouldValidate: true });
+    } else {
+      setValue('sealedItems', sealedItems.filter(i => i !== item), { shouldValidate: true });
+    }
+  };
 
   // Mostrar toast temporal
   const showToast = (text: string, type: 'success' | 'error') => {
@@ -88,6 +108,10 @@ export default function StartListPage() {
     queryFn: () => CompetitionService.getById(competitionId),
     enabled: !!competitionId,
   });
+
+  // Determinar peso mínimo basado en las reglas de la competencia
+  const rules = (competition?.competitionType as any)?.defaultRules || {};
+  const minWeight = Number(rules.min_weight_kg || rules.min_weight || 85);
 
   // 2. Start-List de la Competencia
   const { data: entries = [], isLoading: isEntriesLoading, error: entriesError } = useQuery({
@@ -117,14 +141,18 @@ export default function StartListPage() {
   // Mutación para Registrar Inscripción
   const createMutation = useMutation({
     mutationFn: (dto: EntryFormValues) => {
+      const calculatedTotalWeight = Number((dto.riderWeight + dto.tackWeight).toFixed(2));
       return CompetitionEntryService.create({
         competitionId,
         riderId: dto.riderId,
         horseId: dto.horseId,
         representedTenantId: dto.representedTenantId || undefined,
         bibNumber: dto.bibNumber,
-        ballastWeight: dto.ballastWeight || 0,
-        sealNumber: dto.sealNumber || undefined,
+        ballastWeight: calculatedTotalWeight,
+        riderWeight: dto.riderWeight,
+        tackWeight: dto.tackWeight,
+        sealedItems: dto.sealedItems,
+        sealNumber: dto.sealNumbers,
       });
     },
     onSuccess: () => {
@@ -147,14 +175,13 @@ export default function StartListPage() {
   });
 
   // Manejo de envío del Formulario con TRY/CATCH para errores 409
-  const onSubmit = async (data: EntryFormValues) => {
+  const onSubmit = async (data: any) => {
     console.log("Current Form Data:", data);
     setSubmitError(null);
     try {
       await createMutation.mutateAsync(data);
     } catch (err: any) {
       console.error('[MUTATE ERROR]', err);
-      // Detección de error 409 Conflict (unicidad del dorsal o binomio)
       if (err.status === 409 || (err.message && (
         err.message.includes('dorsal') || 
         err.message.includes('ya está en uso') || 
@@ -283,7 +310,7 @@ export default function StartListPage() {
         })()}
       </div>
 
-      {/* 2. CARD DE DETALLES DE LA COMPETENCIA (ESTILO PREMIUM VET-GATE) */}
+      {/* 2. CARD DE DETALLES DE LA COMPETENCIA */}
       {isCompLoading ? (
         <div className="h-28 bg-white border border-slate-100 rounded-2xl animate-pulse flex items-center justify-center">
           <div className="text-slate-400 text-sm font-semibold">Cargando detalles de la competencia...</div>
@@ -294,7 +321,6 @@ export default function StartListPage() {
         </div>
       ) : competition && (
         <div className="bg-gradient-to-r from-equus-green to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-white/5">
-          {/* Fondo decorativo abstracto */}
           <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-5 pointer-events-none">
             <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <path d="M0,0 C50,20 50,80 100,100 L100,0 Z" fill="white" />
@@ -302,8 +328,6 @@ export default function StartListPage() {
           </div>
 
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            
-            {/* Col 1: Nombre e Identificación */}
             <div className="space-y-2 md:col-span-2">
               <div className="flex flex-wrap gap-2 items-center">
                 <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
@@ -335,16 +359,12 @@ export default function StartListPage() {
               </div>
             </div>
 
-            {/* Col 2: Parámetros Técnicos Rápidos */}
             <div className="flex gap-4 md:justify-end">
-              
-              {/* Etapas Totales */}
               <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Etapas</span>
                 <span className="block text-xl font-black font-mono text-white mt-0.5">{competition.stages?.length || 0}</span>
               </div>
 
-              {/* Distancia Total */}
               <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Distancia</span>
                 <span className="block text-xl font-black font-mono text-equus-tan-light mt-0.5">
@@ -352,14 +372,11 @@ export default function StartListPage() {
                 </span>
               </div>
 
-              {/* FC Máxima Vet Gate */}
               <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Límite Vet</span>
                 <span className="block text-xl font-black font-mono text-emerald-400 mt-0.5">{competition.maxHeartRate || 65}</span>
               </div>
-
             </div>
-
           </div>
         </div>
       )}
@@ -393,7 +410,6 @@ export default function StartListPage() {
           ) : entries.length === 0 ? (
             <div className="py-20 text-center text-slate-500">
               <svg className="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {/* Clipboard user icon */}
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
               <p className="font-bold text-slate-700 text-sm">No hay binomios inscriptos en esta carrera.</p>
@@ -407,8 +423,8 @@ export default function StartListPage() {
                   <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Jinete (Rider)</th>
                   <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Caballo (Horse)</th>
                   <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Club Representado</th>
-                  <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-[120px]">Lastre (Kg)</th>
-                  <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-[120px]">Precinto</th>
+                  <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-[150px]">Peso Marcado (Kg)</th>
+                  <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-[180px]">Precinto / Items</th>
                   <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-[130px]">Habilitación FEU</th>
                   <th scope="col" className="relative py-4 pl-3 pr-6 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-[100px]">Acciones</th>
                 </tr>
@@ -417,7 +433,6 @@ export default function StartListPage() {
                 {entries.map((entry) => {
                   const isRiderActive = entry.rider?.isFeuActive;
                   const isHorseActive = entry.horse?.isFeuActive;
-                  const minWeight = 85;
                   const qualifies = isRiderActive && isHorseActive && 
                                     Number(entry.ballastWeight) >= minWeight && 
                                     !!entry.sealNumber;
@@ -455,23 +470,37 @@ export default function StartListPage() {
                         {entry.representedTenant?.name || <span className="text-slate-300 italic font-normal">Sin club asignado</span>}
                       </td>
 
-                      {/* Lastre */}
+                      {/* Peso Marcado */}
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-mono text-slate-800">
                         {Number(entry.ballastWeight) > 0 ? (
-                          <span className="inline-flex items-center text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
-                            ⚖️ {Number(entry.ballastWeight).toFixed(2)} Kg
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="inline-flex items-center text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50 w-fit">
+                              ⚖️ {Number(entry.ballastWeight).toFixed(2)} Kg
+                            </span>
+                            {entry.riderWeight !== undefined && entry.tackWeight !== undefined && (
+                              <span className="text-[9px] text-slate-400 font-normal mt-0.5">
+                                Jinete: {Number(entry.riderWeight).toFixed(2)}K / Montura: {Number(entry.tackWeight).toFixed(2)}K
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-400 font-normal">0.00 Kg</span>
                         )}
                       </td>
 
-                      {/* Precinto */}
+                      {/* Precinto / Items */}
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-mono text-slate-800">
                         {entry.sealNumber ? (
-                          <span className="inline-flex items-center text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50">
-                            🔗 {entry.sealNumber}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="inline-flex items-center text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50 w-fit">
+                              🔗 {entry.sealNumber}
+                            </span>
+                            {entry.sealedItems && entry.sealedItems.length > 0 && (
+                              <span className="text-[9px] text-slate-400 font-normal mt-0.5 whitespace-pre-wrap max-w-[170px]">
+                                Items: {entry.sealedItems.join(', ')}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-300 italic font-normal">Sin precintar</span>
                         )}
@@ -523,13 +552,12 @@ export default function StartListPage() {
         </div>
       </div>
 
-      {/* 4. MODAL DE INSCRIPCIÓN PREMIUM CON AUTOCOMPLETES */}
+      {/* 4. MODAL DE INSCRIPCIÓN CON AUTOCOMPLETES */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300">
           
           <div className="bg-white rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] transition-all transform scale-100 duration-300">
             
-            {/* Cabecera del Modal */}
             <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">
@@ -548,10 +576,8 @@ export default function StartListPage() {
               </button>
             </div>
 
-            {/* Formulario */}
             <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-4">
               
-              {/* CRITICAL ERROR FEEDBACK FOR 409 DUPLICATES */}
               {submitError && (
                 <div className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs font-bold flex items-start space-x-2.5">
                   <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -754,63 +780,133 @@ export default function StartListPage() {
                 )}
               </div>
 
-              {/* 4. FILA DE DORSAL Y PESO DE LASTRE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* bibNumber (Dorsal) */}
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Dorsal / Chaleco Nro *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Ej: 15"
-                    {...register('bibNumber', { valueAsNumber: true })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm"
-                  />
-                  {errors.bibNumber && (
-                    <p className="mt-1 text-xs font-bold text-rose-500">{errors.bibNumber.message}</p>
-                  )}
-                </div>
- 
-                {/* ballastWeight (Lastre de peso) & sealNumber (Precinto) */}
-                <div className="space-y-4">
+              {/* 4. DORSAL */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Dorsal / Chaleco Nro *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 15"
+                  {...register('bibNumber', { valueAsNumber: true })}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                />
+                {errors.bibNumber && (
+                  <p className="mt-1 text-xs font-bold text-rose-500">{errors.bibNumber.message}</p>
+                )}
+              </div>
+
+              {/* 5. SUB-SECCIÓN: PESAJE DE MARCACIÓN (Art. 20) */}
+              <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50 space-y-4">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center">
+                  <span className="mr-1.5">⚖️</span>
+                  Pesaje de Marcación (Art. 20)
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* riderWeight */}
                   <div>
-                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
-                      ⚖️ Peso Registrado / Lastre (Kg) *
-                      <span className="text-[9.5px] text-rose-500 font-extrabold ml-1.5 uppercase font-sans tracking-normal">(Obligatorio - Art. 20)</span>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Peso del Jinete (Kg) *
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
                       placeholder="0.00"
-                      {...register('ballastWeight', { valueAsNumber: true })}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm"
+                      {...register('riderWeight', { valueAsNumber: true })}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
                     />
-                    {errors.ballastWeight && (
-                      <p className="mt-1 text-xs font-bold text-rose-500">{errors.ballastWeight.message}</p>
+                    {errors.riderWeight && (
+                      <p className="mt-1 text-xs font-bold text-rose-500">{errors.riderWeight.message}</p>
                     )}
                   </div>
 
+                  {/* tackWeight */}
                   <div>
-                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
-                      🔗 Número de Precinto *
-                      <span className="text-[9.5px] text-rose-500 font-extrabold ml-1.5 uppercase font-sans tracking-normal">(Obligatorio)</span>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Peso de la Montura / Aperos (Kg) *
                     </label>
                     <input
-                      type="text"
-                      placeholder="Ej: P-98421"
-                      {...register('sealNumber')}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      {...register('tackWeight', { valueAsNumber: true })}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
                     />
-                    {errors.sealNumber && (
-                      <p className="mt-1 text-xs font-bold text-rose-500">{errors.sealNumber.message}</p>
+                    {errors.tackWeight && (
+                      <p className="mt-1 text-xs font-bold text-rose-500">{errors.tackWeight.message}</p>
                     )}
                   </div>
                 </div>
 
+                {/* totalWeight (Campo de solo lectura, sumatoria automática) */}
+                <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center sm:justify-between transition-all ${
+                  totalWeight >= minWeight 
+                    ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900' 
+                    : 'bg-rose-50/60 border-rose-200 text-rose-900'
+                }`}>
+                  <div className="space-y-0.5">
+                    <span className="block text-[10px] uppercase font-bold tracking-wider opacity-70">Peso Total Calculado</span>
+                    <span className="block text-2xl font-black font-mono tracking-tight">{totalWeight.toFixed(2)} Kg</span>
+                  </div>
+                  
+                  <div className="mt-2.5 sm:mt-0 flex items-center">
+                    {totalWeight >= minWeight ? (
+                      <div className="flex items-center space-x-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-lg border border-emerald-200">
+                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Peso reglamentario cumplido</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1.5 text-xs font-extrabold text-rose-700 bg-rose-100/80 px-3 py-1.5 rounded-lg border border-rose-200">
+                        <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Peso insuficiente (Min: {minWeight.toFixed(2)} Kg)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* sealedItems */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Elementos Precintados
+                  </label>
+                  <div className="flex flex-wrap gap-4 p-3 bg-white border border-slate-200 rounded-xl">
+                    {['Jergón', 'Mandil', 'Montura'].map((item) => (
+                      <label key={item} className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sealedItems.includes(item)}
+                          onChange={(e) => handleCheckboxChange(item, e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-equus-green focus:ring-equus-green/20"
+                        />
+                        <span>{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* sealNumbers (Input text para números de precinto, separado por comas) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
+                    🔗 Números de Precinto (Separados por comas) *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: PREC-001, PREC-002"
+                    {...register('sealNumbers')}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                  />
+                  {errors.sealNumbers && (
+                    <p className="mt-1 text-xs font-bold text-rose-500">{errors.sealNumbers.message}</p>
+                  )}
+                </div>
               </div>
 
               {/* Acciones del Modal */}
@@ -824,8 +920,8 @@ export default function StartListPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-opacity-50 text-white font-extrabold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2"
+                  disabled={isSubmitting || totalWeight < minWeight}
+                  className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2"
                 >
                   {isSubmitting && (
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">

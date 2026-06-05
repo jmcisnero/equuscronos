@@ -8,7 +8,8 @@ import { Competition } from '../competitions/entities/competition.entity';
 import { Rider } from '../riders/entities/rider.entity';
 import { Horse } from '../horses/entities/horse.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { CompetitionStatus } from '@equuscronos/shared';
+import { WeightControl } from '../weight-controls/entities/weight-control.entity';
+import { CompetitionStatus, ParticipantStatus } from '@equuscronos/shared';
 
 @Injectable()
 export class CompetitionEntriesService {
@@ -18,6 +19,7 @@ export class CompetitionEntriesService {
     @InjectRepository(Rider) private readonly riderRepo: Repository<Rider>,
     @InjectRepository(Horse) private readonly horseRepo: Repository<Horse>,
     @InjectRepository(Tenant) private readonly tenantRepo: Repository<Tenant>,
+    @InjectRepository(WeightControl) private readonly weightRepo: Repository<WeightControl>,
   ) {}
 
   async create(dto: CreateCompetitionEntryDto): Promise<CompetitionEntry> {
@@ -84,13 +86,34 @@ export class CompetitionEntriesService {
       weighInAt: dto.weighInAt ?? (dto.ballastWeight !== undefined ? new Date() : null)
     });
 
-    return await this.entryRepo.save(newEntry);
+    const savedEntry = await this.entryRepo.save(newEntry);
+
+    // Crear automáticamente un WeightControl de tipo INITIAL si tiene ballastWeight
+    if (savedEntry.ballastWeight !== undefined && savedEntry.ballastWeight !== null) {
+      const initialWeightControl = this.weightRepo.create({
+        entry: savedEntry,
+        weightRecorded: savedEntry.ballastWeight,
+        controlType: 'INITIAL',
+        recordedAt: savedEntry.weighInAt || new Date(),
+      });
+      await this.weightRepo.save(initialWeightControl);
+    }
+
+    return savedEntry;
   }
 
   async findAllByCompetition(competitionId: string): Promise<CompetitionEntry[]> {
     return await this.entryRepo.find({
       where: { competition: { id: competitionId } },
-      relations: ['rider', 'horse', 'representedTenant', 'currentStage'],
+      relations: [
+        'rider',
+        'horse',
+        'representedTenant',
+        'currentStage',
+        'timingRecords',
+        'timingRecords.stage',
+        'timingRecords.vetInspection'
+      ],
       order: { bibNumber: 'ASC' }
     });
   }
@@ -107,15 +130,18 @@ export class CompetitionEntriesService {
   async update(id: string, dto: UpdateCompetitionEntryDto): Promise<CompetitionEntry> {
     const entry = await this.findOne(id);
     
-    // Regla de Oro: Asegurar que los datos sean inmutables una vez que la competencia cambie a estado ACTIVE o posterior
+    // Regla de Oro: Asegurar que los datos de inscripción (Jinete, Caballo, Dorsal, Club) sean inmutables una vez que la competencia cambie a estado ACTIVE o posterior
     if (
       entry.competition.status === CompetitionStatus.ACTIVE ||
       entry.competition.status === CompetitionStatus.COMPLETED ||
       entry.competition.status === CompetitionStatus.OFFICIAL ||
       entry.competition.status === CompetitionStatus.CANCELLED
     ) {
-      throw new BadRequestException('No se pueden modificar inscripciones una vez que la competencia está ACTIVA o finalizada.');
+      if (dto.riderId || dto.horseId || dto.bibNumber || dto.representedTenantId) {
+        throw new BadRequestException('No se pueden modificar los datos de inscripción (Jinete, Caballo, Dorsal) una vez que la competencia está ACTIVA o finalizada.');
+      }
     }
+
 
     // Regla de Negocio (Art. 20): Validar peso mínimo reglamentario si está configurado e ingresado
     if (dto.ballastWeight !== undefined && dto.ballastWeight !== null) {
@@ -141,8 +167,41 @@ export class CompetitionEntriesService {
       entry.weighInAt = new Date();
     }
 
+    // Si el binomio ya está eliminado (DQ, DNF, WD), no permitir que actualizaciones subsiguientes (como sincronizaciones) lo regresen a competencia.
+    const finalStatuses = [ParticipantStatus.DQ, ParticipantStatus.DNF, ParticipantStatus.WD];
+    if (finalStatuses.includes(entry.status)) {
+      if (dto.status && !finalStatuses.includes(dto.status as ParticipantStatus)) {
+        delete dto.status;
+      }
+    }
+
     const updatedEntry = Object.assign(entry, dto);
-    return await this.entryRepo.save(updatedEntry);
+    const savedEntry = await this.entryRepo.save(updatedEntry);
+
+    // Actualizar o crear automáticamente el WeightControl de tipo INITIAL
+    if (dto.ballastWeight !== undefined && dto.ballastWeight !== null) {
+      let initialControl = await this.weightRepo.findOne({
+        where: {
+          entry: { id: entry.id },
+          controlType: 'INITIAL',
+        }
+      });
+      if (initialControl) {
+        initialControl.weightRecorded = dto.ballastWeight;
+        initialControl.recordedAt = savedEntry.weighInAt || new Date();
+        await this.weightRepo.save(initialControl);
+      } else {
+        initialControl = this.weightRepo.create({
+          entry: savedEntry,
+          weightRecorded: dto.ballastWeight,
+          controlType: 'INITIAL',
+          recordedAt: savedEntry.weighInAt || new Date(),
+        });
+        await this.weightRepo.save(initialControl);
+      }
+    }
+
+    return savedEntry;
   }
 
   async remove(id: string): Promise<void> {

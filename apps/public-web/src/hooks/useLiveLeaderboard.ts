@@ -14,6 +14,10 @@ export interface LeaderboardEntry {
   averageSpeed: number;
   heartRate?: number;
   nextStageDepartureTime?: string;
+  startTime?: string;
+  arrivalTime?: string;
+  vetInTime?: string;
+  completedStages?: number;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";

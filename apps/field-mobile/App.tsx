@@ -8,17 +8,19 @@ import {
   ActivityIndicator, 
   TouchableOpacity, 
   Alert,
-  ScrollView
+  ScrollView,
+  TextInput
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from './src/theme/colors';
 import { initDatabase, getDatabase } from './src/database/db';
 import { LocalCompetitionEntry } from './src/database/schema';
 import SyncService from './src/services/SyncService';
+import ApiService from './src/services/ApiService';
 import { CompetitorCard } from './src/components/CompetitorCard';
 import { TimingScreen } from './src/screens/TimingScreen';
 import { VetGateScreen } from './src/screens/VetGateScreen';
-import { ParticipantStatus } from '@equuscronos/shared';
+import { ParticipantStatus, TimeRecordType } from '@equuscronos/shared';
 
 type ScreenType = 'LIST' | 'TIMING' | 'VET_GATE';
 
@@ -27,22 +29,162 @@ export default function App() {
   const [entries, setEntries] = useState<LocalCompetitionEntry[]>([]);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('LIST');
   const [selectedEntry, setSelectedEntry] = useState<LocalCompetitionEntry | null>(null);
+  const [stationRecordType, setStationRecordType] = useState<TimeRecordType>(TimeRecordType.ARRIVAL);
   
   // Real-time synchronization states
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  // API URL configurations
+  const [apiUrl, setApiUrl] = useState(ApiService.getBaseUrl());
+  const updateApiUrl = (url: string) => {
+    setApiUrl(url);
+    ApiService.setBaseUrl(url);
+  };
   const [isForceSyncing, setIsForceSyncing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   
   // Filtering state
   const [activeFilter, setActiveFilter] = useState<'ALL' | ParticipantStatus>('ALL');
+
+  // Helper to import active competition entries, timing records and vet inspections into SQLite
+  async function importActiveCompetitionData(activeCompetition: any, serverEntries: any[]) {
+    const db = await getDatabase();
+    // Delete in reverse order of foreign key dependency
+    await db.runAsync('DELETE FROM vet_inspections;');
+    await db.runAsync('DELETE FROM timing_records;');
+    await db.runAsync('DELETE FROM competition_entries;');
+
+    const now = new Date().toISOString();
+
+    for (const entry of serverEntries) {
+      // Resolve stage ID with multiple fallbacks
+      let currentStageId = entry.currentStage?.id;
+      
+      // Fallback 1: latest timing record stage ID
+      if (!currentStageId && entry.timingRecords && entry.timingRecords.length > 0) {
+        const sortedRecords = [...entry.timingRecords].sort((a, b) => 
+          new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+        );
+        currentStageId = sortedRecords[0]?.stage?.id || sortedRecords[0]?.stageId;
+      }
+      
+      // Fallback 2: first stage of the active competition
+      if (!currentStageId) {
+        const sortedStages = activeCompetition.stages 
+          ? [...activeCompetition.stages].sort((a, b) => a.stageNumber - b.stageNumber)
+          : [];
+        currentStageId = sortedStages[0]?.id || '';
+      }
+
+      await db.runAsync(
+        `INSERT INTO competition_entries (
+          id, tenant_id, competition_id, rider_id, rider_name, horse_id, horse_name, 
+          bib_number, status, current_stage_id, ballast_weight, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          entry.id,
+          entry.tenant?.id || '77777777-7777-7777-7777-777777777777',
+          activeCompetition.id,
+          entry.rider?.id || 'rider-unknown',
+          entry.rider?.name || 'Desconocido',
+          entry.horse?.id || 'horse-unknown',
+          entry.horse?.name || 'Desconocido',
+          entry.bibNumber,
+          entry.status,
+          currentStageId,
+          Number(entry.ballastWeight) || 0,
+          entry.createdAt || now,
+          entry.updatedAt || now
+        ]
+      );
+
+      if (entry.timingRecords && Array.isArray(entry.timingRecords)) {
+        for (const record of entry.timingRecords) {
+          await db.runAsync(
+            `INSERT INTO timing_records (
+              id, tenant_id, entry_id, stage_id, record_type, recorded_at, 
+              is_approved, elimination_type, elimination_reason, is_void, void_reason, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+              record.id,
+              record.tenant?.id || entry.tenant?.id || '77777777-7777-7777-7777-777777777777',
+              entry.id,
+              record.stage?.id || record.stageId || '',
+              record.recordType,
+              record.recordedAt,
+              record.isApproved ? 1 : 0,
+              record.eliminationType || null,
+              record.eliminationReason || null,
+              record.isVoid ? 1 : 0,
+              record.voidReason || null,
+              record.createdAt || now,
+              record.updatedAt || now
+            ]
+          );
+
+          const vet = record.vetInspection;
+          if (vet) {
+            await db.runAsync(
+              `INSERT INTO vet_inspections (
+                id, tenant_id, timing_record_id, heart_rate, temperature, 
+                motricity, metabolic, attempt_number, is_recheck_required, next_check_time, notes, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+              [
+                vet.id,
+                vet.tenant?.id || entry.tenant?.id || '77777777-7777-7777-7777-777777777777',
+                record.id,
+                vet.heartRate,
+                vet.temperature !== undefined ? Number(vet.temperature) : null,
+                vet.motricity,
+                vet.metabolic,
+                vet.attemptNumber || 1,
+                vet.isRecheckRequired ? 1 : 0,
+                vet.nextCheckTime || null,
+                vet.notes || null,
+                vet.createdAt || now
+              ]
+            );
+          }
+        }
+      }
+    }
+  }
 
   // Initialize DB and Listeners on App Mount
   useEffect(() => {
     async function setupApp() {
       try {
-        // Bootstrapping local sqlite schema and seeding high-quality records
+        // Bootstrapping local sqlite schema
         await initDatabase();
         setDbReady(true);
+
+        const db = await getDatabase();
+        const rows = await db.getAllAsync<LocalCompetitionEntry>(
+          'SELECT * FROM competition_entries ORDER BY bib_number ASC;'
+        );
+
+        if (rows.length === 0) {
+          console.log('[App] Local database is empty. Attempting automatic active competition import...');
+          setIsImporting(true);
+          try {
+            const competitions = await ApiService.fetchCompetitions();
+            const activeCompetition = competitions.find(c => c.status === 'ACTIVE');
+            
+            if (activeCompetition) {
+              const serverEntries = await ApiService.fetchLatestEntries(activeCompetition.id);
+              if (serverEntries.length > 0) {
+                await importActiveCompetitionData(activeCompetition, serverEntries);
+                console.log(`[App] Auto-imported active competition: ${activeCompetition.name}`);
+              }
+            }
+          } catch (autoImportErr) {
+            console.warn('[App] Auto-import of active competition failed (likely offline/unreachable):', autoImportErr);
+          } finally {
+            setIsImporting(false);
+          }
+        }
+
         await reloadEntries();
       } catch (error) {
         Alert.alert('Falla Crítica', 'No se pudo inicializar la base de datos interna SQLite.');
@@ -92,6 +234,96 @@ export default function App() {
     await SyncService.forceSync();
     await updateQueueInfo();
     setIsForceSyncing(false);
+  };
+
+  const handleImportActiveCompetition = async () => {
+    if (!isOnline) {
+      Alert.alert('Offline', 'Debe estar en línea para descargar datos del servidor.');
+      return;
+    }
+    
+    if (pendingSyncCount > 0) {
+      Alert.alert(
+        'Acción Bloqueada',
+        'Hay datos locales pendientes de sincronizar en la cola. Sincronícelos primero para evitar pérdida de información.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Descargar Competencia Activa',
+      '¿Desea descargar y cargar los binomios de la competencia activa desde el servidor? Esto sobrescribirá la lista local.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Descargar', 
+          onPress: async () => {
+            setIsImporting(true);
+            try {
+              const competitions = await ApiService.fetchCompetitions();
+              const activeCompetition = competitions.find(c => c.status === 'ACTIVE');
+              
+              if (!activeCompetition) {
+                Alert.alert('Aviso', 'No se encontró ninguna competencia en estado "ACTIVE" en el servidor.');
+                setIsImporting(false);
+                return;
+              }
+
+              const serverEntries = await ApiService.fetchLatestEntries(activeCompetition.id);
+              
+              if (serverEntries.length === 0) {
+                Alert.alert('Aviso', `La competencia "${activeCompetition.name}" no tiene competidores inscriptos.`);
+                setIsImporting(false);
+                return;
+              }
+
+              await importActiveCompetitionData(activeCompetition, serverEntries);
+
+              Alert.alert(
+                'Éxito',
+                `Se importó correctamente la competencia:\n"${activeCompetition.name}"\n\nSe cargaron ${serverEntries.length} binomios y sus registros de tiempo locales.`
+              );
+              await reloadEntries();
+            } catch (error: any) {
+              console.error('Error importing:', error);
+              Alert.alert('Error', `Ocurrió un error al descargar los competidores: ${error?.message || error}`);
+            } finally {
+              setIsImporting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleResetLocalDb = async () => {
+    Alert.alert(
+      'Restablecer Base de Datos',
+      '¿Desea borrar toda la base de datos local y la cola de sincronización? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Restablecer', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const db = await getDatabase();
+              await db.runAsync('DELETE FROM sync_queue;');
+              // Delete in reverse order of foreign key dependency
+              await db.runAsync('DELETE FROM vet_inspections;');
+              await db.runAsync('DELETE FROM timing_records;');
+              await db.runAsync('DELETE FROM competition_entries;');
+              
+              Alert.alert('Éxito', 'Base de datos local restablecida correctamente.');
+              await reloadEntries();
+            } catch (e: any) {
+              console.error('Failed to reset db:', e);
+              Alert.alert('Error', `No se pudo restablecer la base de datos: ${e?.message || e}`);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Filter local cache according to Judge filters
@@ -147,6 +379,20 @@ export default function App() {
         </View>
       </View>
 
+      {/* API Configuration bar */}
+      <View style={styles.apiConfigBar}>
+        <Text style={styles.apiConfigLabel}>Servidor API:</Text>
+        <TextInput
+          style={styles.apiInput}
+          value={apiUrl}
+          onChangeText={updateApiUrl}
+          placeholder="http://192.168.1.24:3000"
+          placeholderTextColor="#64748B"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
       {/* 2. SYNC QUEUE UTILITY (Offline-First actions queue indicator) */}
       <View style={styles.syncPanel}>
         <View style={styles.syncInfo}>
@@ -155,24 +401,82 @@ export default function App() {
             {pendingSyncCount === 0 ? 'Al día ✓' : `${pendingSyncCount} pendientes`}
           </Text>
         </View>
-        {pendingSyncCount > 0 && (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity 
-            style={[styles.syncBtn, !isOnline && styles.syncBtnDisabled]} 
-            onPress={handleForceSync}
-            disabled={isForceSyncing || !isOnline}
+            style={styles.resetBtn} 
+            onPress={handleResetLocalDb}
           >
-            {isForceSyncing ? (
+            <Text style={styles.syncBtnText}>Limpiar Base</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.importBtn, !isOnline && styles.syncBtnDisabled]} 
+            onPress={handleImportActiveCompetition}
+            disabled={isImporting || !isOnline}
+          >
+            {isImporting ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Text style={styles.syncBtnText}>Sincronizar</Text>
+              <Text style={styles.syncBtnText}>Importar Servidor</Text>
             )}
           </TouchableOpacity>
-        )}
+          {pendingSyncCount > 0 && (
+            <TouchableOpacity 
+              style={[styles.syncBtn, !isOnline && styles.syncBtnDisabled]} 
+              onPress={handleForceSync}
+              disabled={isForceSyncing || !isOnline}
+            >
+              {isForceSyncing ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.syncBtnText}>Sincronizar</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* 3. SCREEN NAVIGATOR */}
       {currentScreen === 'LIST' && (
         <View style={styles.mainContent}>
+          {/* Quick Timing Entry Stream Button */}
+          <TouchableOpacity 
+            style={styles.quickTimingBtn} 
+            onPress={() => {
+              setSelectedEntry(null);
+              setCurrentScreen('TIMING');
+            }}
+          >
+            <Text style={styles.quickTimingBtnText}>
+              ⏱️ Puesto {stationRecordType === 'START' ? 'Largada' :
+                        stationRecordType === 'ARRIVAL' ? 'Arribos' :
+                        stationRecordType === 'VET_IN' ? 'Vet In' :
+                        'Vet Out'}: Registrar (Stream)
+            </Text>
+          </TouchableOpacity>
+
+          {/* Workstation Config Segment bar */}
+          <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
+          <View style={styles.stationConfigBar}>
+            {(Object.keys(TimeRecordType) as Array<keyof typeof TimeRecordType>).map((key) => {
+              const val = TimeRecordType[key];
+              const isActive = stationRecordType === val;
+              return (
+                <TouchableOpacity
+                  key={val}
+                  style={[styles.stationBtn, isActive && styles.stationBtnActive]}
+                  onPress={() => setStationRecordType(val)}
+                >
+                  <Text style={[styles.stationText, isActive && styles.stationTextActive]}>
+                    {val === 'START' ? '🏁 Largada' :
+                     val === 'ARRIVAL' ? '🏁 Arribos' :
+                     val === 'VET_IN' ? '🩺 Vet In' :
+                     '🩺 Vet Out'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           {/* Quick Filter Segment bar */}
           <Text style={styles.sectionLabel}>FILTRAR PARTICIPANTES</Text>
           <View style={styles.filterBar}>
@@ -237,9 +541,10 @@ export default function App() {
         </View>
       )}
 
-      {currentScreen === 'TIMING' && selectedEntry && (
+      {currentScreen === 'TIMING' && (
         <TimingScreen 
           entry={selectedEntry}
+          stationRecordType={stationRecordType}
           onBack={handleBackToList}
           onRecordSuccess={handleBackToList}
         />
@@ -356,6 +661,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 4,
   },
+  importBtn: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+  },
+  resetBtn: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+  },
   syncBtnDisabled: {
     backgroundColor: '#475569',
   },
@@ -415,5 +732,80 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     fontWeight: '600',
+  },
+  quickTimingBtn: {
+    backgroundColor: '#0F172A',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  quickTimingBtnText: {
+    color: '#38BDF8',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  stationConfigBar: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 16,
+    gap: 4,
+  },
+  stationBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  stationBtnActive: {
+    backgroundColor: colors.equusGreen,
+  },
+  stationText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stationTextActive: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+  apiConfigBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  apiConfigLabel: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '800',
+    marginRight: 8,
+    letterSpacing: 0.5,
+  },
+  apiInput: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 4,
   },
 });

@@ -1,11 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn, ManyToOne } from 'typeorm';
 import { ClinicalStatus, MotricityStatus } from '@equuscronos/shared';
 import { TimingRecord } from '../../competitions/entities/timing-record.entity';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('vet_inspections')
 export class VetInspection {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @OneToOne(() => TimingRecord, (record) => record.vetInspection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'timing_record_id' })

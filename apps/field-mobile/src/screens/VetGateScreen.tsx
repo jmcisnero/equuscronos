@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,13 +6,15 @@ import {
   ScrollView, 
   TextInput, 
   TouchableOpacity, 
-  Alert 
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { LocalCompetitionEntry } from '../database/schema';
 import { colors } from '../theme/colors';
 import { Button } from '../components/Button';
 import { getDatabase } from '../database/db';
 import SyncService from '../services/SyncService';
+import { ValidationService } from '../services/ValidationService';
 import { 
   MotricityStatus, 
   ClinicalStatus, 
@@ -40,6 +42,12 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // States for logical sequence and read-only inspection history
+  const [loading, setLoading] = useState(true);
+  const [inspections, setInspections] = useState<any[]>([]);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [recheckAllowed, setRecheckAllowed] = useState(false);
+
   // FEU physiological standard
   const HEART_RATE_LIMIT = 56; 
 
@@ -51,7 +59,110 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const isGaitWarning = motricity === MotricityStatus.NOT_APTO;
   const isEliminationWarning = isGaitWarning || (isHeartRateWarning && attempt === 2);
 
+  const loadInspections = async () => {
+    try {
+      const db = await getDatabase();
+      const rows = await db.getAllAsync<any>(
+        `SELECT tr.id as timing_record_id, vi.id as vet_inspection_id, vi.heart_rate, vi.temperature, vi.motricity, vi.metabolic, vi.attempt_number, vi.is_recheck_required, vi.notes
+         FROM timing_records tr
+         LEFT JOIN vet_inspections vi ON vi.timing_record_id = tr.id
+         WHERE tr.entry_id = ? AND tr.stage_id = ? AND tr.record_type = 'VET_IN' AND tr.is_void = 0
+         ORDER BY vi.attempt_number ASC;`,
+        [entry.id, entry.current_stage_id]
+      );
+
+      setInspections(rows);
+
+      if (rows.length === 0) {
+        // Ningún intento registrado
+        setAttempt(1);
+        setRecheckAllowed(false);
+        setIsReadOnly(false);
+      } else if (rows.length === 1) {
+        const first = rows[0];
+        if (first.is_recheck_required === 1) {
+          // El primero requiere rechequeo. Habilitar intento 2.
+          setRecheckAllowed(true);
+          setAttempt(2); // Por defecto mostrar intento 2 para ingresar
+          setIsReadOnly(false);
+        } else {
+          // Finalizado. Mostrar intento 1 en modo lectura.
+          setRecheckAllowed(false);
+          setAttempt(1);
+          setIsReadOnly(true);
+          // Cargar valores
+          setHeartRate(String(first.heart_rate || ''));
+          setTemperature(String(first.temperature || ''));
+          setMotricity(first.motricity || MotricityStatus.APTO);
+          setMetabolic(first.metabolic || ClinicalStatus.NORMAL);
+          setNotes(first.notes || '');
+        }
+      } else {
+        // Dos intentos registrados. Finalizado.
+        setRecheckAllowed(true);
+        setAttempt(2); // Por defecto mostrar el último intento (2)
+        setIsReadOnly(true);
+        const second = rows[1];
+        setHeartRate(String(second.heart_rate || ''));
+        setTemperature(String(second.temperature || ''));
+        setMotricity(second.motricity || MotricityStatus.APTO);
+        setMetabolic(second.metabolic || ClinicalStatus.NORMAL);
+        setNotes(second.notes || '');
+      }
+    } catch (e) {
+      console.error('[VetGateScreen] Error loading inspections:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInspections();
+  }, [entry.id, entry.current_stage_id]);
+
+  const handleAttemptChange = (num: number) => {
+    if (num === 1) {
+      const first = inspections.find(ins => ins.attempt_number === 1);
+      if (first) {
+        setHeartRate(String(first.heart_rate || ''));
+        setTemperature(String(first.temperature || ''));
+        setMotricity(first.motricity || MotricityStatus.APTO);
+        setMetabolic(first.metabolic || ClinicalStatus.NORMAL);
+        setNotes(first.notes || '');
+        setIsReadOnly(true);
+      } else {
+        setHeartRate('');
+        setTemperature('38.2');
+        setMotricity(MotricityStatus.APTO);
+        setMetabolic(ClinicalStatus.NORMAL);
+        setNotes('');
+        setIsReadOnly(false);
+      }
+      setAttempt(1);
+    } else if (num === 2) {
+      const second = inspections.find(ins => ins.attempt_number === 2);
+      if (second) {
+        setHeartRate(String(second.heart_rate || ''));
+        setTemperature(String(second.temperature || ''));
+        setMotricity(second.motricity || MotricityStatus.APTO);
+        setMetabolic(second.metabolic || ClinicalStatus.NORMAL);
+        setNotes(second.notes || '');
+        setIsReadOnly(true);
+      } else {
+        setHeartRate('');
+        setTemperature('38.2');
+        setMotricity(MotricityStatus.APTO);
+        setMetabolic(ClinicalStatus.NORMAL);
+        setNotes('');
+        setIsReadOnly(false);
+      }
+      setAttempt(2);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (isReadOnly) return;
+
     if (!heartRate || isNaN(parsedHr)) {
       Alert.alert('Datos requeridos', 'Por favor, ingrese una frecuencia cardíaca válida.');
       return;
@@ -67,35 +178,73 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
     const tenantId = entry.tenant_id;
     const stageId = entry.current_stage_id;
 
-    // Decision Logic under FEU Regulations
-    let targetStatus = ParticipantStatus.RESTING;
-    let isApproved = 1;
-    let eliminationType: EliminationCode | null = null;
-    let eliminationReason = null;
-    let isRecheckRequired = 0;
-
-    if (motricity === MotricityStatus.NOT_APTO) {
-      // Gait Lameness -> Direct DQ
-      targetStatus = ParticipantStatus.DQ;
-      isApproved = 0;
-      eliminationType = EliminationCode.GAIT;
-      eliminationReason = 'Cojera / Claudicación detectada en mesa veterinaria.';
-    } else if (parsedHr > HEART_RATE_LIMIT) {
-      if (attempt === 1) {
-        // High pulse attempt 1 -> mark for recheck
-        targetStatus = ParticipantStatus.VET_CHECK;
-        isRecheckRequired = 1;
-      } else {
-        // High pulse attempt 2 -> Metabolic elimination
-        targetStatus = ParticipantStatus.DQ;
-        isApproved = 0;
-        eliminationType = EliminationCode.METABOLIC;
-        eliminationReason = `Frecuencia cardíaca excedida (${parsedHr} ppm) tras el segundo intento en Vet Gate. Límite: ${HEART_RATE_LIMIT} ppm.`;
-      }
-    }
-
     try {
       const db = await getDatabase();
+
+      // Consultar el arribo para validar la barrera de 20 minutos
+      const arrivalRecord = await db.getFirstAsync<any>(
+        `SELECT recorded_at FROM timing_records WHERE entry_id = ? AND stage_id = ? AND record_type = 'ARRIVAL' AND is_void = 0;`,
+        [entry.id, stageId]
+      );
+
+      let arrivalTime: Date | null = null;
+      if (arrivalRecord && arrivalRecord.recorded_at) {
+        arrivalTime = new Date(arrivalRecord.recorded_at);
+      }
+
+      const presentationTime = new Date(now);
+      const diffMs = arrivalTime ? (presentationTime.getTime() - arrivalTime.getTime()) : 0;
+      const diffMinutes = Math.round(diffMs / (1000 * 60));
+
+      // Decision Logic under FEU Regulations
+      let targetStatus = ParticipantStatus.RESTING;
+      let isApproved = 1;
+      let eliminationType: EliminationCode | null = null;
+      let eliminationReason = null;
+      let isRecheckRequired = 0;
+
+      if (arrivalTime && diffMs > 20 * 60 * 1000) {
+        // Fuera de tiempo de recuperación (Barrera del minuto 20 - Art. 31 FEU)
+        targetStatus = ParticipantStatus.DQ;
+        isApproved = 0;
+        eliminationType = EliminationCode.FTQ;
+        eliminationReason = `Fuera de tiempo de recuperación: ${diffMinutes} minutos (Límite: 20 min).`;
+      } else if (motricity === MotricityStatus.NOT_APTO) {
+        // Gait Lameness -> Direct DQ
+        targetStatus = ParticipantStatus.DQ;
+        isApproved = 0;
+        eliminationType = EliminationCode.GAIT;
+        eliminationReason = 'Cojera / Claudicación detectada en mesa veterinaria.';
+      } else if (parsedHr > HEART_RATE_LIMIT) {
+        if (attempt === 1) {
+          // High pulse attempt 1 -> mark for recheck
+          targetStatus = ParticipantStatus.VET_CHECK;
+          isRecheckRequired = 1;
+        } else {
+          // High pulse attempt 2 -> Metabolic elimination
+          targetStatus = ParticipantStatus.DQ;
+          isApproved = 0;
+          eliminationType = EliminationCode.METABOLIC;
+          eliminationReason = `Frecuencia cardíaca excedida (${parsedHr} ppm) tras el segundo intento en Vet Gate. Límite: ${HEART_RATE_LIMIT} ppm.`;
+        }
+      }
+
+      // 0. Validar secuencia e idempotencia del nuevo VET_IN en SQLite
+      const valResult = await ValidationService.validateTimingRecord(
+        db,
+        entry.id,
+        stageId,
+        TimeRecordType.VET_IN
+      );
+
+      if (!valResult.isValid) {
+        Alert.alert(
+          'Validación de Secuencia',
+          valResult.error || 'Operación denegada por reglas FEU.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
 
       // 1. Write VET_IN Timing Record locally
       await db.runAsync(
@@ -216,6 +365,14 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.equusGreen} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
@@ -238,8 +395,18 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         </View>
       </View>
 
+      {/* Read-Only Status Banner */}
+      {isReadOnly && (
+        <View style={styles.infoAlertBanner}>
+          <Text style={styles.infoAlertTitle}>ℹ️ INSPECCIÓN FINALIZADA</Text>
+          <Text style={styles.infoAlertText}>
+            Inspección finalizada. No se permiten rechequeos.
+          </Text>
+        </View>
+      )}
+
       {/* FEU Warning Alert */}
-      {isEliminationWarning && (
+      {!isReadOnly && isEliminationWarning && (
         <View style={styles.dangerAlertBanner}>
           <Text style={styles.dangerAlertTitle}>🛑 ELIMINACIÓN REGLAMENTARIA FEU</Text>
           <Text style={styles.dangerAlertText}>
@@ -250,7 +417,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         </View>
       )}
 
-      {isHeartRateWarning && attempt === 1 && (
+      {!isReadOnly && isHeartRateWarning && attempt === 1 && (
         <View style={styles.warningAlertBanner}>
           <Text style={styles.warningAlertTitle}>⚠️ PULSO ELEVADO (INTENTO 1)</Text>
           <Text style={styles.warningAlertText}>
@@ -273,6 +440,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
             value={heartRate}
             onChangeText={setHeartRate}
             maxLength={3}
+            editable={!isReadOnly}
           />
         </View>
 
@@ -286,6 +454,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
             value={temperature}
             onChangeText={setTemperature}
             maxLength={4}
+            editable={!isReadOnly}
           />
         </View>
 
@@ -293,17 +462,33 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Número de Intento (FEU)</Text>
           <View style={styles.segmentSelector}>
-            {[1, 2].map((num) => (
-              <TouchableOpacity
-                key={num}
-                style={[styles.segmentBtn, attempt === num && styles.segmentBtnActive]}
-                onPress={() => setAttempt(num)}
-              >
-                <Text style={[styles.segmentText, attempt === num && styles.segmentTextActive]}>
-                  Intento {num}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {[1, 2].map((num) => {
+              const isDisabled = num === 2 && !recheckAllowed;
+              return (
+                <TouchableOpacity
+                  key={num}
+                  style={[
+                    styles.segmentBtn, 
+                    attempt === num && styles.segmentBtnActive,
+                    isDisabled && { opacity: 0.4 }
+                  ]}
+                  onPress={() => {
+                    if (isDisabled) {
+                      Alert.alert(
+                        'Acción Denegada',
+                        'El Intento 2 solo se habilita si el Intento 1 requiere rechequeo (pulso superado).'
+                      );
+                      return;
+                    }
+                    handleAttemptChange(num);
+                  }}
+                >
+                  <Text style={[styles.segmentText, attempt === num && styles.segmentTextActive]}>
+                    Intento {num}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </View>
@@ -327,7 +512,10 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                     isSelected && val === 'APTO' && { backgroundColor: colors.success },
                     isSelected && val === 'NOT_APTO' && { backgroundColor: colors.danger }
                   ]}
-                  onPress={() => setMotricity(val)}
+                  onPress={() => {
+                    if (isReadOnly) return;
+                    setMotricity(val);
+                  }}
                 >
                   <Text style={[styles.segmentText, isSelected && { color: colors.white }]}>
                     {val === 'APTO' ? '🟢 APTO' : '🔴 NO APTO (Cojera)'}
@@ -354,7 +542,10 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                     isSelected && val === 'COMPROMISED' && { backgroundColor: colors.warning },
                     isSelected && val === 'CRITICAL' && { backgroundColor: colors.danger }
                   ]}
-                  onPress={() => setMetabolic(val)}
+                  onPress={() => {
+                    if (isReadOnly) return;
+                    setMetabolic(val);
+                  }}
                 >
                   <Text style={[styles.segmentText, isSelected && { color: colors.white }]}>
                     {val}
@@ -375,6 +566,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
             numberOfLines={4}
             value={notes}
             onChangeText={setNotes}
+            editable={!isReadOnly}
           />
         </View>
       </View>
@@ -386,6 +578,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           variant={isEliminationWarning ? 'danger' : 'primary'}
           isLoading={isSubmitting}
           onPress={handleSubmit}
+          disabled={isReadOnly || isSubmitting}
         />
         <Button 
           title="Cancelar"
@@ -507,6 +700,25 @@ const styles = StyleSheet.create({
   },
   warningAlertText: {
     color: '#78350F',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  infoAlertBanner: {
+    backgroundColor: '#E0F2FE',
+    borderWidth: 2,
+    borderColor: '#0284C7',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 16,
+  },
+  infoAlertTitle: {
+    color: '#0369A1',
+    fontWeight: '900',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  infoAlertText: {
+    color: '#0C4A6E',
     fontSize: 13,
     fontWeight: '700',
   },

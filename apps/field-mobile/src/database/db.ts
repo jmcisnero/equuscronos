@@ -36,8 +36,8 @@ export async function initDatabase(): Promise<void> {
     );
     
     if (countResult && countResult.count === 0) {
-      console.log('[SQLite] No local entries found. Seeding mock FEU competition entries...');
-      await seedLocalDatabase(db);
+      console.log('[SQLite] No local entries found. Skipping mock seeding to load active competition from server.');
+      // await seedLocalDatabase(db);
     }
   } catch (error) {
     console.error('[SQLite] Error initializing database:', error);

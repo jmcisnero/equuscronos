@@ -16,6 +16,8 @@ export interface Competition {
   status: string;
   stages: Stage[];
   createdAt?: string;
+  tenant?: { id: string; name: string };
+  competitionType?: { id: string; name: string };
 }
 
 export interface CreateStageDto {
@@ -37,4 +39,4 @@ export interface CreateCompetitionDto {
   stages: CreateStageDto[];
 }
 
-export interface UpdateCompetitionDto extends Partial<CreateCompetitionDto> {}
+export type UpdateCompetitionDto = Partial<CreateCompetitionDto>;

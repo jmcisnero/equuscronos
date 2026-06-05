@@ -20,7 +20,7 @@ export class WeightControl {
   weightRecorded: number;
 
   @Column({ name: 'control_type', type: 'varchar', length: 50 })
-  controlType: string; // 'INITIAL', 'STAGE_END', 'RANDOM_CHECK'
+  controlType: string; // 'INITIAL', 'NEUTRALIZATION', 'ARRIVAL'
 
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'recorded_by' })

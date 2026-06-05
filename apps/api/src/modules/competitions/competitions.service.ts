@@ -37,7 +37,7 @@ export class CompetitionsService {
         tenant,
         competitionType: compType,
         name: dto.name,
-        competitionDate: new Date(dto.competitionDate),
+        competitionDate: dto.competitionDate,
         startTime: dto.startTime,
         location: dto.location,
         isFederated: dto.isFederated ?? false,
@@ -95,15 +95,11 @@ export class CompetitionsService {
     if (!competition) {
       throw new NotFoundException(`Evento con ID ${id} no encontrado`);
     }
-    //Verificación de integridad del pulso
-if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competition.maxHeartRate) {
-      // El pulso solo se puede tocar en fase de planificación
-      if (competition.status !== CompetitionStatus.PLANNED) {
-        throw new BadRequestException(
-          `No se puede modificar el límite de pulsaciones. El evento se encuentra en estado: ${competition.status}`
-        );
-      }
+    // Bloqueo de estado: Solo se permite editar eventos en estado PLANNED
+    if (competition.status !== CompetitionStatus.PLANNED) {
+      throw new BadRequestException("Solo se permite editar eventos en estado PLANNED");
     }
+
     // Fusionamos los cambios del DTO en la entidad existente
     Object.assign(competition, updateDto);
 
@@ -308,11 +304,11 @@ if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competiti
       competition.status = CompetitionStatus.ACTIVE;
       await queryRunner.manager.save(Competition, competition);
 
-      // 8. Crear registros oficiales TimingRecord de tipo START para todos los binomios activos
-      const startRecords = entries
-        .filter((entry) => entry.status === ParticipantStatus.IN_RACE)
-        .map((entry) => {
-          return queryRunner.manager.create(TimingRecord, {
+      // 8. Crear registros oficiales TimingRecord de tipo START para todos los binomios activos y actualizar su etapa actual
+      const startRecords = [];
+      for (const entry of entries) {
+        if (entry.status === ParticipantStatus.IN_RACE) {
+          const startRecord = queryRunner.manager.create(TimingRecord, {
             tenant: competition.tenant,
             entry: entry,
             stage: firstStage,
@@ -320,7 +316,13 @@ if (updateDto.maxHeartRate !== undefined && updateDto.maxHeartRate !== competiti
             recordedAt: now,
             isApproved: true,
           });
-        });
+          startRecords.push(startRecord);
+
+          // Update currentStage of the entry
+          entry.currentStage = firstStage;
+          await queryRunner.manager.save(CompetitionEntry, entry);
+        }
+      }
 
       if (startRecords.length > 0) {
         await queryRunner.manager.save(TimingRecord, startRecords);

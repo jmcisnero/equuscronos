@@ -1,9 +1,11 @@
 import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent, RemoveEvent } from 'typeorm';
 import { AuditLog } from '../entities/audit-log.entity';
 import { AuditAction } from '@equuscronos/shared';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
+  private static fallbackTenant: Tenant | null = null;
   
   // Escucha cambios en TODAS las entidades del sistema
   listenTo() {
@@ -14,13 +16,15 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   async afterInsert(event: InsertEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
+    const tenant = await this.getTenantForEntity(event);
+    if (!tenant) return;
+
     const auditLog = event.manager.create(AuditLog, {
+      tenant,
       action: AuditAction.INSERT,
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity),
       newData: event.entity,
-      // Nota: userId y tenantId se inyectarían aquí usando ClsService (AsyncLocalStorage) 
-      // en una iteración posterior cuando integremos la autenticación JWT.
     });
     await event.manager.save(AuditLog, auditLog);
   }
@@ -29,12 +33,16 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   async afterUpdate(event: UpdateEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
+    const tenant = await this.getTenantForEntity(event);
+    if (!tenant) return;
+
     const auditLog = event.manager.create(AuditLog, {
+      tenant,
       action: AuditAction.UPDATE,
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity) || this.extractEntityId(event.databaseEntity),
-      oldData: event.databaseEntity, // Estado anterior (Ej: { maxHeartRate: 65 })
-      newData: event.entity,         // Estado nuevo (Ej: { maxHeartRate: 60 })
+      oldData: event.databaseEntity, // Estado anterior
+      newData: event.entity,         // Estado nuevo
     });
     await event.manager.save(AuditLog, auditLog);
   }
@@ -43,7 +51,11 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   async afterRemove(event: RemoveEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
+    const tenant = await this.getTenantForEntity(event);
+    if (!tenant) return;
+
     const auditLog = event.manager.create(AuditLog, {
+      tenant,
       action: AuditAction.DELETE,
       entityName: event.metadata.tableName,
       entityId: event.entityId,
@@ -57,8 +69,28 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   // ====================================================================
 
   /**
+   * Obtiene el tenant para la auditoría, usando la entidad o un fallback.
+   */
+  private async getTenantForEntity(event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>): Promise<Tenant | null> {
+    const entity = event.entity;
+    if (entity) {
+      if (entity.tenant) return entity.tenant;
+      if (entity.competition?.tenant) return entity.competition.tenant;
+      if (entity.entry?.tenant) return entity.entry.tenant;
+    }
+
+    if (!AuditSubscriber.fallbackTenant) {
+      try {
+        AuditSubscriber.fallbackTenant = await event.manager.findOne(Tenant, { order: { name: 'ASC' } });
+      } catch (err) {
+        console.error('[AuditSubscriber] Error fetching fallback tenant:', err);
+      }
+    }
+    return AuditSubscriber.fallbackTenant;
+  }
+
+  /**
    * Previene bucles infinitos: No queremos auditar la tabla de auditoría.
-   * Tampoco auditamos tablas internas de TypeORM como migrations.
    */
   private shouldAudit(tableName: string | undefined): boolean {
     if (!tableName) return false;

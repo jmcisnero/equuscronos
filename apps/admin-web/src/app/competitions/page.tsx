@@ -28,6 +28,9 @@ export default function CompetitionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
+
+  const isFieldsDisabled = editingCompetition !== null && editingCompetition.status !== 'PLANNED';
 
   // Estado del Formulario
   const [formData, setFormData] = useState<{
@@ -117,6 +120,7 @@ export default function CompetitionsPage() {
 
   // Restablecer formulario
   const resetForm = () => {
+    setEditingCompetition(null);
     setFormData({
       name: '',
       competitionDate: '',
@@ -142,7 +146,25 @@ export default function CompetitionsPage() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingCompetition(null);
     resetForm();
+  };
+
+  const handleEditCompetition = (comp: Competition) => {
+    setEditingCompetition(comp);
+    setFormData({
+      name: comp.name,
+      competitionDate: comp.competitionDate ? comp.competitionDate.substring(0, 10) : '',
+      startTime: comp.startTime ? comp.startTime.substring(0, 5) : '07:00',
+      location: comp.location || '',
+      isFederated: comp.isFederated ?? false,
+      maxHeartRate: comp.maxHeartRate ?? 65,
+      stages: comp.stages || [],
+      tenantId: comp.tenant?.id || '',
+      competitionTypeId: comp.competitionType?.id || '',
+    });
+    setFormError(null);
+    setIsModalOpen(true);
   };
 
   // FEU Preset Auto-complete
@@ -217,16 +239,6 @@ export default function CompetitionsPage() {
     setFormError(null);
 
     // Validaciones de negocio
-    if (!formData.tenantId) {
-      setFormError('Debe seleccionar un Club / Organización (Tenant) de la lista.');
-      setIsSaving(false);
-      return;
-    }
-    if (!formData.competitionTypeId) {
-      setFormError('Debe seleccionar una Modalidad de Competencia de la lista.');
-      setIsSaving(false);
-      return;
-    }
     if (!formData.name.trim()) {
       setFormError('El nombre oficial de la competencia es requerido.');
       setIsSaving(false);
@@ -237,33 +249,56 @@ export default function CompetitionsPage() {
       setIsSaving(false);
       return;
     }
-    if (!formData.startTime) {
-      setFormError('La hora programada de largada (Hora Cero) es obligatoria.');
-      setIsSaving(false);
-      return;
-    }
-    if (formData.stages.length === 0) {
-      setFormError('Debe definir al menos 1 etapa para la competencia.');
-      setIsSaving(false);
-      return;
-    }
 
-    // Preparar el DTO de creación
-    const createDto: CreateCompetitionDto = {
-      tenantId: formData.tenantId,
-      competitionTypeId: formData.competitionTypeId,
-      name: formData.name.trim(),
-      competitionDate: formData.competitionDate, // Transmitida como string simple YYYY-MM-DD
-      startTime: formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime,
-      location: formData.location.trim() || undefined,
-      isFederated: formData.isFederated,
-      maxHeartRate: formData.maxHeartRate,
-      stages: formData.stages
-    };
+    if (!editingCompetition) {
+      if (!formData.tenantId) {
+        setFormError('Debe seleccionar un Club / Organización (Tenant) de la lista.');
+        setIsSaving(false);
+        return;
+      }
+      if (!formData.competitionTypeId) {
+        setFormError('Debe seleccionar una Modalidad de Competencia de la lista.');
+        setIsSaving(false);
+        return;
+      }
+      if (!formData.startTime) {
+        setFormError('La hora programada de largada (Hora Cero) es obligatoria.');
+        setIsSaving(false);
+        return;
+      }
+      if (formData.stages.length === 0) {
+        setFormError('Debe definir al menos 1 etapa para la competencia.');
+        setIsSaving(false);
+        return;
+      }
+    }
 
     try {
-      await CompetitionService.create(createDto);
+      if (editingCompetition) {
+        // Modo Edición
+        await CompetitionService.update(editingCompetition.id, {
+          name: formData.name.trim(),
+          competitionDate: formData.competitionDate,
+          location: formData.location.trim() || undefined,
+          maxHeartRate: formData.maxHeartRate,
+        });
+      } else {
+        // Modo Creación
+        const createDto: CreateCompetitionDto = {
+          tenantId: formData.tenantId,
+          competitionTypeId: formData.competitionTypeId,
+          name: formData.name.trim(),
+          competitionDate: formData.competitionDate, // Transmitida como string simple YYYY-MM-DD
+          startTime: formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime,
+          location: formData.location.trim() || undefined,
+          isFederated: formData.isFederated,
+          maxHeartRate: formData.maxHeartRate,
+          stages: formData.stages
+        };
+        await CompetitionService.create(createDto);
+      }
       setIsModalOpen(false);
+      setEditingCompetition(null);
       resetForm();
       loadCompetitions(searchQuery);
     } catch (err: any) {
@@ -442,6 +477,19 @@ export default function CompetitionsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              handleEditCompetition(comp);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title={comp.status === 'PLANNED' ? `Editar Competencia ${comp.name}` : `Ver detalles de ${comp.name}`}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                            </svg>
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleDeleteCompetition(comp.id, comp.name);
                             }}
                             className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
@@ -472,9 +520,17 @@ export default function CompetitionsPage() {
             <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">
-                  Planificar Nueva Competencia
+                  {editingCompetition 
+                    ? (isFieldsDisabled 
+                        ? 'Detalles de Competencia (Inmutable)' 
+                        : 'Modificar Competencia')
+                    : 'Planificar Nueva Competencia'}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Control de Etapas y Reglas de Admisión FEU</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {editingCompetition 
+                    ? `Estado actual de la carrera: ${editingCompetition.status}` 
+                    : 'Control de Etapas y Reglas de Admisión FEU'}
+                </p>
               </div>
               
               <button
@@ -508,9 +564,10 @@ export default function CompetitionsPage() {
                   </label>
                   <select
                     required
+                    disabled={editingCompetition !== null}
                     value={formData.tenantId}
                     onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   >
                     <option value="">Seleccione un Club...</option>
                     {tenants.map(tenant => (
@@ -528,9 +585,10 @@ export default function CompetitionsPage() {
                   </label>
                   <select
                     required
+                    disabled={editingCompetition !== null}
                     value={formData.competitionTypeId}
                     onChange={(e) => setFormData({ ...formData, competitionTypeId: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   >
                     <option value="">Seleccione una Modalidad...</option>
                     {competitionTypes.map(type => (
@@ -550,10 +608,11 @@ export default function CompetitionsPage() {
                 <input
                   type="text"
                   required
+                  disabled={isFieldsDisabled}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej: Raid Batalla de Tupambaé"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                 />
               </div>
 
@@ -567,24 +626,68 @@ export default function CompetitionsPage() {
                   <input
                     type="date"
                     required
+                    disabled={isFieldsDisabled}
                     value={formData.competitionDate}
                     onChange={(e) => setFormData({ ...formData, competitionDate: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   />
                 </div>
 
                 {/* Hora de Largada */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                    <svg className="w-3.5 h-3.5 mr-1 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
                     Hora de Largada *
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-mono"
-                  />
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <select
+                        disabled={editingCompetition !== null}
+                        value={formData.startTime.split(':')[0] || '07'}
+                        onChange={(e) => {
+                          const currentMins = formData.startTime.split(':')[1] || '00';
+                          setFormData({ ...formData, startTime: `${e.target.value}:${currentMins}` });
+                        }}
+                        className="w-full pl-3.5 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-bold font-mono appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour} hs
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    <span className="text-slate-400 font-bold text-lg">:</span>
+                    <div className="relative flex-1">
+                      <select
+                        disabled={editingCompetition !== null}
+                        value={formData.startTime.split(':')[1] || '00'}
+                        onChange={(e) => {
+                          const currentHour = formData.startTime.split(':')[0] || '07';
+                          setFormData({ ...formData, startTime: `${currentHour}:${e.target.value}` });
+                        }}
+                        className="w-full pl-3.5 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-bold font-mono appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
+                      >
+                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute} min
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ubicación del Evento */}
@@ -594,10 +697,11 @@ export default function CompetitionsPage() {
                   </label>
                   <input
                     type="text"
+                    disabled={isFieldsDisabled}
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="Ej: Ruta 8, Melo, Cerro Largo"
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   />
                 </div>
               </div>
@@ -614,9 +718,10 @@ export default function CompetitionsPage() {
                     min="40"
                     max="80"
                     required
+                    disabled={isFieldsDisabled}
                     value={formData.maxHeartRate}
                     onChange={(e) => setFormData({ ...formData, maxHeartRate: parseInt(e.target.value, 10) || 65 })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-mono"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-mono disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   />
                 </div>
 
@@ -627,9 +732,10 @@ export default function CompetitionsPage() {
                   </span>
                   <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                     <span className="text-[10px] text-slate-400 font-medium">Habilita ranking nacional FEU</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className={`relative inline-flex items-center ${editingCompetition !== null ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                       <input
                         type="checkbox"
+                        disabled={editingCompetition !== null}
                         checked={formData.isFederated}
                         onChange={(e) => setFormData({ ...formData, isFederated: e.target.checked })}
                         className="sr-only peer"
@@ -650,62 +756,66 @@ export default function CompetitionsPage() {
                   </div>
                   
                   {/* Preset Autocomplete Button */}
-                  <button
-                    type="button"
-                    onClick={handleAutocompletePreset}
-                    className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-800 text-xs font-bold rounded-lg transition-all"
-                  >
-                    ⚡ Autocompletar Raid Corto Estándar (60 Km)
-                  </button>
+                  {!editingCompetition && (
+                    <button
+                      type="button"
+                      onClick={handleAutocompletePreset}
+                      className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-800 text-xs font-bold rounded-lg transition-all"
+                    >
+                      ⚡ Autocompletar Raid Corto Estándar (60 Km)
+                    </button>
+                  )}
                 </div>
 
                 {/* Editor Temporal de Etapas */}
-                <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Campo Distancia */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                        Distancia de Etapa (Km)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="Ej: 40"
-                        value={tempStage.distanceKm}
-                        onChange={(e) => setTempStage({ ...tempStage, distanceKm: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-equus-green text-slate-800 font-semibold"
-                      />
+                {!editingCompetition && (
+                  <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Campo Distancia */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                          Distancia de Etapa (Km)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder="Ej: 40"
+                          value={tempStage.distanceKm}
+                          onChange={(e) => setTempStage({ ...tempStage, distanceKm: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-equus-green text-slate-800 font-semibold"
+                        />
+                      </div>
+
+                      {/* Campo Neutralización */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                          Neutralización / Descanso (Minutos)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Ej: 60"
+                          value={tempStage.neutralizationMinutes}
+                          onChange={(e) => setTempStage({ ...tempStage, neutralizationMinutes: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-equus-green text-slate-800 font-semibold"
+                        />
+                      </div>
                     </div>
 
-                    {/* Campo Neutralización */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                        Neutralización / Descanso (Minutos)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Ej: 60"
-                        value={tempStage.neutralizationMinutes}
-                        onChange={(e) => setTempStage({ ...tempStage, neutralizationMinutes: e.target.value })}
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-equus-green text-slate-800 font-semibold"
-                      />
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-slate-400">
+                        Siguiente Etapa: <span className="font-bold text-slate-600">Etapa Nro. {formData.stages.length + 1}</span>
+                      </span>
+                      
+                      <button
+                        type="button"
+                        onClick={handleAddStage}
+                        className="px-4 py-1.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-xs rounded-lg transition-all shadow-sm"
+                      >
+                        + Agregar Etapa
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-slate-400">
-                      Siguiente Etapa: <span className="font-bold text-slate-600">Etapa Nro. {formData.stages.length + 1}</span>
-                    </span>
-                    
-                    <button
-                      type="button"
-                      onClick={handleAddStage}
-                      className="px-4 py-1.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-xs rounded-lg transition-all shadow-sm"
-                    >
-                      + Agregar Etapa
-                    </button>
-                  </div>
-                </div>
+                )}
 
                 {/* Tabla de Etapas Agregadas */}
                 {formData.stages.length > 0 ? (
@@ -716,7 +826,7 @@ export default function CompetitionsPage() {
                           <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Orden</th>
                           <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Distancia</th>
                           <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Neutralización</th>
-                          <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Remover</th>
+                          {!editingCompetition && <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">Remover</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-mono text-sm">
@@ -725,18 +835,20 @@ export default function CompetitionsPage() {
                             <td className="px-4 py-2 font-bold text-slate-700">Etapa {stage.stageNumber}</td>
                             <td className="px-4 py-2 text-slate-800 font-semibold">{stage.distanceKm} Km</td>
                             <td className="px-4 py-2 text-slate-600">{stage.neutralizationMinutes} minutos</td>
-                            <td className="px-4 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveStage(idx)}
-                                className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
-                                title="Eliminar Etapa"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </td>
+                            {!editingCompetition && (
+                              <td className="px-4 py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveStage(idx)}
+                                  className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                                  title="Eliminar Etapa"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -746,7 +858,7 @@ export default function CompetitionsPage() {
                     <div className="bg-slate-50/70 px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-600 border-t border-slate-100">
                       <span>Total de la Carrera:</span>
                       <span className="font-bold text-slate-900 text-sm">
-                        {formData.stages.reduce((acc, s) => acc + s.distanceKm, 0)} Km
+                        {formData.stages.reduce((acc, s) => acc + Number(s.distanceKm), 0).toFixed(2)} Km
                       </span>
                     </div>
                   </div>
@@ -764,21 +876,23 @@ export default function CompetitionsPage() {
                   onClick={handleCloseModal}
                   className="px-4 py-2 text-slate-500 hover:text-slate-700 text-sm font-bold transition-all focus:outline-none"
                 >
-                  Cancelar
+                  {isFieldsDisabled ? 'Cerrar' : 'Cancelar'}
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2 animate-pulse-once"
-                >
-                  {isSaving && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  )}
-                  <span>+ Crear Competencia</span>
-                </button>
+                {!isFieldsDisabled && (
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2 animate-pulse-once"
+                  >
+                    {isSaving && (
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    )}
+                    <span>{editingCompetition ? 'Guardar Cambios' : '+ Crear Competencia'}</span>
+                  </button>
+                )}
               </div>
 
             </form>

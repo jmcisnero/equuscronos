@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsBoolean, IsNumber, Min, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCompetitionEntryDto {
@@ -33,6 +33,22 @@ export class CreateCompetitionEntryDto {
   @ApiProperty({ description: 'Peso registrado (lastre o total) en kg', example: 85.00 }) 
   @IsNumber({ maxDecimalPlaces: 2 }) 
   ballastWeight: number;
+
+  @ApiPropertyOptional({ description: 'Peso del jinete en kg', example: 70.00 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  riderWeight?: number;
+
+  @ApiPropertyOptional({ description: 'Peso de la montura / aperos en kg', example: 15.00 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  tackWeight?: number;
+
+  @ApiPropertyOptional({ description: 'Elementos precintados', example: ['Jergón', 'Mandil', 'Montura'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  sealedItems?: string[];
 
   @ApiProperty({ description: 'Número de precinto asignado para el lastre', example: 'PREC-2026-001' })
   @IsString()

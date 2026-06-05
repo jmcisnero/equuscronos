@@ -3,11 +3,16 @@ import { TimeRecordType, EliminationCode } from '@equuscronos/shared';
 import { CompetitionEntry } from '../../competition-entries/entities/competition-entry.entity';
 import { Stage } from './stage.entity';
 import { VetInspection } from '../../vet-inspections/entities/vet-inspection.entity';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('timing_records')
 export class TimingRecord {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @ManyToOne(() => CompetitionEntry, (entry) => entry.timingRecords, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'entry_id' })

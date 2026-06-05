@@ -49,6 +49,15 @@ export class CompetitionEntry {
   @Column({ name: 'ballast_weight', type: 'decimal', precision: 5, scale: 2, default: 0.00 })
   ballastWeight: number;
 
+  @Column({ name: 'rider_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  riderWeight?: number;
+
+  @Column({ name: 'tack_weight', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  tackWeight?: number;
+
+  @Column({ name: 'sealed_items', type: 'jsonb', nullable: true })
+  sealedItems?: string[];
+
   @Column({ name: 'seal_number', type: 'varchar', length: 255, nullable: true })
   sealNumber: string;
 

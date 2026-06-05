@@ -22,7 +22,7 @@ export class Competition {
   name: string;
 
   @Column({ name: 'competition_date', type: 'date' })
-  competitionDate: Date;
+  competitionDate: Date | string;
 
   @Column({ name: 'start_time', type: 'time', default: '07:00:00' })
   startTime: string;

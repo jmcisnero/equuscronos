@@ -1,76 +1,127 @@
 import axios, { AxiosInstance } from 'axios';
 import { LocalTimingRecord, LocalVetInspection } from '../database/schema';
+import { getDatabase } from '../database/db';
 
-// API BASE URL - In production, this would be an environment variable.
-// In Expo, localhost refers to the emulator, so we target a common development IP or a fallback.
-const API_BASE_URL = 'https://api.equuscronos.com/api'; // Or your local API e.g. 'http://10.0.2.2:3000/api' for Android emulator
+const DEFAULT_API_BASE_URL = 'http://192.168.1.24:3000';
 
 class ApiService {
   private client: AxiosInstance;
+  private currentBaseUrl: string = DEFAULT_API_BASE_URL;
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: this.currentBaseUrl,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
-        // In a real application, we would retrieve these from a secure store (e.g. expo-secure-store)
+        // Default tenant header for development multitenancy
         'x-tenant-id': '77777777-7777-7777-7777-777777777777',
       },
     });
 
-    // Request interceptor to attach JWT token
+    // Request interceptor to attach JWT token (placeholder) and update baseURL dynamically
     this.client.interceptors.request.use(
       async (config) => {
-        // Retrieve bearer token from local storage/secure storage here
-        // const token = await SecureStore.getItemAsync('user_token');
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`;
-        // }
+        config.baseURL = this.currentBaseUrl;
         return config;
       },
       (error) => Promise.reject(error)
     );
   }
 
-  /**
-   * Syncs a timing record to the backend Postgres DB
-   */
-  async syncTimingRecord(record: LocalTimingRecord): Promise<void> {
-    // Map SQLite boolean representations (0/1) back to backend format
-    const payload = {
-      ...record,
-      is_approved: record.is_approved === 1,
-      is_void: record.is_void === 1,
-    };
-    
-    await this.client.post('/timing/sync', payload);
+  getBaseUrl(): string {
+    return this.currentBaseUrl;
+  }
+
+  setBaseUrl(url: string) {
+    this.currentBaseUrl = url;
   }
 
   /**
-   * Syncs a vet inspection record to the backend Postgres DB
+   * Syncs a timing record to the backend Postgres DB mapping SQLite layout to CreateTimingRecordDto
    */
-  async syncVetInspection(inspection: LocalVetInspection): Promise<void> {
+  async syncTimingRecord(record: LocalTimingRecord): Promise<any> {
+    const db = await getDatabase();
+    
+    // Retrieve competition_id and bib_number from local SQLite entries cache
+    const entry = await db.getFirstAsync<{ competition_id: string; bib_number: number }>(
+      'SELECT competition_id, bib_number FROM competition_entries WHERE id = ?;',
+      [record.entry_id]
+    );
+
+    if (!entry) {
+      throw new Error(`Local competitor entry with ID ${record.entry_id} not found.`);
+    }
+
     const payload = {
-      ...inspection,
-      is_recheck_required: inspection.is_recheck_required === 1,
+      competitionId: entry.competition_id,
+      stageId: record.stage_id,
+      bibNumber: entry.bib_number,
+      recordType: record.record_type,
+      recordedAt: record.recorded_at,
+      isApproved: record.is_approved === 1,
+      eliminationType: record.elimination_type || undefined,
+      eliminationReason: record.elimination_reason || undefined,
+    };
+    
+    const response = await this.client.post('/timing', payload);
+    return response.data;
+  }
+
+  /**
+   * Updates an existing timing record in the backend Postgres DB
+   */
+  async updateTimingRecord(id: string, payload: { recordedAt: string }): Promise<any> {
+    const response = await this.client.patch(`/timing/${id}`, payload);
+    return response.data;
+  }
+
+  /**
+   * Voids an existing timing record in the backend Postgres DB
+   */
+  async voidTimingRecord(id: string, payload: { voidReason: string }): Promise<any> {
+    const response = await this.client.patch(`/timing/${id}/void`, payload);
+    return response.data;
+  }
+
+  /**
+   * Syncs a vet inspection record to the backend Postgres DB mapping to CreateVetInspectionDto
+   */
+  async syncVetInspection(inspection: LocalVetInspection): Promise<any> {
+    const payload = {
+      timingRecordId: inspection.timing_record_id,
+      heartRate: inspection.heart_rate,
+      temperature: inspection.temperature || undefined,
+      motricity: inspection.motricity,
+      metabolic: inspection.metabolic,
+      notes: inspection.notes || undefined,
     };
 
-    await this.client.post('/vet-inspections/sync', payload);
+    const response = await this.client.post('/vet-inspections', payload);
+    return response.data;
   }
 
   /**
    * Syncs a competition entry status update to the backend Postgres DB
    */
-  async syncEntryStatus(entryId: string, status: string): Promise<void> {
-    await this.client.patch(`/competition-entries/${entryId}/status`, { status });
+  async syncEntryStatus(entryId: string, status: string): Promise<any> {
+    const response = await this.client.patch(`/admin/entries/${entryId}`, { status });
+    return response.data;
   }
 
   /**
    * Fetches latest entries from backend to update local cache
    */
   async fetchLatestEntries(competitionId: string): Promise<any[]> {
-    const response = await this.client.get(`/competitions/${competitionId}/entries`);
+    const response = await this.client.get(`/admin/entries?competitionId=${competitionId}`);
+    return response.data;
+  }
+
+  /**
+   * Fetches all competitions from backend
+   */
+  async fetchCompetitions(): Promise<any[]> {
+    const response = await this.client.get('/admin/competitions');
     return response.data;
   }
 }

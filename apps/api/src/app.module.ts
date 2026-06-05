@@ -15,6 +15,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { WeightControlsModule } from './modules/weight-controls/weight-controls.module';
 import { VetInspectionsModule } from './modules/vet-inspections/vet-inspections.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     WeightControlsModule,
     VetInspectionsModule,
     DashboardModule,
+    LeaderboardModule,
   ],
 })
 export class AppModule {}

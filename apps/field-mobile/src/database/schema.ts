@@ -50,7 +50,7 @@ export interface LocalVetInspection {
 
 export interface SyncQueueItem {
   id: number;
-  action_type: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS';
+  action_type: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS' | 'UPDATE_TIMING' | 'VOID_TIMING';
   table_name: 'timing_records' | 'vet_inspections' | 'competition_entries';
   payload: string; // JSON string
   created_at: string;

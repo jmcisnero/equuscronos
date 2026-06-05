@@ -59,7 +59,7 @@ class SyncService {
    * If online, it schedules a sync task immediately.
    */
   async enqueueAction(
-    actionType: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS',
+    actionType: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS' | 'UPDATE_TIMING' | 'VOID_TIMING',
     tableName: 'timing_records' | 'vet_inspections' | 'competition_entries',
     payload: any
   ): Promise<void> {
@@ -127,15 +127,64 @@ class SyncService {
           const payload = JSON.parse(item.payload);
 
           // Distribute action to corresponding Api endpoint
+          let responseData: any = null;
           switch (item.action_type) {
             case 'CREATE_TIMING':
-              await ApiService.syncTimingRecord(payload);
+              responseData = await ApiService.syncTimingRecord(payload);
+              if (responseData && responseData.id) {
+                const newId = responseData.id;
+                const oldId = payload.id;
+
+                console.log(`[SyncService] Propagating new ID from backend: ${oldId} -> ${newId}`);
+
+                // Update SQLite database (temporarily disabling foreign keys to avoid violations)
+                await db.execAsync('PRAGMA foreign_keys = OFF;');
+                await db.runAsync('UPDATE vet_inspections SET timing_record_id = ? WHERE timing_record_id = ?;', [newId, oldId]);
+                await db.runAsync('UPDATE timing_records SET id = ? WHERE id = ?;', [newId, oldId]);
+                await db.execAsync('PRAGMA foreign_keys = ON;');
+
+                // Update remaining items in the sync queue that reference this ID
+                const remainingItems = await db.getAllAsync<SyncQueueItem>(
+                  'SELECT * FROM sync_queue WHERE id > ?;',
+                  [item.id]
+                );
+                for (const remaining of remainingItems) {
+                  let remPayload = JSON.parse(remaining.payload);
+                  let changed = false;
+
+                  if (remPayload.timingRecordId === oldId) {
+                    remPayload.timingRecordId = newId;
+                    changed = true;
+                  }
+                  if (remPayload.timing_record_id === oldId) {
+                    remPayload.timing_record_id = newId;
+                    changed = true;
+                  }
+                  if (remPayload.id === oldId) {
+                    remPayload.id = newId;
+                    changed = true;
+                  }
+
+                  if (changed) {
+                    await db.runAsync(
+                      'UPDATE sync_queue SET payload = ? WHERE id = ?;',
+                      [JSON.stringify(remPayload), remaining.id]
+                    );
+                  }
+                }
+              }
               break;
             case 'CREATE_VET_INSPECTION':
               await ApiService.syncVetInspection(payload);
               break;
             case 'UPDATE_ENTRY_STATUS':
               await ApiService.syncEntryStatus(payload.id, payload.status);
+              break;
+            case 'UPDATE_TIMING':
+              await ApiService.updateTimingRecord(payload.id, { recordedAt: payload.recordedAt });
+              break;
+            case 'VOID_TIMING':
+              await ApiService.voidTimingRecord(payload.id, { voidReason: payload.voidReason });
               break;
             default:
               throw new Error(`Unsupported sync action type: ${item.action_type}`);
@@ -149,7 +198,11 @@ class SyncService {
             this.onQueueChangeCallback();
           }
         } catch (error: any) {
-          const errMsg = error?.message || 'Network endpoint unreachable';
+          const apiErrorData = error?.response?.data;
+          const apiErrorMsg = apiErrorData?.message || apiErrorData;
+          const errMsg = apiErrorMsg 
+            ? `${error.message} - API Response: ${JSON.stringify(apiErrorMsg)}` 
+            : error?.message || 'Network endpoint unreachable';
           const nextAttempt = item.attempts + 1;
           
           console.error(`[SyncService] Synchronization failed for item #${item.id} (Attempt ${nextAttempt}). Error: ${errMsg}`);

@@ -40,4 +40,16 @@ export class LeaderboardEntryDto {
 
   @ApiPropertyOptional({ description: 'Hora oficial calculada para largar la SIGUIENTE etapa. Solo visible durante la neutralización.', example: '2026-03-15T09:13:19Z' })
   nextStageDepartureTime?: Date;
+
+  @ApiPropertyOptional({ description: 'Hora de largada/salida de la etapa actual o más reciente', example: '2026-03-15T08:00:00Z' })
+  startTime?: Date;
+
+  @ApiPropertyOptional({ description: 'Hora de arribo/llegada de la etapa actual o más reciente', example: '2026-03-15T09:30:00Z' })
+  arrivalTime?: Date;
+
+  @ApiPropertyOptional({ description: 'Hora de presentación en el control veterinario (VET_IN)', example: '2026-03-15T09:45:00Z' })
+  vetInTime?: Date;
+
+  @ApiPropertyOptional({ description: 'Cantidad de etapas completadas con éxito', example: 1 })
+  completedStages?: number;
 }

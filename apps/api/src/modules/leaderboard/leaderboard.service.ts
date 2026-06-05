@@ -50,6 +50,38 @@ export class LeaderboardService {
         }
       }
       
+      // Extraemos la hora de largada, llegada e ingreso a vet gate de la etapa actual o más reciente
+      let startTime = null;
+      let arrivalTime = null;
+      let vetInTime = null;
+      const activeRecords = (entry.timingRecords || []).filter(r => !r.isVoid);
+      if (activeRecords.length > 0) {
+        const stageNums = activeRecords.map(r => r.stage?.stageNumber || 1);
+        const maxStageNum = Math.max(...stageNums);
+        const latestStageRecords = activeRecords.filter(r => (r.stage?.stageNumber || 1) === maxStageNum);
+        
+        const startRecord = latestStageRecords
+          .filter(r => r.recordType === TimeRecordType.START)
+          .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())[0];
+        if (startRecord) {
+          startTime = new Date(startRecord.recordedAt);
+        }
+
+        const arrivalRecord = latestStageRecords
+          .filter(r => r.recordType === TimeRecordType.ARRIVAL)
+          .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())[0];
+        if (arrivalRecord) {
+          arrivalTime = new Date(arrivalRecord.recordedAt);
+        }
+
+        const vetInRecord = latestStageRecords
+          .filter(r => r.recordType === TimeRecordType.VET_IN)
+          .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())[0];
+        if (vetInRecord) {
+          vetInTime = new Date(vetInRecord.recordedAt);
+        }
+      }
+
       return {
         bibNumber: entry.bibNumber,
         riderName: entry.rider.name,
@@ -64,10 +96,14 @@ export class LeaderboardService {
         rank: 0,
         gapToLeaderMs: 0,
         nextStageDepartureTime: nextStageDepartureTime,
+        startTime: startTime,
+        arrivalTime: arrivalTime,
+        vetInTime: vetInTime,
+        completedStages: stats.completedStages,
       };
     });
 
-    // 3. Algoritmo de Ranking FEU
+    // 3. Algoritmo de Ranking FEU (Ordena primero por estado activo, luego por cantidad de etapas completadas de forma descendente, y luego por menor tiempo neto acumulado)
     const activeStatuses = [ParticipantStatus.IN_RACE, ParticipantStatus.RESTING, ParticipantStatus.FINISHED, ParticipantStatus.VET_CHECK];
     
     leaderboard.sort((a, b) => {
@@ -76,8 +112,14 @@ export class LeaderboardService {
 
       if (aIsActive && !bIsActive) return -1;
       if (!aIsActive && bIsActive) return 1;
-      if (a.currentStage !== b.currentStage) return b.currentStage - a.currentStage;
-      return a.totalRaceTimeMs - b.totalRaceTimeMs;
+      
+      const aCompleted = a.completedStages || 0;
+      const bCompleted = b.completedStages || 0;
+      if (aCompleted !== bCompleted) {
+        return bCompleted - aCompleted; // El que tenga más etapas completadas va primero
+      }
+      
+      return a.totalRaceTimeMs - b.totalRaceTimeMs; // A igualdad de etapas, menor tiempo neto va primero
     });
 
     // 4. Asignación de Gaps (Diferencias de tiempo)
@@ -93,14 +135,17 @@ export class LeaderboardService {
   /**
    * Calcula el Tiempo Neto y la Velocidad Promedio de este competidor.
    */
-  private calculateCompetitorStats(records: any[]): { totalTimeMs: number, averageSpeed: number } {
-    if (!records || records.length === 0) return { totalTimeMs: 0, averageSpeed: 0 };
+  private calculateCompetitorStats(records: any[]): { totalTimeMs: number, averageSpeed: number, completedStages: number } {
+    if (!records || records.length === 0) return { totalTimeMs: 0, averageSpeed: 0, completedStages: 0 };
     
     let totalMs = 0;
     let completedDistanceKm = 0;
+    let completedStages = 0;
 
-    // Agrupar por etapa para emparejar START con ARRIVAL
-    const recordsByStage = records.reduce((acc, curr) => {
+    // Agrupar por etapa para emparejar START con ARRIVAL, ignorando registros anulados (isVoid)
+    const activeRecords = (records || []).filter(r => !r.isVoid);
+    const recordsByStage = activeRecords.reduce((acc, curr) => {
+      if (!curr.stage) return acc;
       const stageId = curr.stage.id;
       if (!acc[stageId]) acc[stageId] = { distance: Number(curr.stage.distanceKm) };
       acc[stageId][curr.recordType] = curr.recordedAt;
@@ -115,6 +160,7 @@ export class LeaderboardService {
         
         totalMs += (arrival - start);
         completedDistanceKm += stage.distance; // Solo sumamos distancia de etapas terminadas
+        completedStages++;
       }
     }
 
@@ -125,7 +171,7 @@ export class LeaderboardService {
       averageSpeed = parseFloat((completedDistanceKm / totalHours).toFixed(3)); // 3 decimales FEU
     }
 
-    return { totalTimeMs: totalMs, averageSpeed };
+    return { totalTimeMs: totalMs, averageSpeed, completedStages };
   }
 
   /**

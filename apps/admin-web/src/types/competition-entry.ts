@@ -8,6 +8,9 @@ export interface CompetitionEntry {
   status: string;
   qualifiesForPoints?: boolean;
   ballastWeight: number;
+  riderWeight?: number;
+  tackWeight?: number;
+  sealedItems?: string[];
   sealNumber?: string;
   weighInAt?: string;
   rider: Rider;
@@ -25,6 +28,9 @@ export interface CreateCompetitionEntryDto {
   bibNumber: number;
   qualifiesForPoints?: boolean;
   ballastWeight?: number;
+  riderWeight?: number;
+  tackWeight?: number;
+  sealedItems?: string[];
   sealNumber?: string;
   weighInAt?: string;
 }

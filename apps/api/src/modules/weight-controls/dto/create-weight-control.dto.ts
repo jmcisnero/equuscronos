@@ -1,4 +1,4 @@
-import { IsUUID, IsNumber, IsString, IsNotEmpty, IsOptional, Min } from 'class-validator';
+import { IsUUID, IsNumber, IsString, IsNotEmpty, IsOptional, Min, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateWeightControlDto {
@@ -16,9 +16,12 @@ export class CreateWeightControlDto {
   @Min(0)
   weightRecorded: number;
 
-  @ApiProperty({ description: 'Momento del pesaje (INITIAL, STAGE_END, RANDOM_CHECK)', example: 'INITIAL' })
+  @ApiProperty({ description: 'Momento del pesaje (INITIAL, NEUTRALIZATION, ARRIVAL)', example: 'INITIAL' })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['INITIAL', 'NEUTRALIZATION', 'ARRIVAL'], {
+    message: 'El tipo de control debe ser INITIAL, NEUTRALIZATION o ARRIVAL',
+  })
   controlType: string;
 
   @ApiPropertyOptional({ description: 'UUID del Juez de Balanza (Opcional por ahora)' })
