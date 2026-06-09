@@ -457,24 +457,25 @@ export default function App() {
           {/* Workstation Config Segment bar */}
           <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
           <View style={styles.stationConfigBar}>
-            {(Object.keys(TimeRecordType) as Array<keyof typeof TimeRecordType>).map((key) => {
-              const val = TimeRecordType[key];
-              const isActive = stationRecordType === val;
-              return (
-                <TouchableOpacity
-                  key={val}
-                  style={[styles.stationBtn, isActive && styles.stationBtnActive]}
-                  onPress={() => setStationRecordType(val)}
-                >
-                  <Text style={[styles.stationText, isActive && styles.stationTextActive]}>
-                    {val === 'START' ? '🏁 Largada' :
-                     val === 'ARRIVAL' ? '🏁 Arribos' :
-                     val === 'VET_IN' ? '🩺 Vet In' :
-                     '🩺 Vet Out'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            {(Object.keys(TimeRecordType) as Array<keyof typeof TimeRecordType>)
+              .filter((key) => TimeRecordType[key] !== TimeRecordType.START)
+              .map((key) => {
+                const val = TimeRecordType[key];
+                const isActive = stationRecordType === val;
+                return (
+                  <TouchableOpacity
+                    key={val}
+                    style={[styles.stationBtn, isActive && styles.stationBtnActive]}
+                    onPress={() => setStationRecordType(val)}
+                  >
+                    <Text style={[styles.stationText, isActive && styles.stationTextActive]}>
+                      {val === 'ARRIVAL' ? '🏁 Arribos' :
+                       val === 'VET_IN' ? '🩺 Vet In' :
+                       '🩺 Vet Out'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
           </View>
 
           {/* Quick Filter Segment bar */}

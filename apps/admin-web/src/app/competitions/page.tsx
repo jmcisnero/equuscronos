@@ -279,6 +279,7 @@ export default function CompetitionsPage() {
         await CompetitionService.update(editingCompetition.id, {
           name: formData.name.trim(),
           competitionDate: formData.competitionDate,
+          startTime: formData.startTime.length === 5 ? `${formData.startTime}:00` : formData.startTime,
           location: formData.location.trim() || undefined,
           maxHeartRate: formData.maxHeartRate,
         });
@@ -617,77 +618,39 @@ export default function CompetitionsPage() {
               </div>
 
               {/* Fila de Datos Generales */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Fecha de Largada - Displazamiento de huso horario prevenido usando string YYYY-MM-DD directo */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Fecha de Largada *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    disabled={isFieldsDisabled}
-                    value={formData.competitionDate}
-                    onChange={(e) => setFormData({ ...formData, competitionDate: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
-                  />
-                </div>
-
-                {/* Hora de Largada */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Fecha y Hora de Largada */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                     <svg className="w-3.5 h-3.5 mr-1 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
-                    Hora de Largada *
+                    Fecha y Hora de Largada *
                   </label>
-                  <div className="flex items-center space-x-2">
-                    <div className="relative flex-1">
-                      <select
-                        disabled={editingCompetition !== null}
-                        value={formData.startTime.split(':')[0] || '07'}
-                        onChange={(e) => {
-                          const currentMins = formData.startTime.split(':')[1] || '00';
-                          setFormData({ ...formData, startTime: `${e.target.value}:${currentMins}` });
-                        }}
-                        className="w-full pl-3.5 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-bold font-mono appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
-                      >
-                        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour} hs
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                    <span className="text-slate-400 font-bold text-lg">:</span>
-                    <div className="relative flex-1">
-                      <select
-                        disabled={editingCompetition !== null}
-                        value={formData.startTime.split(':')[1] || '00'}
-                        onChange={(e) => {
-                          const currentHour = formData.startTime.split(':')[0] || '07';
-                          setFormData({ ...formData, startTime: `${currentHour}:${e.target.value}` });
-                        }}
-                        className="w-full pl-3.5 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-bold font-mono appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
-                      >
-                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute} min
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
+                  <input
+                    type="datetime-local"
+                    required
+                    disabled={isFieldsDisabled}
+                    value={formData.competitionDate && formData.startTime ? `${formData.competitionDate}T${formData.startTime}` : ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        const [date, time] = val.split('T');
+                        setFormData({
+                          ...formData,
+                          competitionDate: date,
+                          startTime: time ? time.substring(0, 5) : '07:00'
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          competitionDate: '',
+                          startTime: '07:00'
+                        });
+                      }
+                    }}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100 font-semibold"
+                  />
                 </div>
 
                 {/* Ubicación del Evento */}

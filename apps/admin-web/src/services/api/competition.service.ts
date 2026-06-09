@@ -67,9 +67,14 @@ export const CompetitionService = {
   /**
    * Da la largada oficial de la carrera bajo reglamento FEU.
    */
-  async start(id: string): Promise<Competition> {
+  async start(id: string, officialStartTime?: string): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions/${id}/start`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-role': 'ADMIN'
+      },
+      body: JSON.stringify({ officialStartTime })
     });
     if (!response.ok) {
       const err = await response.json();

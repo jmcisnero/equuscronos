@@ -172,6 +172,7 @@ CREATE TABLE timing_records (
     -- Auditoría de Modificaciones de Jueces
     is_void BOOLEAN DEFAULT false,
     void_reason TEXT,
+    is_automatic BOOLEAN DEFAULT false,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

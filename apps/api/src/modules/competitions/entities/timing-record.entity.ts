@@ -46,6 +46,9 @@ export class TimingRecord {
   @Column({ name: 'void_reason', type: 'text', nullable: true })
   voidReason: string;
 
+  @Column({ name: 'is_automatic', type: 'boolean', default: false })
+  isAutomatic: boolean;
+
   @OneToOne(() => VetInspection, (vet) => vet.timingRecord)
   vetInspection: VetInspection;
 

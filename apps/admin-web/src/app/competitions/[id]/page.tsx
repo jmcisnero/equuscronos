@@ -288,6 +288,7 @@ interface ControlCenterProps {
 
 function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
   const [currentTime, setCurrentTime] = React.useState(new Date());
+  const [officialStartTime, setOfficialStartTime] = React.useState<string>('');
   const [isStarting, setIsStarting] = React.useState(false);
   const [startError, setStartError] = React.useState<string | null>(null);
 
@@ -297,6 +298,14 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  React.useEffect(() => {
+    if (comp) {
+      const compDateStr = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '';
+      const defaultTimeStr = `${compDateStr}T${comp.startTime || '07:00:00'}`;
+      setOfficialStartTime(defaultTimeStr);
+    }
+  }, [comp]);
 
   if (!comp) return null;
 
@@ -333,7 +342,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
   // Habilitado si es el mismo día y ya pasó la hora programada (07:00 AM)
   // o si es un día posterior (por tolerancia ante retrasos)
   const isDateBefore = !sameDay && secondsLeft > 0;
-  const canStart = comp.status === 'PLANNED' && (pastTime || (!isDateBefore && secondsLeft === 0));
+  const canStart = comp.status === 'PLANNED' && !!officialStartTime;
 
   const formatCountdown = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -354,10 +363,14 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
     setStartError(null);
     
     try {
+      // Parse to Uruguay timezone -03:00 ISO string
+      let formattedStartTime: string | undefined = undefined;
+      if (officialStartTime) {
+        formattedStartTime = new Date(`${officialStartTime}-03:00`).toISOString();
+      }
+
       // LLAMADA OFICIAL AL BACKEND (Seguridad y Transaccionalidad FEU)
-      // Nota de cumplimiento: La llamada POST realiza una transacción ACID inmutable en el backend
-      // que actualiza el estado a ACTIVE y crea los TimingRecords de START.
-      await CompetitionService.start(comp.id);
+      await CompetitionService.start(comp.id, formattedStartTime);
       
       // Sincronizar UI con React-Query e invalidar el caché
       queryClient.invalidateQueries({ queryKey: ['competition', comp.id] });
@@ -437,7 +450,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
           <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
           </svg>
-          <h3 className="text-xs font-extrabold tracking-wider uppercase text-slate-300">Centro de Control</h3>
+          <h3 className="text-xs font-extrabold tracking-wider uppercase text-slate-300">Control de Carrera</h3>
         </div>
         {renderStatus()}
       </div>
@@ -453,6 +466,23 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
               </span>
             </div>
           )}
+
+          {/* Configuración de hora de largada */}
+          <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl space-y-3">
+            <label htmlFor="official-start-time" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+              ⏱️ Configurar Hora Oficial de Largada
+            </label>
+            <input
+              id="official-start-time"
+              type="datetime-local"
+              value={officialStartTime}
+              onChange={(e) => setOfficialStartTime(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            />
+            <p className="text-[10px] text-slate-400 leading-normal">
+              Ajuste la hora real si hay retrasos. Conforme al reglamento FEU, la largada oficial no puede ser anterior a la programada ({comp.startTime || '07:00'} hs).
+            </p>
+          </div>
 
           {/* Información del reglamento */}
           <div className="text-[11px] text-slate-400 leading-relaxed space-y-1 bg-slate-950/20 p-3 rounded-lg border border-slate-900">
@@ -484,10 +514,10 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span>Registrando Largada...</span>
+                <span>Iniciando Competencia...</span>
               </div>
             ) : (
-              <span>Dar Largada Oficial (START)</span>
+              <span>Iniciar Competencia</span>
             )}
           </button>
         </div>

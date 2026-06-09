@@ -183,7 +183,7 @@ export class CompetitionsService {
    * La validación temporal se realiza de forma duplicada tanto en el Frontend (para guiar la UX y countdown de precisión)
    * como en el Backend (esta función, para garantizar la inmutabilidad y seguridad conforme al reglamento de la FEU).
    */
-  async startCompetition(id: string): Promise<Competition> {
+  async startCompetition(id: string, officialStartTime?: string): Promise<Competition> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -217,7 +217,7 @@ export class CompetitionsService {
 
       // 3. Validación Temporal (Reglamentaria FEU)
       // El servidor debe estar en el día de la competencia (competitionDate) y la hora debe ser igual o posterior a la programada (07:00:00).
-      const now = new Date();
+      const startTimestamp = officialStartTime ? new Date(officialStartTime) : new Date();
 
       // Formateador en zona horaria oficial uruguaya (America/Montevideo / GMT-3)
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -231,7 +231,7 @@ export class CompetitionsService {
         hour12: false,
       });
 
-      const parts = formatter.formatToParts(now);
+      const parts = formatter.formatToParts(startTimestamp);
       const getVal = (type: string) => parts.find((p) => p.type === type).value;
       
       const serverTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
@@ -300,8 +300,14 @@ export class CompetitionsService {
         where: { competition: { id: competition.id } },
       });
 
-      // 7. Actualizar estado de la carrera a ACTIVE
+      // 7. Actualizar estado de la carrera a ACTIVE y registrar hora oficial
       competition.status = CompetitionStatus.ACTIVE;
+      
+      const hours = getVal('hour');
+      const minutes = getVal('minute');
+      const seconds = getVal('second');
+      competition.startTime = `${hours}:${minutes}:${seconds}`;
+
       await queryRunner.manager.save(Competition, competition);
 
       // 8. Crear registros oficiales TimingRecord de tipo START para todos los binomios activos y actualizar su etapa actual
@@ -313,7 +319,7 @@ export class CompetitionsService {
             entry: entry,
             stage: firstStage,
             recordType: TimeRecordType.START,
-            recordedAt: now,
+            recordedAt: startTimestamp,
             isApproved: true,
           });
           startRecords.push(startRecord);

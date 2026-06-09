@@ -43,4 +43,9 @@ export class CreateTimingRecordDto {
   @IsOptional() 
   @IsString() 
   eliminationReason?: string;
+
+  @ApiPropertyOptional({ description: 'Indica si el registro fue generado de forma automática', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isAutomatic?: boolean;
 }

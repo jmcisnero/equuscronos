@@ -34,7 +34,11 @@ export class VetInspectionsService {
     // 2. Validaciones de Seguridad: Bloquear si ya está DQ, DNF o WD
     const invalidStatuses = [ParticipantStatus.DQ, ParticipantStatus.DNF, ParticipantStatus.WD];
     if (invalidStatuses.includes(entry.status)) {
-      throw new BadRequestException(`Acción rechazada: El binomio con dorsal ${entry.bibNumber} está fuera de competencia (${entry.status}).`);
+      const isLatePresentationDQ = timingRecord.eliminationType === EliminationCode.FTQ && 
+                                   timingRecord.isApproved === false;
+      if (!isLatePresentationDQ) {
+        throw new BadRequestException(`Acción rechazada: El binomio con dorsal ${entry.bibNumber} está fuera de competencia (${entry.status}).`);
+      }
     }
 
     const maxHeartRate = entry.competition.maxHeartRate || 65;
@@ -69,7 +73,11 @@ export class VetInspectionsService {
       }
 
       if (invalidStatuses.includes(lockedEntry.status)) {
-        throw new BadRequestException(`Acción rechazada: El binomio con dorsal ${lockedEntry.bibNumber} está fuera de competencia (${lockedEntry.status}).`);
+        const isLatePresentationDQ = timingRecord.eliminationType === EliminationCode.FTQ && 
+                                     timingRecord.isApproved === false;
+        if (!isLatePresentationDQ) {
+          throw new BadRequestException(`Acción rechazada: El binomio con dorsal ${lockedEntry.bibNumber} está fuera de competencia (${lockedEntry.status}).`);
+        }
       }
 
       // Validar barrera del minuto 20

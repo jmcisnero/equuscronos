@@ -1,8 +1,12 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Patch, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompetitionsService } from './competitions.service';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
 import { UpdateCompetitionDto } from './dto/update-competition.dto';
+import { StartCompetitionDto } from './dto/start-competition.dto';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
 
 @ApiTags('7. Gestión de Carreras (Competitions)')
 @ApiBearerAuth('access-token')
@@ -31,9 +35,14 @@ export class CompetitionsController {
   }  
 
   @Post(':id/start')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, 'ORGANIZER')
   @ApiOperation({ summary: 'Dar largada oficial de la carrera bajo reglamento FEU' })
-  startCompetition(@Param('id', ParseUUIDPipe) id: string) {
-    return this.competitionsService.startCompetition(id);
+  startCompetition(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() startDto: StartCompetitionDto,
+  ) {
+    return this.competitionsService.startCompetition(id, startDto.officialStartTime);
   }
 
   @Delete(':id')

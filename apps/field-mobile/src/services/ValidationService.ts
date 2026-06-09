@@ -73,7 +73,7 @@ export class ValidationService {
         if (!startRecord) {
           return {
             isValid: false,
-            error: 'Secuencia inválida: No se puede registrar LLEGADA (ARRIVAL) sin una LARGADA (START) previa.',
+            error: 'Carrera no iniciada. Espere la orden de largada oficial desde el Admin.',
           };
         }
       }
