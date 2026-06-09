@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RidersService } from './riders.service';
 import { CreateRiderDto } from './dto/create-rider.dto';
 import { UpdateRiderDto } from './dto/update-rider.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
 
 @ApiTags('5. Padrón Jinetes (Riders)')
 @ApiBearerAuth('access-token')
@@ -29,6 +31,7 @@ export class RidersController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Eliminar jinete' })
   remove(@Param('id', ParseUUIDPipe) id: string) { return this.ridersService.remove(id); }
 }

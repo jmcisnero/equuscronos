@@ -345,15 +345,7 @@ export class TimingService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // 1. Asegurar la columna is_automatic en PostgreSQL
-    try {
-      await this.dataSource.query('ALTER TABLE timing_records ADD COLUMN IF NOT EXISTS is_automatic BOOLEAN DEFAULT false;');
-      console.log('[TimingService] Column is_automatic verified/created successfully.');
-    } catch (err) {
-      console.error('[TimingService] Failed to alter table timing_records:', err);
-    }
-
-    // 2. Iniciar escáner periódico en segundo plano
+    // Iniciar escáner periódico en segundo plano
     setInterval(() => {
       this.scanAndTriggerAutomaticStarts().catch((err) => {
         console.error('[TimingService] Background scanner error:', err);

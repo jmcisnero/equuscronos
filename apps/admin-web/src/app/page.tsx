@@ -1,11 +1,18 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardService } from '@/services/api/dashboard.service';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function Home() {
+  const user = useAuthStore((state) => state.user);
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Consumo en tiempo real del nuevo endpoint de estadísticas mediante useQuery
   const { data: statsData, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -102,7 +109,7 @@ export default function Home() {
         <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
         <div className="max-w-3xl relative z-10">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-            ¡Hola, Juan Díaz!
+            ¡Hola, {isMounted && user ? user.name : 'Administrador'}!
           </h2>
           <p className="mt-2 text-slate-200 text-sm md:text-base leading-relaxed font-medium">
             Bienvenido al panel maestro de **EquusCronos**. Desde aquí puedes controlar la gobernanza deportiva del club, administrar binomios, fiscalizar inspecciones veterinarias en Vet Gates, y asegurar el cumplimiento de normativas sanitarias vigentes.

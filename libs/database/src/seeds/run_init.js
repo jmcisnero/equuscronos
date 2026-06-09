@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 
-// Configuración de conexión por defecto
 const dbConfig = {
   host: 'localhost',
   port: 5432,
@@ -11,7 +10,7 @@ const dbConfig = {
   database: 'equuscronos',
 };
 
-// Cargar .env de apps/api si existe
+// Cargar .env de apps/api
 try {
   const envPath = path.join(__dirname, '../../../../apps/api/.env');
   if (fs.existsSync(envPath)) {
@@ -28,28 +27,35 @@ try {
     });
   }
 } catch (err) {
-  console.log('No se pudo cargar el archivo .env, usando valores por defecto:', err.message);
+  console.log('No se pudo cargar el archivo .env:', err.message);
 }
 
-async function runSeed() {
+async function runInit() {
   const client = new Client(dbConfig);
   try {
-    console.log(`Conectando a la base de datos ${dbConfig.database} en ${dbConfig.host}:${dbConfig.port}...`);
+    console.log(`Conectando a la base de datos ${dbConfig.database}...`);
     await client.connect();
-    console.log('¡Conexión exitosa!');
+    
+    // Opcional: Limpiar esquema para poder re-ejecutar limpio
+    console.log('Limpiando tablas, tipos y políticas existentes...');
+    await client.query(`
+      DROP SCHEMA public CASCADE;
+      CREATE SCHEMA public;
+      GRANT ALL ON SCHEMA public TO public;
+    `);
 
-    const sqlPath = path.join(__dirname, '01_initial_seed.sql');
-    console.log(`Leyendo archivo de seed en: ${sqlPath}`);
+    const sqlPath = path.join(__dirname, '../migrations/001_init_schema.sql');
+    console.log(`Leyendo inicializador de esquema en: ${sqlPath}`);
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
-    console.log('Ejecutando sentencias SQL...');
+    console.log('Ejecutando inicialización de esquema...');
     await client.query(sql);
-    console.log('¡Datos de prueba (seed) cargados exitosamente!');
+    console.log('¡Base de datos inicializada exitosamente!');
   } catch (error) {
-    console.error('Error al ejecutar el seed:', error);
+    console.error('Error al inicializar la base de datos:', error);
   } finally {
     await client.end();
   }
 }
 
-runSeed();
+runInit();

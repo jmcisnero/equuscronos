@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth.store';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -10,8 +11,35 @@ interface AdminLayoutProps {
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const pathname = usePathname();
+
+  // Si estamos en la página de login, no renderizamos el layout del administrador
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+    router.refresh();
+  };
+
+  const displayName = isMounted && user ? user.name : 'Administrador';
+  const displayRole = isMounted && user ? user.role : 'ADMIN';
+  const displayInitials = isMounted && user 
+    ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'AD';
 
   // Mapeo dinámico de títulos de página basado en la ruta actual
   const getPageTitle = (path: string) => {
@@ -320,15 +348,40 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             })}
           </nav>
 
-          {/* Footer del Drawer (Tenant Info) */}
-          <div className="pt-4 border-t border-white/5 bg-slate-950/10 -mx-6 -mb-6 p-6">
+          {/* Mobile Logout and Tenant Info */}
+          <div className="pt-4 border-t border-white/5 bg-slate-950/10 -mx-6 -mb-6 p-6 space-y-4">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white">
+                  {displayInitials}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-slate-100 truncate">{displayName}</span>
+                  <span className="text-[9px] text-white/50 truncate">{displayRole}</span>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg text-white/60 hover:text-rose-400 hover:bg-white/5 transition-all"
+                title="Cerrar sesión"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+
             <div className="flex items-center space-x-3 p-2 rounded-xl bg-white/5">
               <div className="h-9 w-9 rounded bg-equus-tan-light/20 flex items-center justify-center text-xs font-bold text-equus-tan-light">
-                HER
+                {isMounted && user?.tenantId ? 'CLB' : 'GLB'}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-slate-100 truncate">Haras El Relincho</span>
-                <span className="text-[9px] text-white/50 truncate">FEU Nro. 1204</span>
+                <span className="text-xs font-bold text-slate-100 truncate">
+                  {isMounted && user?.tenantId ? 'Organización Club' : 'Administrador Global'}
+                </span>
+                <span className="text-[9px] text-white/50 truncate">
+                  {isMounted && user?.tenantId ? `ID: ${user.tenantId.substring(0, 8)}` : 'Todas las Organizaciones'}
+                </span>
               </div>
             </div>
           </div>
@@ -348,14 +401,27 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </h2>
 
           {/* Lado Derecho: Perfil de Usuario */}
-          <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-full bg-equus-green flex items-center justify-center text-equus-tan-light font-extrabold text-sm shadow-md border border-equus-tan-dark/20">
-              JD
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="h-9 w-9 rounded-full bg-equus-green flex items-center justify-center text-equus-tan-light font-extrabold text-sm shadow-md border border-equus-tan-dark/20">
+                {displayInitials}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-slate-800">{displayName}</span>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">{displayRole}</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-800">Juan Díaz</span>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase">Administrador</span>
-            </div>
+            
+            {/* Botón Cerrar Sesión */}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200"
+              title="Cerrar sesión"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         </header>
 

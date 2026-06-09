@@ -20,8 +20,9 @@ INSERT INTO owners (id, name, type, contact_info) VALUES
 ('b1000000-0000-0000-0000-000000000002', 'Familia Silva', 'PERSON', '099123456');
 
 INSERT INTO users (id, tenant_id, name, email, password_hash, role) VALUES 
-('e1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Carlos Juez', 'juez@melo.uy', 'hash_simulado_123', 'JUDGE'),
-('e1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Dra. Ana Vet', 'vet@melo.uy', 'hash_simulado_123', 'VET');
+('e1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Carlos Juez', 'juez@melo.uy', '$2b$10$qeemt2ydZCq12MKMyCxrE.FLWL2oAKpbp/qPWm6Rz4.6eITejNkza', 'JUDGE'),
+('e1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Dra. Ana Vet', 'vet@melo.uy', '$2b$10$BcoXvxWGDqBmmUM2KzZ8L.BwtyKN4ZGHaaqtch6RFEA1A2l0iMSCi', 'VET'),
+('e1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Admin General', 'admin@equuscronos.com', '$2b$10$gf0AiDPdNP4f7z4vvf9AneFTYJFrqarnpZxI/dRgkt1zOn4/1SlDG', 'ADMIN');
 
 INSERT INTO horses (id, owner_id, name, feu_id, chip_id, is_feu_active, health_records_expiration) VALUES 
 ('d1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'Tormenta Criolla', 'FEU-H-101', 'CHIP-985121000', TRUE, CURRENT_DATE + INTERVAL '6 months'),

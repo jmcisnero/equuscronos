@@ -131,6 +131,9 @@ CREATE TABLE competition_entries (
     final_position INT, -- Se llena al finalizar la carrera
     
     ballast_weight DECIMAL(5, 2) DEFAULT 0.00,    
+    rider_weight DECIMAL(5, 2),
+    tack_weight DECIMAL(5, 2),
+    sealed_items JSONB,
     seal_number VARCHAR(255),
     weigh_in_at TIMESTAMP WITH TIME ZONE,
     current_stage_id UUID REFERENCES stages(id), 
@@ -258,9 +261,16 @@ ALTER TABLE penalties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS UUID AS $$
+DECLARE
+  val TEXT;
 BEGIN
-  -- Si el valor no está seteado (ej. un espectador B2C), devolverá NULL sin romper la consulta
-  RETURN current_setting('app.current_tenant_id', true)::UUID;
+  val := current_setting('app.current_tenant_id', true);
+  IF val IS NULL OR val = '' THEN
+    RETURN NULL;
+  END IF;
+  RETURN val::UUID;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
@@ -272,11 +282,42 @@ CREATE POLICY global_access_competition_types ON competition_types FOR ALL USING
 
 -- POLÍTICAS LOCALES (Aislamiento estricto B2B para Clubes)
 CREATE POLICY tenant_isolation_users ON users FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL); 
-CREATE POLICY tenant_isolation_competitions ON competitions FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_stages ON stages FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_competition_entries ON competition_entries FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_weight_controls ON weight_controls FOR ALL USING ((SELECT tenant_id FROM competition_entries WHERE id = entry_id) = current_tenant_id());
-CREATE POLICY tenant_isolation_timing_records ON timing_records FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_vet_inspections ON vet_inspections FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_penalties ON penalties FOR ALL USING (tenant_id = current_tenant_id());
-CREATE POLICY tenant_isolation_audit_logs ON audit_logs FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY tenant_isolation_competitions ON competitions FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_stages ON stages FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_competition_entries ON competition_entries FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_weight_controls ON weight_controls FOR ALL USING ((SELECT tenant_id FROM competition_entries WHERE id = entry_id) = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_timing_records ON timing_records FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_vet_inspections ON vet_inspections FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_penalties ON penalties FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+CREATE POLICY tenant_isolation_audit_logs ON audit_logs FOR ALL USING (tenant_id = current_tenant_id() OR current_tenant_id() IS NULL);
+
+-- Forzar RLS para el propietario/administrador de las tablas
+ALTER TABLE owners FORCE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+ALTER TABLE horses FORCE ROW LEVEL SECURITY;
+ALTER TABLE riders FORCE ROW LEVEL SECURITY;
+ALTER TABLE competition_types FORCE ROW LEVEL SECURITY;
+ALTER TABLE competitions FORCE ROW LEVEL SECURITY;
+ALTER TABLE stages FORCE ROW LEVEL SECURITY;
+ALTER TABLE competition_entries FORCE ROW LEVEL SECURITY;
+ALTER TABLE weight_controls FORCE ROW LEVEL SECURITY;
+ALTER TABLE timing_records FORCE ROW LEVEL SECURITY;
+ALTER TABLE vet_inspections FORCE ROW LEVEL SECURITY;
+ALTER TABLE penalties FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs FORCE ROW LEVEL SECURITY;
+
+-- Crear el rol de la aplicación con privilegios limitados (no superusuario) para cumplir RLS
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'equus_app') THEN
+    CREATE ROLE equus_app WITH LOGIN PASSWORD 'equus_secure_pass_2026';
+  END IF;
+END
+$$;
+
+-- Otorgar todos los permisos sobre el esquema y las tablas al rol equus_app
+GRANT USAGE, CREATE ON SCHEMA public TO equus_app;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO equus_app;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO equus_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO equus_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO equus_app;

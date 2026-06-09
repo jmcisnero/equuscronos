@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import * as SecureStore from 'expo-secure-store';
 import { LocalTimingRecord, LocalVetInspection } from '../database/schema';
 import { getDatabase } from '../database/db';
 
@@ -19,10 +20,18 @@ class ApiService {
       },
     });
 
-    // Request interceptor to attach JWT token (placeholder) and update baseURL dynamically
+    // Interceptor de peticiones para inyectar dinámicamente el token JWT desde el almacenamiento seguro
     this.client.interceptors.request.use(
       async (config) => {
         config.baseURL = this.currentBaseUrl;
+        try {
+          const token = await SecureStore.getItemAsync('auth_token');
+          if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+          }
+        } catch (error) {
+          console.warn('No se pudo recuperar el token de autenticación de SecureStore:', error);
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -123,6 +132,31 @@ class ApiService {
   async fetchCompetitions(): Promise<any[]> {
     const response = await this.client.get('/admin/competitions');
     return response.data;
+  }
+
+  /**
+   * Almacena de forma segura el token JWT en el dispositivo
+   */
+  async setToken(token: string): Promise<void> {
+    await SecureStore.setItemAsync('auth_token', token);
+  }
+
+  /**
+   * Obtiene el token JWT del almacenamiento seguro
+   */
+  async getToken(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync('auth_token');
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Elimina el token JWT del almacenamiento seguro
+   */
+  async clearToken(): Promise<void> {
+    await SecureStore.deleteItemAsync('auth_token');
   }
 }
 
