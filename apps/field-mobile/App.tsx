@@ -20,11 +20,16 @@ import ApiService from './src/services/ApiService';
 import { CompetitorCard } from './src/components/CompetitorCard';
 import { TimingScreen } from './src/screens/TimingScreen';
 import { VetGateScreen } from './src/screens/VetGateScreen';
-import { ParticipantStatus, TimeRecordType } from '@equuscronos/shared';
+import { ParticipantStatus, TimeRecordType, UserRole } from '@equuscronos/shared';
+import { AuthProvider, useAuth } from './src/services/AuthContext';
+import { LoginScreen } from './src/screens/LoginScreen';
+import { PermissionErrorScreen } from './src/screens/PermissionErrorScreen';
 
 type ScreenType = 'LIST' | 'TIMING' | 'VET_GATE';
 
-export default function App() {
+function MainApp() {
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const [previousUser, setPreviousUser] = useState<any>(null);
   const [dbReady, setDbReady] = useState(false);
   const [entries, setEntries] = useState<LocalCompetitionEntry[]>([]);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('LIST');
@@ -158,34 +163,6 @@ export default function App() {
         // Bootstrapping local sqlite schema
         await initDatabase();
         setDbReady(true);
-
-        const db = await getDatabase();
-        const rows = await db.getAllAsync<LocalCompetitionEntry>(
-          'SELECT * FROM competition_entries ORDER BY bib_number ASC;'
-        );
-
-        if (rows.length === 0) {
-          console.log('[App] Local database is empty. Attempting automatic active competition import...');
-          setIsImporting(true);
-          try {
-            const competitions = await ApiService.fetchCompetitions();
-            const activeCompetition = competitions.find(c => c.status === 'ACTIVE');
-            
-            if (activeCompetition) {
-              const serverEntries = await ApiService.fetchLatestEntries(activeCompetition.id);
-              if (serverEntries.length > 0) {
-                await importActiveCompetitionData(activeCompetition, serverEntries);
-                console.log(`[App] Auto-imported active competition: ${activeCompetition.name}`);
-              }
-            }
-          } catch (autoImportErr) {
-            console.warn('[App] Auto-import of active competition failed (likely offline/unreachable):', autoImportErr);
-          } finally {
-            setIsImporting(false);
-          }
-        }
-
-        await reloadEntries();
       } catch (error) {
         Alert.alert('Falla Crítica', 'No se pudo inicializar la base de datos interna SQLite.');
       }
@@ -206,6 +183,70 @@ export default function App() {
     // Initial queue assessment
     updateQueueInfo();
   }, []);
+
+  // Load entries once db is ready
+  useEffect(() => {
+    if (dbReady) {
+      reloadEntries();
+    }
+  }, [dbReady]);
+
+  // Handle auto-import from server only when logged in and local DB is empty
+  useEffect(() => {
+    async function handleAutoImport() {
+      if (!dbReady || !user) return;
+      
+      try {
+        const db = await getDatabase();
+        const rows = await db.getAllAsync<LocalCompetitionEntry>(
+          'SELECT * FROM competition_entries ORDER BY bib_number ASC;'
+        );
+
+        if (rows.length === 0) {
+          console.log('[App] Local database is empty. Attempting automatic active competition import...');
+          setIsImporting(true);
+          try {
+            const competitions = await ApiService.fetchCompetitions();
+            const activeCompetition = competitions.find(c => c.status === 'ACTIVE');
+            
+            if (activeCompetition) {
+              const serverEntries = await ApiService.fetchLatestEntries(activeCompetition.id);
+              if (serverEntries.length > 0) {
+                await importActiveCompetitionData(activeCompetition, serverEntries);
+                console.log(`[App] Auto-imported active competition: ${activeCompetition.name}`);
+                await reloadEntries();
+              }
+            }
+          } catch (autoImportErr) {
+            console.warn('[App] Auto-import of active competition failed (likely offline/unreachable):', autoImportErr);
+          } finally {
+            setIsImporting(false);
+          }
+        }
+      } catch (err) {
+        console.warn('[App] Error in auto-import check:', err);
+      }
+    }
+    
+    handleAutoImport();
+  }, [dbReady, user]);
+
+  // Handle role-based redirect upon login
+  useEffect(() => {
+    if (user && !previousUser) {
+      setPreviousUser(user);
+      if (user.role === UserRole.VET) {
+        setCurrentScreen('LIST');
+      } else if (user.role === UserRole.TIMEKEEPER || user.role === UserRole.JUDGE) {
+        setSelectedEntry(null);
+        setCurrentScreen('TIMING');
+      } else {
+        setCurrentScreen('LIST');
+      }
+    } else if (!user) {
+      setPreviousUser(null);
+    }
+  }, [user]);
 
   const updateQueueInfo = async () => {
     const size = await SyncService.getQueueSize();
@@ -350,15 +391,54 @@ export default function App() {
   };
 
   // Render Loading Splash
-  if (!dbReady) {
+  if (!dbReady || authLoading) {
     return (
       <View style={styles.splashContainer}>
         <StatusBar style="dark" />
         <ActivityIndicator size="large" color={colors.equusGreen} />
         <Text style={styles.splashText}>EQUUSCRONOS</Text>
-        <Text style={styles.splashSubtext}>Iniciando base de datos SQLite local...</Text>
+        <Text style={styles.splashSubtext}>
+          {!dbReady ? 'Iniciando base de datos SQLite local...' : 'Cargando sesión...'}
+        </Text>
       </View>
     );
+  }
+
+  // Render Login screen if not logged in
+  if (!user) {
+    return (
+      <>
+        <StatusBar style="light" backgroundColor="#0B1E14" />
+        <LoginScreen />
+      </>
+    );
+  }
+
+  // Guard the rendering of screens based on role
+  if (currentScreen === 'TIMING') {
+    const isAllowed = user.role === UserRole.ADMIN || user.role === UserRole.TIMEKEEPER || user.role === UserRole.JUDGE;
+    if (!isAllowed) {
+      return (
+        <PermissionErrorScreen 
+          expectedRoles={[UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER]} 
+          currentRole={user.role} 
+          onBack={handleBackToList} 
+        />
+      );
+    }
+  }
+
+  if (currentScreen === 'VET_GATE') {
+    const isAllowed = user.role === UserRole.ADMIN || user.role === UserRole.VET;
+    if (!isAllowed) {
+      return (
+        <PermissionErrorScreen 
+          expectedRoles={[UserRole.ADMIN, UserRole.VET]} 
+          currentRole={user.role} 
+          onBack={handleBackToList} 
+        />
+      );
+    }
   }
 
   return (
@@ -369,13 +449,20 @@ export default function App() {
       <View style={styles.brandHeader}>
         <View>
           <Text style={styles.headerTitle}>EQUUSCRONOS</Text>
-          <Text style={styles.headerSubtitle}>Field Mobile v1.0.0</Text>
+          <Text style={styles.headerSubtitle}>Rol: {user.role} ({user.name})</Text>
         </View>
 
-        {/* Connectivity Status Badge */}
-        <View style={[styles.networkBadge, isOnline ? styles.badgeOnline : styles.badgeOffline]}>
-          <View style={[styles.dot, { backgroundColor: isOnline ? '#10B981' : '#F59E0B' }]} />
-          <Text style={styles.networkText}>{isOnline ? 'CONECTADO' : 'SIN CONEXIÓN'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {/* Connectivity Status Badge */}
+          <View style={[styles.networkBadge, isOnline ? styles.badgeOnline : styles.badgeOffline]}>
+            <View style={[styles.dot, { backgroundColor: isOnline ? '#10B981' : '#F59E0B' }]} />
+            <Text style={styles.networkText}>{isOnline ? 'CONECTADO' : 'SIN CONEXIÓN'}</Text>
+          </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutBtnText}>Salir</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -383,14 +470,18 @@ export default function App() {
       <View style={styles.apiConfigBar}>
         <Text style={styles.apiConfigLabel}>Servidor API:</Text>
         <TextInput
-          style={styles.apiInput}
+          style={[styles.apiInput, user.role !== UserRole.ADMIN && styles.apiInputDisabled]}
           value={apiUrl}
           onChangeText={updateApiUrl}
           placeholder="http://192.168.1.24:3000"
           placeholderTextColor="#64748B"
           autoCapitalize="none"
           autoCorrect={false}
+          editable={user.role === UserRole.ADMIN}
         />
+        {user.role !== UserRole.ADMIN && (
+          <Text style={styles.apiLockedBadge}>🔒 Solo ADMIN</Text>
+        )}
       </View>
 
       {/* 2. SYNC QUEUE UTILITY (Offline-First actions queue indicator) */}
@@ -439,44 +530,50 @@ export default function App() {
       {currentScreen === 'LIST' && (
         <View style={styles.mainContent}>
           {/* Quick Timing Entry Stream Button */}
-          <TouchableOpacity 
-            style={styles.quickTimingBtn} 
-            onPress={() => {
-              setSelectedEntry(null);
-              setCurrentScreen('TIMING');
-            }}
-          >
-            <Text style={styles.quickTimingBtnText}>
-              ⏱️ Puesto {stationRecordType === 'START' ? 'Largada' :
-                        stationRecordType === 'ARRIVAL' ? 'Arribos' :
-                        stationRecordType === 'VET_IN' ? 'Vet In' :
-                        'Vet Out'}: Registrar (Stream)
-            </Text>
-          </TouchableOpacity>
+          {(user.role === UserRole.ADMIN || user.role === UserRole.TIMEKEEPER || user.role === UserRole.JUDGE) && (
+            <TouchableOpacity 
+              style={styles.quickTimingBtn} 
+              onPress={() => {
+                setSelectedEntry(null);
+                setCurrentScreen('TIMING');
+              }}
+            >
+              <Text style={styles.quickTimingBtnText}>
+                ⏱️ Puesto {stationRecordType === 'START' ? 'Largada' :
+                          stationRecordType === 'ARRIVAL' ? 'Arribos' :
+                          stationRecordType === 'VET_IN' ? 'Vet In' :
+                          'Vet Out'}: Registrar (Stream)
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Workstation Config Segment bar */}
-          <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
-          <View style={styles.stationConfigBar}>
-            {(Object.keys(TimeRecordType) as Array<keyof typeof TimeRecordType>)
-              .filter((key) => TimeRecordType[key] !== TimeRecordType.START)
-              .map((key) => {
-                const val = TimeRecordType[key];
-                const isActive = stationRecordType === val;
-                return (
-                  <TouchableOpacity
-                    key={val}
-                    style={[styles.stationBtn, isActive && styles.stationBtnActive]}
-                    onPress={() => setStationRecordType(val)}
-                  >
-                    <Text style={[styles.stationText, isActive && styles.stationTextActive]}>
-                      {val === 'ARRIVAL' ? '🏁 Arribos' :
-                       val === 'VET_IN' ? '🩺 Vet In' :
-                       '🩺 Vet Out'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-          </View>
+          {(user.role === UserRole.ADMIN || user.role === UserRole.TIMEKEEPER || user.role === UserRole.JUDGE) && (
+            <>
+              <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
+              <View style={styles.stationConfigBar}>
+                {(Object.keys(TimeRecordType) as Array<keyof typeof TimeRecordType>)
+                  .filter((key) => TimeRecordType[key] !== TimeRecordType.START)
+                  .map((key) => {
+                    const val = TimeRecordType[key];
+                    const isActive = stationRecordType === val;
+                    return (
+                      <TouchableOpacity
+                        key={val}
+                        style={[styles.stationBtn, isActive && styles.stationBtnActive]}
+                        onPress={() => setStationRecordType(val)}
+                      >
+                        <Text style={[styles.stationText, isActive && styles.stationTextActive]}>
+                          {val === 'ARRIVAL' ? '🏁 Arribos' :
+                           val === 'VET_IN' ? '🩺 Vet In' :
+                           '🩺 Vet Out'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </View>
+            </>
+          )}
 
           {/* Quick Filter Segment bar */}
           <Text style={styles.sectionLabel}>FILTRAR PARTICIPANTES</Text>
@@ -531,6 +628,8 @@ export default function App() {
                 entry={item}
                 onPressTiming={openTiming}
                 onPressVet={openVet}
+                showTiming={user.role === UserRole.ADMIN || user.role === UserRole.TIMEKEEPER || user.role === UserRole.JUDGE}
+                showVet={user.role === UserRole.ADMIN || user.role === UserRole.VET}
               />
             )}
             ListEmptyComponent={
@@ -809,4 +908,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
     borderRadius: 4,
   },
+  apiInputDisabled: {
+    backgroundColor: '#0F172A',
+    color: '#64748B',
+  },
+  apiLockedBadge: {
+    color: '#EF4444',
+    fontSize: 10,
+    fontWeight: '800',
+    marginLeft: 8,
+    letterSpacing: 0.5,
+  },
+  logoutBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#991B1B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#B91C1C',
+  },
+  logoutBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
 });
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}

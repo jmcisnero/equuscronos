@@ -4,8 +4,12 @@ import { HorsesService } from './horses.service';
 import { CreateHorseDto } from './dto/create-horse.dto';
 import { UpdateHorseDto } from './dto/update-horse.dto';
 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
+
 @ApiTags('4. Padrón Equino (Horses)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/horses')
 export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}

@@ -8,6 +8,7 @@ import { UserRole } from '@equuscronos/shared';
 
 @ApiTags('5. Padrón Jinetes (Riders)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/riders')
 export class RidersController {
   constructor(private readonly ridersService: RidersService) {}

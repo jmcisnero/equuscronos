@@ -10,6 +10,7 @@ import { UserRole } from '@equuscronos/shared';
 
 @ApiTags('7. Gestión de Carreras (Competitions)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/competitions')
 export class CompetitionsController {
   constructor(private readonly competitionsService: CompetitionsService) {}
@@ -21,10 +22,12 @@ export class CompetitionsController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: 'Listar todas las carreras planificadas y activas' })
   findAll() { return this.competitionsService.findAll(); }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: 'Obtener detalle de una carrera, incluyendo sus etapas' })
   findOne(@Param('id', ParseUUIDPipe) id: string) { return this.competitionsService.findOne(id); }
 

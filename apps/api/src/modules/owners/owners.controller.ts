@@ -4,8 +4,12 @@ import { OwnersService } from './owners.service';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
+
 @ApiTags('2. Propietarios (Owners)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/owners')
 export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}

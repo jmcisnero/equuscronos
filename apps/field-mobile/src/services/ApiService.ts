@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { LocalTimingRecord, LocalVetInspection } from '../database/schema';
 import { getDatabase } from '../database/db';
+import { UserRole } from '@equuscronos/shared';
 
 const DEFAULT_API_BASE_URL = 'http://192.168.1.24:3000';
 
@@ -46,10 +47,26 @@ class ApiService {
     this.currentBaseUrl = url;
   }
 
+  private async validateRole(allowedRoles: UserRole[]) {
+    try {
+      const userJson = await SecureStore.getItemAsync('auth_user');
+      if (!userJson) {
+        throw new Error('Acceso denegado: Usuario no autenticado.');
+      }
+      const user = JSON.parse(userJson);
+      if (!allowedRoles.includes(user.role)) {
+        throw new Error(`Acceso denegado: El rol '${user.role}' no tiene permisos para esta acción.`);
+      }
+    } catch (error: any) {
+      throw new Error(error.message || 'Error de validación de rol preventivo.');
+    }
+  }
+
   /**
    * Syncs a timing record to the backend Postgres DB mapping SQLite layout to CreateTimingRecordDto
    */
   async syncTimingRecord(record: LocalTimingRecord): Promise<any> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN]);
     const db = await getDatabase();
     
     // Retrieve competition_id and bib_number from local SQLite entries cache
@@ -81,6 +98,7 @@ class ApiService {
    * Updates an existing timing record in the backend Postgres DB
    */
   async updateTimingRecord(id: string, payload: { recordedAt: string }): Promise<any> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN]);
     const response = await this.client.patch(`/timing/${id}`, payload);
     return response.data;
   }
@@ -89,6 +107,7 @@ class ApiService {
    * Voids an existing timing record in the backend Postgres DB
    */
   async voidTimingRecord(id: string, payload: { voidReason: string }): Promise<any> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN]);
     const response = await this.client.patch(`/timing/${id}/void`, payload);
     return response.data;
   }
@@ -97,6 +116,7 @@ class ApiService {
    * Syncs a vet inspection record to the backend Postgres DB mapping to CreateVetInspectionDto
    */
   async syncVetInspection(inspection: LocalVetInspection): Promise<any> {
+    await this.validateRole([UserRole.VET, UserRole.ADMIN]);
     const payload = {
       timingRecordId: inspection.timing_record_id,
       heartRate: inspection.heart_rate,
@@ -114,6 +134,7 @@ class ApiService {
    * Syncs a competition entry status update to the backend Postgres DB
    */
   async syncEntryStatus(entryId: string, status: string): Promise<any> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.VET, UserRole.ADMIN]);
     const response = await this.client.patch(`/admin/entries/${entryId}`, { status });
     return response.data;
   }
@@ -122,6 +143,7 @@ class ApiService {
    * Fetches latest entries from backend to update local cache
    */
   async fetchLatestEntries(competitionId: string): Promise<any[]> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.VET, UserRole.ADMIN]);
     const response = await this.client.get(`/admin/entries?competitionId=${competitionId}`);
     return response.data;
   }
@@ -130,6 +152,7 @@ class ApiService {
    * Fetches all competitions from backend
    */
   async fetchCompetitions(): Promise<any[]> {
+    await this.validateRole([UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.VET, UserRole.ADMIN]);
     const response = await this.client.get('/admin/competitions');
     return response.data;
   }

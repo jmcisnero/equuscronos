@@ -4,8 +4,12 @@ import { CompetitionTypesService } from './competition-types.service';
 import { CreateCompetitionTypeDto } from './dto/create-competition-type.dto';
 import { UpdateCompetitionTypeDto } from './dto/update-competition-type.dto';
 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
+
 @ApiTags('6. Reglas y Modalidades (Comp. Types)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/competition-types')
 export class CompetitionTypesController {
   constructor(private readonly competitionTypesService: CompetitionTypesService) {}

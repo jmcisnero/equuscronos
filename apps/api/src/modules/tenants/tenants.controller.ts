@@ -4,8 +4,12 @@ import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
+
 @ApiTags('1. Clubes / Organizaciones (Tenants)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/tenants')
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}

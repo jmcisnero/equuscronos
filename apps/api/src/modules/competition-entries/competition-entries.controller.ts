@@ -3,9 +3,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { CompetitionEntriesService } from './competition-entries.service';
 import { CreateCompetitionEntryDto } from './dto/create-competition-entry.dto';
 import { UpdateCompetitionEntryDto } from './dto/update-competition-entry.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@equuscronos/shared';
 
 @ApiTags('8. Inscripciones / Binomios (Entries)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.ADMIN)
 @Controller('admin/entries')
 export class CompetitionEntriesController {
   constructor(private readonly entriesService: CompetitionEntriesService) {}
@@ -17,6 +20,7 @@ export class CompetitionEntriesController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: 'Obtener la Start List de una Carrera' })
   @ApiQuery({ name: 'competitionId', required: true, description: 'UUID de la carrera' })
   findAll(@Query('competitionId', ParseUUIDPipe) competitionId: string) { 
@@ -24,10 +28,12 @@ export class CompetitionEntriesController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: 'Ver detalles de la inscripción de un dorsal' })
   findOne(@Param('id', ParseUUIDPipe) id: string) { return this.entriesService.findOne(id); }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: 'Modificar pesaje o estado de un competidor' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateCompetitionEntryDto: UpdateCompetitionEntryDto) {
     return this.entriesService.update(id, updateCompetitionEntryDto);

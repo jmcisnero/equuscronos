@@ -9,12 +9,16 @@ interface CompetitorCardProps {
   entry: LocalCompetitionEntry;
   onPressTiming: (entry: LocalCompetitionEntry) => void;
   onPressVet: (entry: LocalCompetitionEntry) => void;
+  showTiming?: boolean;
+  showVet?: boolean;
 }
 
 export const CompetitorCard: React.FC<CompetitorCardProps> = ({
   entry,
   onPressTiming,
-  onPressVet
+  onPressVet,
+  showTiming = true,
+  showVet = true
 }) => {
   const getStatusBadgeStyle = (status: ParticipantStatus): { bg: ViewStyle; textStyle: any } => {
     switch (status) {
@@ -96,22 +100,28 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
       </View>
 
       {/* Dynamic Action Panel */}
-      <View style={styles.actionsContainer}>
-        <Button 
-          title="⏱️ Crono"
-          variant="outline"
-          style={styles.actionBtn}
-          textStyle={styles.btnText}
-          onPress={() => onPressTiming(entry)}
-        />
-        <Button 
-          title="🩺 Mesa Vet"
-          variant="secondary"
-          style={styles.actionBtn}
-          textStyle={styles.btnText}
-          onPress={() => onPressVet(entry)}
-        />
-      </View>
+      {(showTiming || showVet) && (
+        <View style={styles.actionsContainer}>
+          {showTiming && (
+            <Button 
+              title="⏱️ Crono"
+              variant="outline"
+              style={styles.actionBtn}
+              textStyle={styles.btnText}
+              onPress={() => onPressTiming(entry)}
+            />
+          )}
+          {showVet && (
+            <Button 
+              title="🩺 Mesa Vet"
+              variant="secondary"
+              style={styles.actionBtn}
+              textStyle={styles.btnText}
+              onPress={() => onPressVet(entry)}
+            />
+          )}
+        </View>
+      )}
     </View>
   );
 };

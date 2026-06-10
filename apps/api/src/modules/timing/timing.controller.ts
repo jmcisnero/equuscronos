@@ -4,10 +4,12 @@ import { TimingService } from './timing.service';
 import { CreateTimingRecordDto } from './dto/create-timing.dto';
 import { VoidTimingRecordDto } from './dto/void-timing.dto';
 import { UpdateTimingRecordDto } from './dto/update-timing.dto';
-import { TimeRecordType } from '@equuscronos/shared';
+import { TimeRecordType, UserRole } from '@equuscronos/shared';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('9. Cronometraje (Motor de Pista - Field App)')
 @ApiBearerAuth('access-token')
+@Roles(UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.ADMIN)
 @Controller('timing')
 export class TimingController {
   constructor(private readonly timingService: TimingService) {}
