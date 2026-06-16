@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
-import { Owner } from './entities/owner.entity';
-import { CreateOwnerDto } from './dto/create-owner.dto';
-import { UpdateOwnerDto } from './dto/update-owner.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, ILike } from "typeorm";
+import { Owner } from "./entities/owner.entity";
+import { CreateOwnerDto } from "./dto/create-owner.dto";
+import { UpdateOwnerDto } from "./dto/update-owner.dto";
 
 @Injectable()
 export class OwnersService {
@@ -25,22 +29,23 @@ export class OwnersService {
    * - Información de contacto (teléfono o email)
    */
   async findAll(search?: string): Promise<Owner[]> {
-    const query = this.ownerRepository.createQueryBuilder('owner');
+    const query = this.ownerRepository.createQueryBuilder("owner");
 
     if (search) {
       query.where(
-        '(LOWER(owner.name) LIKE LOWER(:search) OR LOWER(owner.contactInfo) LIKE LOWER(:search))',
-        { search: `%${search}%` }
+        "(LOWER(owner.name) LIKE LOWER(:search) OR LOWER(owner.contactInfo) LIKE LOWER(:search))",
+        { search: `%${search}%` },
       );
     }
 
-    query.orderBy('owner.name', 'ASC');
+    query.orderBy("owner.name", "ASC");
     return await query.getMany();
   }
 
   async findOne(id: string): Promise<Owner> {
     const owner = await this.ownerRepository.findOne({ where: { id } });
-    if (!owner) throw new NotFoundException(`Propietario con ID ${id} no encontrado.`);
+    if (!owner)
+      throw new NotFoundException(`Propietario con ID ${id} no encontrado.`);
     return owner;
   }
 
@@ -52,14 +57,16 @@ export class OwnersService {
 
   async remove(id: string): Promise<void> {
     const owner = await this.findOne(id);
-    
+
     // Control de Integridad de Negocio: Validar si el propietario posee caballos registrados
-    const horseCount = await this.ownerRepository.manager.count('Horse', {
-      where: { owner: { id } }
+    const horseCount = await this.ownerRepository.manager.count("Horse", {
+      where: { owner: { id } },
     });
 
     if (horseCount > 0) {
-      throw new BadRequestException('No se puede eliminar un propietario con caballos registrados en el padrón.');
+      throw new BadRequestException(
+        "No se puede eliminar un propietario con caballos registrados en el padrón.",
+      );
     }
 
     await this.ownerRepository.remove(owner);

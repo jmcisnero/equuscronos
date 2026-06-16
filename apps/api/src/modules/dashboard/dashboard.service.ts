@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Not, IsNull } from 'typeorm';
-import { Horse } from '../horses/entities/horse.entity';
-import { Rider } from '../riders/entities/rider.entity';
-import { Owner } from '../owners/entities/owner.entity';
-import { Competition } from '../competitions/entities/competition.entity';
-import { CompetitionStatus } from '@equuscronos/shared';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, LessThan, Not, IsNull } from "typeorm";
+import { Horse } from "../horses/entities/horse.entity";
+import { Rider } from "../riders/entities/rider.entity";
+import { Owner } from "../owners/entities/owner.entity";
+import { Competition } from "../competitions/entities/competition.entity";
+import { CompetitionStatus } from "@equuscronos/shared";
 
 @Injectable()
 export class DashboardService {
@@ -25,7 +25,7 @@ export class DashboardService {
    * para alimentar la consola del Dashboard Central de EquusCronos.
    */
   async getStats() {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split("T")[0];
 
     const [
       totalHorses,
@@ -53,17 +53,17 @@ export class DashboardService {
           healthRecordsExpiration: Not(IsNull()),
         },
         order: {
-          healthRecordsExpiration: 'ASC',
+          healthRecordsExpiration: "ASC",
         },
         take: 3,
       }),
       this.competitionRepository.findOne({
         where: { status: CompetitionStatus.ACTIVE },
-        relations: ['competitionType'],
+        relations: ["competitionType"],
       }),
       this.competitionRepository.find({
-        order: { competitionDate: 'DESC' },
-        relations: ['competitionType'],
+        order: { competitionDate: "DESC" },
+        relations: ["competitionType"],
         take: 5,
       }),
     ]);

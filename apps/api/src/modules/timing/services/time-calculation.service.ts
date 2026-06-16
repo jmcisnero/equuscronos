@@ -1,5 +1,5 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Stage } from '../../competitions/entities/stage.entity';
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Stage } from "../../competitions/entities/stage.entity";
 
 @Injectable()
 export class TimeCalculationService {
@@ -12,14 +12,18 @@ export class TimeCalculationService {
    */
   calculateNextDepartureTime(arrivalTime: Date, currentStage: Stage): Date {
     if (!arrivalTime || isNaN(arrivalTime.getTime())) {
-      throw new InternalServerErrorException('Timestamp de llegada inválido para el cálculo.');
+      throw new InternalServerErrorException(
+        "Timestamp de llegada inválido para el cálculo.",
+      );
     }
 
-    // Regla de Negocio FEU (Art. 28): La neutralización es obligatoria. 
+    // Regla de Negocio FEU (Art. 28): La neutralización es obligatoria.
     // Usamos el configurado en la etapa, o aplicamos 60 minutos como fallback estricto reglamentario.
-    const neutralization = currentStage.neutralizationMinutes !== undefined && currentStage.neutralizationMinutes !== null
-      ? currentStage.neutralizationMinutes
-      : 60; // Fallback hardcoded para asegurar cumplimiento de la FEU
+    const neutralization =
+      currentStage.neutralizationMinutes !== undefined &&
+      currentStage.neutralizationMinutes !== null
+        ? currentStage.neutralizationMinutes
+        : 60; // Fallback hardcoded para asegurar cumplimiento de la FEU
 
     // Si la neutralización explícita es 0 (ej. última etapa), no hay próxima salida
     if (neutralization === 0) {
@@ -28,9 +32,11 @@ export class TimeCalculationService {
 
     // Clonamos la fecha para no mutar el objeto original
     const scheduledDeparture = new Date(arrivalTime.getTime());
-    
+
     // Sumamos los minutos reglamentarios garantizando la neutralización obligatoria
-    scheduledDeparture.setMinutes(scheduledDeparture.getMinutes() + neutralization);
+    scheduledDeparture.setMinutes(
+      scheduledDeparture.getMinutes() + neutralization,
+    );
 
     return scheduledDeparture;
   }

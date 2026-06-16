@@ -1,6 +1,12 @@
 import useSWR from "swr";
 
-export type CompetitionStatus = "PLANNED" | "ACTIVE" | "PAUSED" | "COMPLETED" | "OFFICIAL" | "CANCELLED";
+export type CompetitionStatus =
+  | "PLANNED"
+  | "ACTIVE"
+  | "PAUSED"
+  | "COMPLETED"
+  | "OFFICIAL"
+  | "CANCELLED";
 
 export interface Stage {
   id: string;
@@ -42,7 +48,8 @@ const fetcher = async (path: string): Promise<Competition[]> => {
   if (!res.ok) {
     const errorInfo = await res.json().catch(() => ({}));
     const error = new Error(
-      errorInfo?.message || "Ocurrió un error al listar las competencias del servidor principal."
+      errorInfo?.message ||
+        "Ocurrió un error al listar las competencias del servidor principal.",
     ) as any;
     error.status = res.status;
     error.info = errorInfo;
@@ -66,10 +73,14 @@ export const MOCK_COMPETITIONS: Competition[] = [
     status: "ACTIVE",
     stages: [
       { id: "s1", stageNumber: 1, distanceKm: 40, neutralizationMinutes: 30 },
-      { id: "s2", stageNumber: 2, distanceKm: 20, neutralizationMinutes: 0 }
+      { id: "s2", stageNumber: 2, distanceKm: 20, neutralizationMinutes: 0 },
     ],
     tenant: { id: "t1", name: "Club Social y Deportivo Tupambaé" },
-    competitionType: { id: "ct1", name: "Raid de Velocidad Controlada (FEU)", modality: "CONTROLLED_SPEED" }
+    competitionType: {
+      id: "ct1",
+      name: "Raid de Velocidad Controlada (FEU)",
+      modality: "CONTROLLED_SPEED",
+    },
   },
   {
     id: "c2000000-0000-0000-0000-000000000002",
@@ -81,10 +92,14 @@ export const MOCK_COMPETITIONS: Competition[] = [
     status: "PLANNED",
     stages: [
       { id: "s3", stageNumber: 1, distanceKm: 60, neutralizationMinutes: 40 },
-      { id: "s4", stageNumber: 2, distanceKm: 30, neutralizationMinutes: 0 }
+      { id: "s4", stageNumber: 2, distanceKm: 30, neutralizationMinutes: 0 },
     ],
     tenant: { id: "t2", name: "Club Larrañaga de Cardona" },
-    competitionType: { id: "ct2", name: "Endurance de Velocidad Libre (FEU)", modality: "FREE_SPEED" }
+    competitionType: {
+      id: "ct2",
+      name: "Endurance de Velocidad Libre (FEU)",
+      modality: "FREE_SPEED",
+    },
   },
   {
     id: "c2000000-0000-0000-0000-000000000003",
@@ -96,10 +111,14 @@ export const MOCK_COMPETITIONS: Competition[] = [
     status: "COMPLETED",
     stages: [
       { id: "s5", stageNumber: 1, distanceKm: 50, neutralizationMinutes: 30 },
-      { id: "s6", stageNumber: 2, distanceKm: 30, neutralizationMinutes: 0 }
+      { id: "s6", stageNumber: 2, distanceKm: 30, neutralizationMinutes: 0 },
     ],
     tenant: { id: "t3", name: "Centro Unión de San Ramón" },
-    competitionType: { id: "ct1", name: "Raid de Velocidad Controlada (FEU)", modality: "CONTROLLED_SPEED" }
+    competitionType: {
+      id: "ct1",
+      name: "Raid de Velocidad Controlada (FEU)",
+      modality: "CONTROLLED_SPEED",
+    },
   },
   {
     id: "c2000000-0000-0000-0000-000000000004",
@@ -111,11 +130,15 @@ export const MOCK_COMPETITIONS: Competition[] = [
     status: "OFFICIAL",
     stages: [
       { id: "s7", stageNumber: 1, distanceKm: 55, neutralizationMinutes: 35 },
-      { id: "s8", stageNumber: 2, distanceKm: 25, neutralizationMinutes: 0 }
+      { id: "s8", stageNumber: 2, distanceKm: 25, neutralizationMinutes: 0 },
     ],
     tenant: { id: "t4", name: "Sociedad Criolla La Tradición" },
-    competitionType: { id: "ct1", name: "Raid de Velocidad Controlada (FEU)", modality: "CONTROLLED_SPEED" }
-  }
+    competitionType: {
+      id: "ct1",
+      name: "Raid de Velocidad Controlada (FEU)",
+      modality: "CONTROLLED_SPEED",
+    },
+  },
 ];
 
 /**
@@ -124,15 +147,13 @@ export const MOCK_COMPETITIONS: Competition[] = [
  * desde el backend NestJS con soporte de polling automático.
  */
 export function useCompetitions() {
-  const { data, error, isLoading, isValidating, mutate } = useSWR<Competition[]>(
-    "/admin/competitions",
-    fetcher,
-    {
-      refreshInterval: 30000, // 30 segundos
-      dedupingInterval: 4000,
-      revalidateOnFocus: true,
-    }
-  );
+  const { data, error, isLoading, isValidating, mutate } = useSWR<
+    Competition[]
+  >("/admin/competitions", fetcher, {
+    refreshInterval: 30000, // 30 segundos
+    dedupingInterval: 4000,
+    revalidateOnFocus: true,
+  });
 
   return {
     competitions: data || [],

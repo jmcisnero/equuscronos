@@ -1,6 +1,6 @@
-import { Rider } from './rider';
-import { Horse } from './horse';
-import { Tenant } from './tenant';
+import { Rider } from "./rider";
+import { Horse } from "./horse";
+import { Tenant } from "./tenant";
 
 export interface CompetitionEntry {
   id: string;

@@ -1,6 +1,11 @@
-import { Competition, CreateCompetitionDto, UpdateCompetitionDto } from '@/types/competition';
+import {
+  Competition,
+  CreateCompetitionDto,
+  UpdateCompetitionDto,
+} from "@/types/competition";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/admin';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
 
 export const CompetitionService = {
   /**
@@ -8,9 +13,12 @@ export const CompetitionService = {
    * Admite un filtro opcional para búsqueda global en el frontend.
    */
   async getAll(search?: string): Promise<Competition[]> {
-    const url = search ? `${API_URL}/competitions?search=${encodeURIComponent(search)}` : `${API_URL}/competitions`;
+    const url = search
+      ? `${API_URL}/competitions?search=${encodeURIComponent(search)}`
+      : `${API_URL}/competitions`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Error al cargar la lista de competencias');
+    if (!response.ok)
+      throw new Error("Error al cargar la lista de competencias");
     return response.json();
   },
 
@@ -19,7 +27,8 @@ export const CompetitionService = {
    */
   async getById(id: string): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions/${id}`);
-    if (!response.ok) throw new Error('Error al obtener la competencia especificada');
+    if (!response.ok)
+      throw new Error("Error al obtener la competencia especificada");
     return response.json();
   },
 
@@ -28,16 +37,16 @@ export const CompetitionService = {
    */
   async create(dto: CreateCompetitionDto): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
-      console.error('NestJS API validation error response:', err);
+      console.error("NestJS API validation error response:", err);
       const friendlyMessage = Array.isArray(err.message)
-        ? err.message.join('. ')
-        : (err.message || 'Error al registrar la nueva competencia');
+        ? err.message.join(". ")
+        : err.message || "Error al registrar la nueva competencia";
       const customError = new Error(friendlyMessage) as any;
       customError.response = err;
       throw customError;
@@ -50,15 +59,15 @@ export const CompetitionService = {
    */
   async update(id: string, dto: UpdateCompetitionDto): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
       const friendlyMessage = Array.isArray(err.message)
-        ? err.message.join('. ')
-        : (err.message || 'Error al actualizar la competencia');
+        ? err.message.join(". ")
+        : err.message || "Error al actualizar la competencia";
       throw new Error(friendlyMessage);
     }
     return response.json();
@@ -69,16 +78,18 @@ export const CompetitionService = {
    */
   async start(id: string, officialStartTime?: string): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions/${id}/start`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-role': 'ADMIN'
+        "Content-Type": "application/json",
+        "x-role": "ADMIN",
       },
-      body: JSON.stringify({ officialStartTime })
+      body: JSON.stringify({ officialStartTime }),
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al dar la largada oficial de la carrera.');
+      throw new Error(
+        err.message || "Error al dar la largada oficial de la carrera.",
+      );
     }
     return response.json();
   },
@@ -88,11 +99,11 @@ export const CompetitionService = {
    */
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/competitions/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al eliminar la competencia');
+      throw new Error(err.message || "Error al eliminar la competencia");
     }
-  }
+  },
 };

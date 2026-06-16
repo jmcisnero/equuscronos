@@ -1,21 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Alert, 
-  TouchableOpacity, 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
   TextInput,
   Animated,
-  Keyboard
-} from 'react-native';
-import { LocalCompetitionEntry } from '../database/schema';
-import { colors } from '../theme/colors';
-import { getDatabase } from '../database/db';
-import SyncService from '../services/SyncService';
-import { ValidationService } from '../services/ValidationService';
-import { TimeRecordType, ParticipantStatus } from '@equuscronos/shared';
+  Keyboard,
+} from "react-native";
+import { LocalCompetitionEntry } from "../database/schema";
+import { colors } from "../theme/colors";
+import { getDatabase } from "../database/db";
+import SyncService from "../services/SyncService";
+import { ValidationService } from "../services/ValidationService";
+import {
+  TimeRecordType,
+  ParticipantStatus,
+  UserRole,
+  EliminationCode,
+} from "@equuscronos/shared";
+import { useAuth } from "../services/AuthContext";
 
 interface TimingScreenProps {
   entry?: LocalCompetitionEntry | null;
@@ -41,28 +47,39 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   entry,
   stationRecordType = TimeRecordType.ARRIVAL,
   onBack,
-  onRecordSuccess
+  onRecordSuccess,
 }) => {
+  const { user } = useAuth();
+  const [showDqAlert, setShowDqAlert] = useState(false);
+  const showBackButton =
+    user?.role !== UserRole.TIMEKEEPER && user?.role !== UserRole.JUDGE;
+
   // Ocultar selector y hacer tipo de evento inmutable para la sesión
   const [recordType] = useState<TimeRecordType>(stationRecordType);
-  const [timeSource, setTimeSource] = useState<'SYSTEM' | 'MANUAL'>('SYSTEM');
+  const [timeSource, setTimeSource] = useState<"SYSTEM" | "MANUAL">("SYSTEM");
   const [systemTime, setSystemTime] = useState<Date>(new Date());
   const [manualOffsetSeconds, setManualOffsetSeconds] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Stream States
-  const [bibNumber, setBibNumber] = useState(entry ? entry.bib_number.toString() : '');
-  const [matchedEntry, setMatchedEntry] = useState<LocalCompetitionEntry | null>(entry || null);
+  const [bibNumber, setBibNumber] = useState(
+    entry ? entry.bib_number.toString() : "",
+  );
+  const [matchedEntry, setMatchedEntry] =
+    useState<LocalCompetitionEntry | null>(entry || null);
   const [sessionHistory, setSessionHistory] = useState<SessionRecord[]>([]);
-  const [lastSaved, setLastSaved] = useState<{ bib: number; time: string } | null>(null);
+  const [lastSaved, setLastSaved] = useState<{
+    bib: number;
+    time: string;
+  } | null>(null);
 
   // Editing & Voiding Dialog States
   const [actionRecord, setActionRecord] = useState<SessionRecord | null>(null);
-  const [actionType, setActionType] = useState<'EDIT' | 'VOID' | null>(null);
-  const [voidReasonText, setVoidReasonText] = useState('');
-  const [editHours, setEditHours] = useState('');
-  const [editMinutes, setEditMinutes] = useState('');
-  const [editSeconds, setEditSeconds] = useState('');
+  const [actionType, setActionType] = useState<"EDIT" | "VOID" | null>(null);
+  const [voidReasonText, setVoidReasonText] = useState("");
+  const [editHours, setEditHours] = useState("");
+  const [editMinutes, setEditMinutes] = useState("");
+  const [editSeconds, setEditSeconds] = useState("");
 
   // Refs & Animation
   const inputRef = useRef<TextInput>(null);
@@ -93,9 +110,9 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
          FROM timing_records tr
          JOIN competition_entries ce ON tr.entry_id = ce.id
          ORDER BY tr.recorded_at DESC
-         LIMIT 20;`
+         LIMIT 20;`,
       );
-      const mapped: SessionRecord[] = rows.map(r => ({
+      const mapped: SessionRecord[] = rows.map((r) => ({
         id: r.id,
         bibNumber: r.bib_number,
         riderName: r.rider_name,
@@ -105,11 +122,11 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         isVoid: r.is_void === 1,
         voidReason: r.void_reason,
         stageId: r.stage_id,
-        entryId: r.entry_id
+        entryId: r.entry_id,
       }));
       setSessionHistory(mapped);
     } catch (err) {
-      console.error('[Timing] Failed to load recent records:', err);
+      console.error("[Timing] Failed to load recent records:", err);
     }
   };
 
@@ -133,12 +150,12 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       try {
         const db = await getDatabase();
         const found = await db.getFirstAsync<LocalCompetitionEntry>(
-          'SELECT * FROM competition_entries WHERE bib_number = ?;',
-          [bibInt]
+          "SELECT * FROM competition_entries WHERE bib_number = ?;",
+          [bibInt],
         );
         setMatchedEntry(found || null);
       } catch (e) {
-        console.error('[Timing] Database lookup error:', e);
+        console.error("[Timing] Database lookup error:", e);
         setMatchedEntry(null);
       }
     };
@@ -147,7 +164,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   }, [bibNumber]);
 
   const getTargetTime = (): Date => {
-    if (timeSource === 'SYSTEM') return systemTime;
+    if (timeSource === "SYSTEM") return systemTime;
     return new Date(systemTime.getTime() + manualOffsetSeconds * 1000);
   };
 
@@ -163,7 +180,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         toValue: 0,
         duration: 600,
         useNativeDriver: false,
-      })
+      }),
     ]).start();
   };
 
@@ -172,22 +189,28 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
     const trimmed = bibNumber.trim();
     if (!trimmed) {
-      Alert.alert('Entrada Vacía', 'Por favor, ingrese un número de dorsal.', [
-        { text: 'OK', onPress: () => {
-          setBibNumber('');
-          setTimeout(() => inputRef.current?.focus(), 150);
-        } }
+      Alert.alert("Entrada Vacía", "Por favor, ingrese un número de dorsal.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setBibNumber("");
+            setTimeout(() => inputRef.current?.focus(), 150);
+          },
+        },
       ]);
       return;
     }
 
     const bibInt = parseInt(trimmed, 10);
     if (isNaN(bibInt)) {
-      Alert.alert('Error', 'Ingrese un número de dorsal válido.', [
-        { text: 'OK', onPress: () => {
-          setBibNumber('');
-          setTimeout(() => inputRef.current?.focus(), 150);
-        } }
+      Alert.alert("Error", "Ingrese un número de dorsal válido.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setBibNumber("");
+            setTimeout(() => inputRef.current?.focus(), 150);
+          },
+        },
       ]);
       return;
     }
@@ -201,18 +224,23 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
       // Verify competitor exists in SQLite local DB
       const entryRow = await db.getFirstAsync<LocalCompetitionEntry>(
-        'SELECT * FROM competition_entries WHERE bib_number = ?;',
-        [bibInt]
+        "SELECT * FROM competition_entries WHERE bib_number = ?;",
+        [bibInt],
       );
 
       if (!entryRow) {
         Alert.alert(
-          'Dorsal no encontrado',
-          'Dorsal no encontrado en esta carrera',
-          [{ text: 'OK', onPress: () => {
-            setBibNumber('');
-            setTimeout(() => inputRef.current?.focus(), 150);
-          } }]
+          "Dorsal no encontrado",
+          "Dorsal no encontrado en esta carrera",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setBibNumber("");
+                setTimeout(() => inputRef.current?.focus(), 150);
+              },
+            },
+          ],
         );
         setIsSubmitting(false);
         return;
@@ -226,17 +254,22 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         db,
         entryRow.id,
         stageId,
-        recordType
+        recordType,
       );
 
       if (!valResult.isValid) {
         Alert.alert(
-          'Validación de Secuencia',
-          valResult.error || 'Operación denegada por reglas FEU.',
-          [{ text: 'Entendido', onPress: () => {
-            setBibNumber('');
-            setTimeout(() => inputRef.current?.focus(), 150);
-          } }]
+          "Validación de Secuencia",
+          valResult.error || "Operación denegada por reglas FEU.",
+          [
+            {
+              text: "Entendido",
+              onPress: () => {
+                setBibNumber("");
+                setTimeout(() => inputRef.current?.focus(), 150);
+              },
+            },
+          ],
         );
         setIsSubmitting(false);
         return;
@@ -246,12 +279,36 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
       // Determine target competitor status depending on TimeRecordType selected
       let targetStatus = entryRow.status;
+      let isApproved = 1;
+      let eliminationType: string | null = null;
+      let eliminationReason: string | null = null;
+      let isLateVetIn = false;
+
       if (recordType === TimeRecordType.START) {
         targetStatus = ParticipantStatus.IN_RACE;
       } else if (recordType === TimeRecordType.ARRIVAL) {
         targetStatus = ParticipantStatus.VET_CHECK;
       } else if (recordType === TimeRecordType.VET_IN) {
         targetStatus = ParticipantStatus.VET_CHECK;
+        // Verify 20-minute recovery limit
+        const arrivalRecord = await db.getFirstAsync<{ recorded_at: string }>(
+          `SELECT recorded_at FROM timing_records 
+           WHERE entry_id = ? AND stage_id = ? AND record_type = ? AND is_void = 0;`,
+          [entryRow.id, stageId, TimeRecordType.ARRIVAL],
+        );
+        if (arrivalRecord) {
+          const diffMs =
+            new Date(recordedAt).getTime() -
+            new Date(arrivalRecord.recorded_at).getTime();
+          if (diffMs > 20 * 60 * 1000) {
+            const diffMinutes = Math.round(diffMs / (1000 * 60));
+            isApproved = 0;
+            eliminationType = EliminationCode.TIME;
+            eliminationReason = `Fuera de tiempo de recuperación: ${diffMinutes} minutos (Límite: 20 min).`;
+            isLateVetIn = true;
+            targetStatus = ParticipantStatus.DQ;
+          }
+        }
       } else if (recordType === TimeRecordType.VET_OUT) {
         targetStatus = ParticipantStatus.RESTING;
       }
@@ -259,54 +316,95 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       // 1. Transactionally write to SQLite local tables (Source of truth)
       await db.runAsync(
         `INSERT INTO timing_records (
-          id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, is_void, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?);`,
-        [recordId, tenantId, entryRow.id, stageId, recordType, recordedAt, recordedAt, recordedAt]
+          id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, elimination_type, elimination_reason, is_void, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);`,
+        [
+          recordId,
+          tenantId,
+          entryRow.id,
+          stageId,
+          recordType,
+          recordedAt,
+          isApproved,
+          eliminationType,
+          eliminationReason,
+          recordedAt,
+          recordedAt,
+        ],
       );
 
       await db.runAsync(
         `UPDATE competition_entries SET status = ?, updated_at = ? WHERE id = ?;`,
-        [targetStatus, recordedAt, entryRow.id]
+        [targetStatus, recordedAt, entryRow.id],
       );
 
-      console.log(`[SQLite] Local database updated. Entry: ${entryRow.id}, Status: ${targetStatus}`);
+      console.log(
+        `[SQLite] Local database updated. Entry: ${entryRow.id}, Status: ${targetStatus}`,
+      );
 
       // 2. Queue actions for Backend Synchronization (Postgres)
-      await SyncService.enqueueAction('CREATE_TIMING', 'timing_records', {
+      await SyncService.enqueueAction("CREATE_TIMING", "timing_records", {
         id: recordId,
         tenant_id: tenantId,
         entry_id: entryRow.id,
         stage_id: stageId,
         record_type: recordType,
         recorded_at: recordedAt,
-        is_approved: 1,
+        is_approved: isApproved,
+        elimination_type: eliminationType || null,
+        elimination_reason: eliminationReason || null,
         is_void: 0,
         created_at: recordedAt,
-        updated_at: recordedAt
+        updated_at: recordedAt,
       });
 
-      await SyncService.enqueueAction('UPDATE_ENTRY_STATUS', 'competition_entries', {
-        id: entryRow.id,
-        status: targetStatus
-      });
+      await SyncService.enqueueAction(
+        "UPDATE_ENTRY_STATUS",
+        "competition_entries",
+        {
+          id: entryRow.id,
+          status: targetStatus,
+        },
+      );
 
       // 3. Success Feedback UI updates
-      setLastSaved({ bib: bibInt, time: formattedTime(recordTime) });
-      triggerFlash();
-
-      // Reload all recent records
       await loadRecentRecords();
 
-      // Clear bib input for the next entry
-      setBibNumber('');
+      if (isLateVetIn) {
+        setShowDqAlert(true);
+        Alert.alert(
+          "DORSAL EXCEDIDO",
+          "DORSAL EXCEDIDO: ELIMINACIÓN AUTOMÁTICA",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setBibNumber("");
+                setTimeout(() => inputRef.current?.focus(), 150);
+              },
+            },
+          ],
+        );
+      } else {
+        setLastSaved({ bib: bibInt, time: formattedTime(recordTime) });
+        triggerFlash();
+        setBibNumber("");
+      }
     } catch (error) {
-      console.error('[Timing] Write failed:', error);
-      Alert.alert('Error', 'No se pudo guardar el registro local en la base de datos.', [
-        { text: 'OK', onPress: () => {
-          setBibNumber('');
-          setTimeout(() => inputRef.current?.focus(), 150);
-        } }
-      ]);
+      console.error("[Timing] Write failed:", error);
+      Alert.alert(
+        "Error",
+        "No se pudo guardar el registro local en la base de datos.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setBibNumber("");
+              setTimeout(() => inputRef.current?.focus(), 150);
+            },
+          },
+        ],
+      );
     } finally {
       setIsSubmitting(false);
       // Keep/Restore focus on the input immediately
@@ -317,53 +415,56 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   };
 
   const formattedTime = (date: Date): string => {
-    const hh = String(date.getHours()).padStart(2, '0');
-    const mm = String(date.getMinutes()).padStart(2, '0');
-    const ss = String(date.getSeconds()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
     return `${hh}:${mm}:${ss}`;
   };
 
   const adjustOffset = (amount: number) => {
-    setTimeSource('MANUAL');
-    setManualOffsetSeconds(prev => prev + amount);
+    setTimeSource("MANUAL");
+    setManualOffsetSeconds((prev) => prev + amount);
   };
 
   // Interpolate flash animation values for high-visibility visual feedback
   const animatedBorderColor = flashAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#334155', '#10B981'] // Slate border to neon-green border
+    outputRange: ["#334155", "#10B981"], // Slate border to neon-green border
   });
 
   const animatedBgColor = flashAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#1E293B', 'rgba(16, 185, 129, 0.12)'] // Slate background to soft green glow
+    outputRange: ["#1E293B", "rgba(16, 185, 129, 0.12)"], // Slate background to soft green glow
   });
 
   // Action Handlers
   const handleCancelAction = () => {
     setActionRecord(null);
     setActionType(null);
-    setVoidReasonText('');
-    setEditHours('');
-    setEditMinutes('');
-    setEditSeconds('');
+    setVoidReasonText("");
+    setEditHours("");
+    setEditMinutes("");
+    setEditSeconds("");
     setTimeout(() => inputRef.current?.focus(), 150);
   };
 
-  const openActionDialog = (record: SessionRecord, type: 'EDIT' | 'VOID') => {
+  const openActionDialog = (record: SessionRecord, type: "EDIT" | "VOID") => {
     setActionRecord(record);
     setActionType(type);
-    if (type === 'EDIT') {
+    if (type === "EDIT") {
       const date = new Date(record.recordedAt);
-      setEditHours(String(date.getHours()).padStart(2, '0'));
-      setEditMinutes(String(date.getMinutes()).padStart(2, '0'));
-      setEditSeconds(String(date.getSeconds()).padStart(2, '0'));
+      setEditHours(String(date.getHours()).padStart(2, "0"));
+      setEditMinutes(String(date.getMinutes()).padStart(2, "0"));
+      setEditSeconds(String(date.getSeconds()).padStart(2, "0"));
     }
   };
 
   const handleConfirmVoid = async () => {
     if (!voidReasonText.trim()) {
-      Alert.alert('Justificación requerida', 'Por favor, ingrese el motivo de la anulación.');
+      Alert.alert(
+        "Justificación requerida",
+        "Por favor, ingrese el motivo de la anulación.",
+      );
       return;
     }
 
@@ -373,14 +474,14 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
       // Update timing record locally to is_void = 1
       await db.runAsync(
-        'UPDATE timing_records SET is_void = 1, void_reason = ?, updated_at = ? WHERE id = ?;',
-        [voidReasonText.trim(), now, actionRecord!.id]
+        "UPDATE timing_records SET is_void = 1, void_reason = ?, updated_at = ? WHERE id = ?;",
+        [voidReasonText.trim(), now, actionRecord!.id],
       );
 
       // Recalculate participant status by querying remaining active records
       const activeRows = await db.getAllAsync<{ record_type: string }>(
-        'SELECT record_type FROM timing_records WHERE entry_id = ? AND is_void = 0 ORDER BY recorded_at DESC;',
-        [actionRecord!.entryId]
+        "SELECT record_type FROM timing_records WHERE entry_id = ? AND is_void = 0 ORDER BY recorded_at DESC;",
+        [actionRecord!.entryId],
       );
 
       let targetStatus = ParticipantStatus.IN_RACE;
@@ -388,7 +489,10 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         const latestType = activeRows[0].record_type as TimeRecordType;
         if (latestType === TimeRecordType.START) {
           targetStatus = ParticipantStatus.IN_RACE;
-        } else if (latestType === TimeRecordType.ARRIVAL || latestType === TimeRecordType.VET_IN) {
+        } else if (
+          latestType === TimeRecordType.ARRIVAL ||
+          latestType === TimeRecordType.VET_IN
+        ) {
           targetStatus = ParticipantStatus.VET_CHECK;
         } else if (latestType === TimeRecordType.VET_OUT) {
           targetStatus = ParticipantStatus.RESTING;
@@ -396,27 +500,31 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       }
 
       await db.runAsync(
-        'UPDATE competition_entries SET status = ?, updated_at = ? WHERE id = ?;',
-        [targetStatus, now, actionRecord!.entryId]
+        "UPDATE competition_entries SET status = ?, updated_at = ? WHERE id = ?;",
+        [targetStatus, now, actionRecord!.entryId],
       );
 
       // Queue sync actions
-      await SyncService.enqueueAction('VOID_TIMING', 'timing_records', {
+      await SyncService.enqueueAction("VOID_TIMING", "timing_records", {
         id: actionRecord!.id,
-        voidReason: voidReasonText.trim()
+        voidReason: voidReasonText.trim(),
       });
 
-      await SyncService.enqueueAction('UPDATE_ENTRY_STATUS', 'competition_entries', {
-        id: actionRecord!.entryId,
-        status: targetStatus
-      });
+      await SyncService.enqueueAction(
+        "UPDATE_ENTRY_STATUS",
+        "competition_entries",
+        {
+          id: actionRecord!.entryId,
+          status: targetStatus,
+        },
+      );
 
-      Alert.alert('Éxito', 'Registro anulado correctamente.');
+      Alert.alert("Éxito", "Registro anulado correctamente.");
       await loadRecentRecords();
       handleCancelAction();
     } catch (err) {
-      console.error('[Timing] Void error:', err);
-      Alert.alert('Error', 'No se pudo anular el registro de tiempo.');
+      console.error("[Timing] Void error:", err);
+      Alert.alert("Error", "No se pudo anular el registro de tiempo.");
     }
   };
 
@@ -425,8 +533,21 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     const m = parseInt(editMinutes, 10);
     const s = parseInt(editSeconds, 10);
 
-    if (isNaN(h) || h < 0 || h > 23 || isNaN(m) || m < 0 || m > 59 || isNaN(s) || s < 0 || s > 59) {
-      Alert.alert('Error', 'Ingrese un formato de tiempo válido (HH: 00-23, MM: 00-59, SS: 00-59).');
+    if (
+      isNaN(h) ||
+      h < 0 ||
+      h > 23 ||
+      isNaN(m) ||
+      m < 0 ||
+      m > 59 ||
+      isNaN(s) ||
+      s < 0 ||
+      s > 59
+    ) {
+      Alert.alert(
+        "Error",
+        "Ingrese un formato de tiempo válido (HH: 00-23, MM: 00-59, SS: 00-59).",
+      );
       return;
     }
 
@@ -437,24 +558,24 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       if (actionRecord!.recordType === TimeRecordType.ARRIVAL) {
         const vetInRow = await db.getFirstAsync(
           "SELECT id FROM timing_records WHERE entry_id = ? AND stage_id = ? AND record_type = 'VET_IN' AND is_void = 0;",
-          [actionRecord!.entryId, actionRecord!.stageId]
+          [actionRecord!.entryId, actionRecord!.stageId],
         );
         if (vetInRow) {
           Alert.alert(
-            'Modificación Denegada',
-            'No se puede modificar la llegada porque el binomio ya ingresó a inspección veterinaria (VET_IN).'
+            "Modificación Denegada",
+            "No se puede modificar la llegada porque el binomio ya ingresó a inspección veterinaria (VET_IN).",
           );
           return;
         }
       } else if (actionRecord!.recordType === TimeRecordType.START) {
         const arrivalRow = await db.getFirstAsync(
           "SELECT id FROM timing_records WHERE entry_id = ? AND stage_id = ? AND record_type = 'ARRIVAL' AND is_void = 0;",
-          [actionRecord!.entryId, actionRecord!.stageId]
+          [actionRecord!.entryId, actionRecord!.stageId],
         );
         if (arrivalRow) {
           Alert.alert(
-            'Modificación Denegada',
-            'No se puede modificar la largada porque el binomio ya registró su llegada (ARRIVAL).'
+            "Modificación Denegada",
+            "No se puede modificar la largada porque el binomio ya registró su llegada (ARRIVAL).",
           );
           return;
         }
@@ -470,41 +591,51 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
       // Update timing record locally
       await db.runAsync(
-        'UPDATE timing_records SET recorded_at = ?, updated_at = ? WHERE id = ?;',
-        [newIsoString, now, actionRecord!.id]
+        "UPDATE timing_records SET recorded_at = ?, updated_at = ? WHERE id = ?;",
+        [newIsoString, now, actionRecord!.id],
       );
 
       // Enqueue sync action
-      await SyncService.enqueueAction('UPDATE_TIMING', 'timing_records', {
+      await SyncService.enqueueAction("UPDATE_TIMING", "timing_records", {
         id: actionRecord!.id,
-        recordedAt: newIsoString
+        recordedAt: newIsoString,
       });
 
-      Alert.alert('Éxito', 'Registro modificado correctamente.');
+      Alert.alert("Éxito", "Registro modificado correctamente.");
       await loadRecentRecords();
       handleCancelAction();
     } catch (err) {
-      console.error('[Timing] Edit error:', err);
-      Alert.alert('Error', 'No se pudo guardar la modificación del registro.');
+      console.error("[Timing] Edit error:", err);
+      Alert.alert("Error", "No se pudo guardar la modificación del registro.");
     }
   };
 
-  const successfulRecords = sessionHistory.filter(r => !r.isVoid && r.recordType === recordType).slice(0, 5);
+  const successfulRecords = sessionHistory
+    .filter((r) => !r.isVoid && r.recordType === recordType)
+    .slice(0, 5);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0F19' }}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: "#0B0F19" }}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backText}>⬅️ Volver</Text>
-          </TouchableOpacity>
-          <View style={{ alignItems: 'flex-end' }}>
+          {showBackButton && (
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backText}>⬅️ Volver</Text>
+            </TouchableOpacity>
+          )}
+          <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.title}>
-              {recordType === TimeRecordType.START ? 'LARGADAS' :
-               recordType === TimeRecordType.ARRIVAL ? 'ARRIBOS' :
-               recordType === TimeRecordType.VET_IN ? 'VET IN' :
-               'VET OUT'}
+              {recordType === TimeRecordType.START
+                ? "LARGADAS"
+                : recordType === TimeRecordType.ARRIVAL
+                  ? "ARRIBOS"
+                  : recordType === TimeRecordType.VET_IN
+                    ? "VET IN"
+                    : "VET OUT"}
             </Text>
             <Text style={styles.subtitle}>Puesto Activo</Text>
           </View>
@@ -517,44 +648,86 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
             {formattedTime(getTargetTime())}
           </Text>
           <View style={styles.sourceSelector}>
-            <TouchableOpacity 
-              style={[styles.sourceBtn, timeSource === 'SYSTEM' && styles.sourceBtnActive]}
-              onPress={() => { setTimeSource('SYSTEM'); setManualOffsetSeconds(0); }}
+            <TouchableOpacity
+              style={[
+                styles.sourceBtn,
+                timeSource === "SYSTEM" && styles.sourceBtnActive,
+              ]}
+              onPress={() => {
+                setTimeSource("SYSTEM");
+                setManualOffsetSeconds(0);
+              }}
             >
-              <Text style={[styles.sourceText, timeSource === 'SYSTEM' && styles.sourceTextActive]}>
+              <Text
+                style={[
+                  styles.sourceText,
+                  timeSource === "SYSTEM" && styles.sourceTextActive,
+                ]}
+              >
                 Automática
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.sourceBtn, timeSource === 'MANUAL' && styles.sourceBtnActive]}
-              onPress={() => setTimeSource('MANUAL')}
+            <TouchableOpacity
+              style={[
+                styles.sourceBtn,
+                timeSource === "MANUAL" && styles.sourceBtnActive,
+              ]}
+              onPress={() => setTimeSource("MANUAL")}
             >
-              <Text style={[styles.sourceText, timeSource === 'MANUAL' && styles.sourceTextActive]}>
+              <Text
+                style={[
+                  styles.sourceText,
+                  timeSource === "MANUAL" && styles.sourceTextActive,
+                ]}
+              >
                 Ajuste Manual
               </Text>
             </TouchableOpacity>
           </View>
 
-          {timeSource === 'MANUAL' && (
+          {timeSource === "MANUAL" && (
             <View style={styles.manualControls}>
-              <TouchableOpacity style={styles.offsetBtn} onPress={() => adjustOffset(-60)}>
+              <TouchableOpacity
+                style={styles.offsetBtn}
+                onPress={() => adjustOffset(-60)}
+              >
                 <Text style={styles.offsetBtnText}>-1m</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.offsetBtn} onPress={() => adjustOffset(-1)}>
+              <TouchableOpacity
+                style={styles.offsetBtn}
+                onPress={() => adjustOffset(-1)}
+              >
                 <Text style={styles.offsetBtnText}>-1s</Text>
               </TouchableOpacity>
               <Text style={styles.offsetValue}>
-                {manualOffsetSeconds > 0 ? `+${manualOffsetSeconds}s` : `${manualOffsetSeconds}s`}
+                {manualOffsetSeconds > 0
+                  ? `+${manualOffsetSeconds}s`
+                  : `${manualOffsetSeconds}s`}
               </Text>
-              <TouchableOpacity style={styles.offsetBtn} onPress={() => adjustOffset(1)}>
+              <TouchableOpacity
+                style={styles.offsetBtn}
+                onPress={() => adjustOffset(1)}
+              >
                 <Text style={styles.offsetBtnText}>+1s</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.offsetBtn} onPress={() => adjustOffset(60)}>
+              <TouchableOpacity
+                style={styles.offsetBtn}
+                onPress={() => adjustOffset(60)}
+              >
                 <Text style={styles.offsetBtnText}>+1m</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
+
+        {/* DQ Alert / Notification */}
+        {showDqAlert && (
+          <View style={styles.dqAlertBanner}>
+            <Text style={styles.dqAlertText}>
+              ⚠️ DORSAL EXCEDIDO: ELIMINACIÓN AUTOMÁTICA
+            </Text>
+          </View>
+        )}
 
         {/* Success Toast / Notification */}
         {lastSaved && (
@@ -566,14 +739,25 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         )}
 
         {/* Big Bib Entry Box (High visibility under direct sunlight) */}
-        <Animated.View style={[styles.inputCard, { borderColor: animatedBorderColor, backgroundColor: animatedBgColor }]}>
+        <Animated.View
+          style={[
+            styles.inputCard,
+            {
+              borderColor: animatedBorderColor,
+              backgroundColor: animatedBgColor,
+            },
+          ]}
+        >
           <Text style={styles.inputLabel}>INGRESE NÚMERO DE DORSAL</Text>
-          
+
           <TextInput
             ref={inputRef}
             style={styles.bigInput}
             value={bibNumber}
-            onChangeText={setBibNumber}
+            onChangeText={(text) => {
+              setBibNumber(text);
+              setShowDqAlert(false);
+            }}
             placeholder="000"
             placeholderTextColor="rgba(255, 255, 255, 0.15)"
             keyboardType="numeric"
@@ -587,35 +771,46 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
           {/* Real-time search feedback */}
           <View style={styles.matchedContainer}>
             {matchedEntry ? (
-              <View style={{ alignItems: 'center' }}>
-                <Text style={styles.matchedName}>👤 {matchedEntry.rider_name}</Text>
-                <Text style={styles.matchedHorse}>🐴 {matchedEntry.horse_name}</Text>
+              <View style={{ alignItems: "center" }}>
+                <Text style={styles.matchedName}>
+                  👤 {matchedEntry.rider_name}
+                </Text>
+                <Text style={styles.matchedHorse}>
+                  🐴 {matchedEntry.horse_name}
+                </Text>
                 <Text style={styles.matchedStatus}>
-                  Estado: <Text style={styles.matchedStatusValue}>{matchedEntry.status}</Text>
+                  Estado:{" "}
+                  <Text style={styles.matchedStatusValue}>
+                    {matchedEntry.status}
+                  </Text>
                 </Text>
               </View>
             ) : bibNumber.trim().length > 0 ? (
               <Text style={styles.noMatchText}>⚠️ Dorsal no registrado</Text>
             ) : (
-              <Text style={styles.placeholderText}>Esperando número de dorsal...</Text>
+              <Text style={styles.placeholderText}>
+                Esperando número de dorsal...
+              </Text>
             )}
           </View>
         </Animated.View>
 
         {/* Action Button */}
-        <TouchableOpacity 
-          style={styles.submitBtn} 
+        <TouchableOpacity
+          style={styles.submitBtn}
           onPress={handleRecordTime}
           disabled={isSubmitting}
         >
           <Text style={styles.submitBtnText}>
-            {isSubmitting ? 'Registrando...' : '⏱️ Registrar Tiempo'}
+            {isSubmitting ? "Registrando..." : "⏱️ Registrar Tiempo"}
           </Text>
         </TouchableOpacity>
 
         {/* Últimos 5 Registros Exitosos con Editar/Anular */}
         <View style={styles.quickRecentCard}>
-          <Text style={styles.cardSectionTitle}>ÚLTIMOS 5 REGISTROS EXITOSOS (EDITAR/ANULAR)</Text>
+          <Text style={styles.cardSectionTitle}>
+            ÚLTIMOS 5 REGISTROS EXITOSOS (EDITAR/ANULAR)
+          </Text>
           {successfulRecords.length > 0 ? (
             successfulRecords.map((item) => (
               <View key={item.id} style={styles.quickRecentItem}>
@@ -627,19 +822,22 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
                     </Text>
                   </View>
                   <Text style={styles.quickRecentTime}>
-                    {formattedTime(new Date(item.recordedAt))} - <Text style={styles.quickRecentTypeText}>{item.recordType}</Text>
+                    {formattedTime(new Date(item.recordedAt))} -{" "}
+                    <Text style={styles.quickRecentTypeText}>
+                      {item.recordType}
+                    </Text>
                   </Text>
                 </View>
                 <View style={styles.quickRecentActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.quickActionBtn, styles.editActionBtn]}
-                    onPress={() => openActionDialog(item, 'EDIT')}
+                    onPress={() => openActionDialog(item, "EDIT")}
                   >
                     <Text style={styles.quickActionBtnText}>Editar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.quickActionBtn, styles.voidActionBtn]}
-                    onPress={() => openActionDialog(item, 'VOID')}
+                    onPress={() => openActionDialog(item, "VOID")}
                   >
                     <Text style={styles.quickActionBtnText}>Anular</Text>
                   </TouchableOpacity>
@@ -647,39 +845,79 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
               </View>
             ))
           ) : (
-            <Text style={styles.noHistoryText}>No hay registros exitosos en esta sesión.</Text>
+            <Text style={styles.noHistoryText}>
+              No hay registros exitosos en esta sesión.
+            </Text>
           )}
         </View>
-
-
 
         {/* Session History Feed (Full view including voided records) */}
         <View style={styles.historyCard}>
           <Text style={styles.cardSectionTitle}>HISTORIAL DE ESTA SESIÓN</Text>
           {sessionHistory.length > 0 ? (
             sessionHistory.map((item) => (
-              <View key={item.id} style={[styles.historyItem, item.isVoid && styles.historyItemVoid]}>
+              <View
+                key={item.id}
+                style={[
+                  styles.historyItem,
+                  item.isVoid && styles.historyItemVoid,
+                ]}
+              >
                 <View style={styles.historyLeft}>
                   <View style={styles.historyBibRow}>
-                    <Text style={[styles.historyBib, item.isVoid && styles.historyTextVoid]}>#{item.bibNumber}</Text>
-                    <Text style={[styles.historyRider, item.isVoid && styles.historyTextVoid]} numberOfLines={1}>
-                      {item.riderName} {item.isVoid && '(ANULADO)'}
+                    <Text
+                      style={[
+                        styles.historyBib,
+                        item.isVoid && styles.historyTextVoid,
+                      ]}
+                    >
+                      #{item.bibNumber}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.historyRider,
+                        item.isVoid && styles.historyTextVoid,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {item.riderName} {item.isVoid && "(ANULADO)"}
                     </Text>
                   </View>
-                  <Text style={[styles.historyHorse, item.isVoid && styles.historyTextVoid]} numberOfLines={1}>
-                    🐴 {item.horseName} {item.voidReason ? `[Motivo: ${item.voidReason}]` : ''}
+                  <Text
+                    style={[
+                      styles.historyHorse,
+                      item.isVoid && styles.historyTextVoid,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    🐴 {item.horseName}{" "}
+                    {item.voidReason ? `[Motivo: ${item.voidReason}]` : ""}
                   </Text>
                 </View>
                 <View style={styles.historyRight}>
-                  <Text style={[styles.historyType, item.isVoid && styles.historyTypeVoid]}>{item.recordType}</Text>
-                  <Text style={[styles.historyTime, item.isVoid && styles.historyTextVoid]}>
+                  <Text
+                    style={[
+                      styles.historyType,
+                      item.isVoid && styles.historyTypeVoid,
+                    ]}
+                  >
+                    {item.recordType}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.historyTime,
+                      item.isVoid && styles.historyTextVoid,
+                    ]}
+                  >
                     {formattedTime(new Date(item.recordedAt))}
                   </Text>
                 </View>
               </View>
             ))
           ) : (
-            <Text style={styles.noHistoryText}>No hay registros recientes.</Text>
+            <Text style={styles.noHistoryText}>
+              No hay registros recientes.
+            </Text>
           )}
         </View>
       </ScrollView>
@@ -688,16 +926,17 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       {actionRecord && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {actionType === 'VOID' ? (
+            {actionType === "VOID" ? (
               <View>
                 <Text style={styles.modalTitle}>⚠️ ANULAR REGISTRO</Text>
                 <Text style={styles.modalSubtitle}>
                   Dorsal #{actionRecord.bibNumber} - {actionRecord.recordType}
                 </Text>
                 <Text style={styles.modalWarning}>
-                  La anulación es irreversible en pista y requiere una justificación técnica obligatoria para la FEU.
+                  La anulación es irreversible en pista y requiere una
+                  justificación técnica obligatoria para la FEU.
                 </Text>
-                
+
                 <TextInput
                   style={styles.modalInput}
                   value={voidReasonText}
@@ -708,17 +947,19 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
                 />
 
                 <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.modalBtn, styles.cancelBtn]} 
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.cancelBtn]}
                     onPress={handleCancelAction}
                   >
                     <Text style={styles.cancelBtnText}>Cancelar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.modalBtn, styles.confirmVoidBtn]} 
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.confirmVoidBtn]}
                     onPress={handleConfirmVoid}
                   >
-                    <Text style={styles.confirmVoidBtnText}>Confirmar Anulación</Text>
+                    <Text style={styles.confirmVoidBtnText}>
+                      Confirmar Anulación
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -768,17 +1009,19 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
                 </View>
 
                 <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.modalBtn, styles.cancelBtn]} 
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.cancelBtn]}
                     onPress={handleCancelAction}
                   >
                     <Text style={styles.cancelBtnText}>Cancelar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.modalBtn, styles.confirmEditBtn]} 
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.confirmEditBtn]}
                     onPress={handleConfirmEdit}
                   >
-                    <Text style={styles.confirmEditBtnText}>Guardar Cambios</Text>
+                    <Text style={styles.confirmEditBtnText}>
+                      Guardar Cambios
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -793,68 +1036,68 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#0B0F19', // Deep dark slate/black for high contrast under sunlight
+    backgroundColor: "#0B0F19", // Deep dark slate/black for high contrast under sunlight
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   backButton: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: '#1E293B',
+    backgroundColor: "#1E293B",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
   },
   backText: {
-    fontWeight: '800',
-    color: '#F8FAFC',
+    fontWeight: "800",
+    color: "#F8FAFC",
     fontSize: 14,
   },
   title: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#FBBF24', // Amber/gold for maximum legibility
+    fontWeight: "900",
+    color: "#FBBF24", // Amber/gold for maximum legibility
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#38BDF8',
+    fontWeight: "800",
+    color: "#38BDF8",
     letterSpacing: 1,
     marginTop: 2,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   chronoContainer: {
-    backgroundColor: '#020617', // Pitch black for chrono high contrast
+    backgroundColor: "#020617", // Pitch black for chrono high contrast
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: "#1E293B",
   },
   chronoTitle: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
+    fontWeight: "800",
+    color: "#94A3B8",
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   chronoDigits: {
     fontSize: 38,
-    fontFamily: 'monospace',
-    fontWeight: '900',
-    color: '#38BDF8', // Cyan light digits
+    fontFamily: "monospace",
+    fontWeight: "900",
+    color: "#38BDF8", // Cyan light digits
     letterSpacing: 2,
     marginBottom: 12,
   },
   sourceSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#1E293B',
+    flexDirection: "row",
+    backgroundColor: "#1E293B",
     borderRadius: 8,
     padding: 4,
   },
@@ -864,38 +1107,38 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   sourceBtnActive: {
-    backgroundColor: '#10B981', // Emerald green
+    backgroundColor: "#10B981", // Emerald green
   },
   sourceText: {
-    color: '#94A3B8',
+    color: "#94A3B8",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   sourceTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   manualControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 12,
     gap: 8,
   },
   offsetBtn: {
-    backgroundColor: '#334155',
+    backgroundColor: "#334155",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
   },
   offsetBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: "#FFFFFF",
+    fontWeight: "800",
   },
   offsetValue: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     minWidth: 50,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputCard: {
     borderRadius: 16,
@@ -905,193 +1148,193 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#94A3B8',
+    fontWeight: "800",
+    color: "#94A3B8",
     letterSpacing: 1,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 10,
   },
   bigInput: {
     fontSize: 64, // Large typography (48px - 64px)
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    fontFamily: 'monospace',
+    fontWeight: "900",
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontFamily: "monospace",
     paddingVertical: 10,
   },
   matchedContainer: {
     marginTop: 12,
-    alignItems: 'center',
+    alignItems: "center",
     minHeight: 50,
   },
   matchedName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   matchedHorse: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: "#94A3B8",
     marginTop: 2,
   },
   matchedStatus: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: "#94A3B8",
     marginTop: 4,
   },
   matchedStatusValue: {
-    fontWeight: '800',
-    color: '#10B981',
+    fontWeight: "800",
+    color: "#10B981",
   },
   noMatchText: {
-    color: '#EF4444',
-    fontWeight: '800',
+    color: "#EF4444",
+    fontWeight: "800",
     fontSize: 15,
   },
   placeholderText: {
-    color: '#64748B',
+    color: "#64748B",
     fontSize: 13,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   successToast: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: '#10B981',
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderColor: "#10B981",
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   successToastText: {
-    color: '#10B981',
-    fontWeight: '800',
+    color: "#10B981",
+    fontWeight: "800",
     fontSize: 14,
   },
   lockedEventCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: "#0F172A",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: "#1E293B",
     marginBottom: 16,
   },
   lockedEventLabel: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: "800",
+    color: "#64748B",
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   lockedEventValue: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#38BDF8',
+    fontWeight: "900",
+    color: "#38BDF8",
   },
   submitBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     borderRadius: 10,
     height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 24,
   },
   submitBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
   quickRecentCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: "#1E293B",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
     marginBottom: 16,
   },
   quickRecentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: "#334155",
   },
   quickRecentLeft: {
     flex: 1,
     marginRight: 8,
   },
   quickRecentBibRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   quickRecentBib: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#38BDF8',
+    fontWeight: "900",
+    color: "#38BDF8",
   },
   quickRecentRider: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   quickRecentTime: {
     fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#94A3B8',
+    fontFamily: "monospace",
+    color: "#94A3B8",
     marginTop: 2,
   },
   quickRecentTypeText: {
-    color: '#FBBF24',
-    fontWeight: '800',
+    color: "#FBBF24",
+    fontWeight: "800",
     fontSize: 10,
   },
   quickRecentActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   quickActionBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   editActionBtn: {
-    backgroundColor: '#0284C7',
+    backgroundColor: "#0284C7",
   },
   voidActionBtn: {
-    backgroundColor: '#B91C1C',
+    backgroundColor: "#B91C1C",
   },
   quickActionBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   historyCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: "#1E293B",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
     marginBottom: 30,
   },
   cardSectionTitle: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
+    fontWeight: "800",
+    color: "#94A3B8",
     letterSpacing: 1,
     marginBottom: 12,
   },
   historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: "#334155",
   },
   historyItemVoid: {
     opacity: 0.35,
@@ -1101,176 +1344,189 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   historyBibRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   historyBib: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#38BDF8',
+    fontWeight: "900",
+    color: "#38BDF8",
   },
   historyRider: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   historyHorse: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: "#94A3B8",
     marginTop: 1,
   },
   historyRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   historyType: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#FBBF24',
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    fontWeight: "800",
+    color: "#FBBF24",
+    backgroundColor: "rgba(251, 191, 36, 0.1)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   historyTypeVoid: {
-    color: '#64748B',
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    color: "#64748B",
+    backgroundColor: "rgba(100, 116, 139, 0.1)",
   },
   historyTime: {
     fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#FFFFFF',
+    fontFamily: "monospace",
+    color: "#FFFFFF",
     marginTop: 4,
   },
   historyTextVoid: {
-    textDecorationLine: 'line-through',
-    color: '#64748B',
+    textDecorationLine: "line-through",
+    color: "#64748B",
   },
   noHistoryText: {
-    color: '#64748B',
-    textAlign: 'center',
+    color: "#64748B",
+    textAlign: "center",
     fontSize: 13,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     paddingVertical: 12,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
     zIndex: 999,
   },
   modalContent: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
-    backgroundColor: '#1E293B',
+    backgroundColor: "#1E293B",
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#EF4444',
-    textAlign: 'center',
+    fontWeight: "900",
+    color: "#EF4444",
+    textAlign: "center",
     marginBottom: 6,
   },
   modalSubtitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "800",
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 12,
   },
   modalWarning: {
     fontSize: 12,
-    color: '#94A3B8',
-    textAlign: 'center',
+    color: "#94A3B8",
+    textAlign: "center",
     lineHeight: 18,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: '#0F172A',
-    borderColor: '#334155',
+    backgroundColor: "#0F172A",
+    borderColor: "#334155",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
     marginBottom: 20,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   modalBtn: {
     flex: 1,
     height: 48,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   cancelBtn: {
-    backgroundColor: '#334155',
+    backgroundColor: "#334155",
   },
   cancelBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   confirmVoidBtn: {
-    backgroundColor: '#B91C1C',
+    backgroundColor: "#B91C1C",
   },
   confirmVoidBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   confirmEditBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   confirmEditBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   timeEditGrid: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginVertical: 20,
     gap: 10,
   },
   timeInputCol: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   timeInputLabel: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: "800",
+    color: "#64748B",
     marginBottom: 4,
   },
   timeNumberInput: {
-    backgroundColor: '#0F172A',
+    backgroundColor: "#0F172A",
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: "#334155",
     borderRadius: 8,
     width: 60,
     height: 50,
-    textAlign: 'center',
-    color: '#FFFFFF',
+    textAlign: "center",
+    color: "#FFFFFF",
     fontSize: 22,
-    fontWeight: '900',
-    fontFamily: 'monospace',
+    fontWeight: "900",
+    fontFamily: "monospace",
   },
   timeSeparator: {
-    color: '#94A3B8',
+    color: "#94A3B8",
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: "900",
     marginTop: 15,
   },
+  dqAlertBanner: {
+    backgroundColor: "#EF4444",
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dqAlertText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 16,
+    textAlign: "center",
+  },
 });
-

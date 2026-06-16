@@ -1,50 +1,83 @@
-import { IsInt, IsUUID, IsEnum, IsDateString, IsOptional, IsBoolean, IsString, ValidateIf } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TimeRecordType, EliminationCode } from '@equuscronos/shared';
+import {
+  IsInt,
+  IsUUID,
+  IsEnum,
+  IsDateString,
+  IsOptional,
+  IsBoolean,
+  IsString,
+  ValidateIf,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { TimeRecordType, EliminationCode } from "@equuscronos/shared";
 
 export class CreateTimingRecordDto {
-  @ApiProperty({ description: 'UUID de la Carrera activa' }) 
-  @IsUUID() 
+  @ApiProperty({ description: "UUID de la Carrera activa" })
+  @IsUUID()
   competitionId: string;
 
-  @ApiProperty({ description: 'UUID de la Etapa en curso' }) 
-  @IsUUID() 
+  @ApiProperty({ description: "UUID de la Etapa en curso" })
+  @IsUUID()
   stageId: string;
 
-  @ApiPropertyOptional({ description: 'Ingreso Manual: Dorsal digitado por el Juez', example: 102 })
-  @ValidateIf(o => !o.chipId) 
-  @IsInt() 
+  @ApiPropertyOptional({
+    description: "Ingreso Manual: Dorsal digitado por el Juez",
+    example: 102,
+  })
+  @ValidateIf((o) => !o.chipId)
+  @IsInt()
   bibNumber?: number;
 
-  @ApiPropertyOptional({ description: 'Ingreso Automático: Lectura de Antena RFID', example: 'CHIP-985121001' })
-  @ValidateIf(o => !o.bibNumber) 
-  @IsString() 
+  @ApiPropertyOptional({
+    description: "Ingreso Automático: Lectura de Antena RFID",
+    example: "CHIP-985121001",
+  })
+  @ValidateIf((o) => !o.bibNumber)
+  @IsString()
   chipId?: string;
 
-  @ApiProperty({ description: 'Hito en pista (Largada, Llegada, Vet In, Vet Out)', enum: TimeRecordType })
-  @IsEnum(TimeRecordType) 
+  @ApiProperty({
+    description: "Hito en pista (Largada, Llegada, Vet In, Vet Out)",
+    enum: TimeRecordType,
+  })
+  @IsEnum(TimeRecordType)
   recordType: TimeRecordType;
 
-  @ApiProperty({ description: 'Timestamp exacto del evento (ISO 8601)', example: '2026-03-15T08:29:40.150Z' })
-  @IsDateString() 
+  @ApiProperty({
+    description: "Timestamp exacto del evento (ISO 8601)",
+    example: "2026-03-15T08:29:40.150Z",
+  })
+  @IsDateString()
   recordedAt: string;
 
-  @ApiPropertyOptional({ description: 'Dictamen de la inspección de tiempo. FALSE desencadena la descalificación.', default: true }) 
-  @IsOptional() 
-  @IsBoolean() 
+  @ApiPropertyOptional({
+    description:
+      "Dictamen de la inspección de tiempo. FALSE desencadena la descalificación.",
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
   isApproved?: boolean;
 
-  @ApiPropertyOptional({ description: 'Código si fue descalificado', enum: EliminationCode }) 
-  @IsOptional() 
-  @IsEnum(EliminationCode) 
+  @ApiPropertyOptional({
+    description: "Código si fue descalificado",
+    enum: EliminationCode,
+  })
+  @IsOptional()
+  @IsEnum(EliminationCode)
   eliminationType?: EliminationCode;
 
-  @ApiPropertyOptional({ description: 'Justificación técnica de la eliminación' }) 
-  @IsOptional() 
-  @IsString() 
+  @ApiPropertyOptional({
+    description: "Justificación técnica de la eliminación",
+  })
+  @IsOptional()
+  @IsString()
   eliminationReason?: string;
 
-  @ApiPropertyOptional({ description: 'Indica si el registro fue generado de forma automática', default: false })
+  @ApiPropertyOptional({
+    description: "Indica si el registro fue generado de forma automática",
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isAutomatic?: boolean;

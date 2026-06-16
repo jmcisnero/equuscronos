@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAuthStore } from '@/store/auth.store';
+import React, { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/auth.store";
 
 // Interceptor global de fetch en el cliente
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   const originalFetch = window.fetch;
   window.fetch = async (input, init) => {
     const token = useAuthStore.getState().accessToken;
@@ -17,11 +17,15 @@ if (typeof window !== 'undefined') {
 
       if (headers) {
         if (headers instanceof Headers) {
-          hasAuth = headers.has('Authorization');
+          hasAuth = headers.has("Authorization");
         } else if (Array.isArray(headers)) {
-          hasAuth = headers.some(([key]) => key.toLowerCase() === 'authorization');
+          hasAuth = headers.some(
+            ([key]) => key.toLowerCase() === "authorization",
+          );
         } else {
-          hasAuth = Object.keys(headers).some((key) => key.toLowerCase() === 'authorization');
+          hasAuth = Object.keys(headers).some(
+            (key) => key.toLowerCase() === "authorization",
+          );
         }
       }
 
@@ -31,12 +35,12 @@ if (typeof window !== 'undefined') {
           modifiedInit = { headers: authHeader };
         } else if (headers instanceof Headers) {
           const newHeaders = new Headers(headers);
-          newHeaders.set('Authorization', `Bearer ${token}`);
+          newHeaders.set("Authorization", `Bearer ${token}`);
           modifiedInit = { ...init, headers: newHeaders };
         } else if (Array.isArray(headers)) {
           modifiedInit = {
             ...init,
-            headers: [...headers, ['Authorization', `Bearer ${token}`]],
+            headers: [...headers, ["Authorization", `Bearer ${token}`]],
           };
         } else {
           modifiedInit = {
@@ -69,12 +73,10 @@ export function Providers({ children }: ProvidersProps) {
             staleTime: 5 * 60 * 1000, // 5 minutes
           },
         },
-      })
+      }),
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }

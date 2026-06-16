@@ -1,13 +1,13 @@
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  JUDGE = 'JUDGE',
-  VET = 'VET',
-  TIMEKEEPER = 'TIMEKEEPER',
-  USER = 'USER'
+  ADMIN = "ADMIN",
+  JUDGE = "JUDGE",
+  VET = "VET",
+  TIMEKEEPER = "TIMEKEEPER",
+  USER = "USER",
 }
 
 export enum OwnerType {
-  INDIVIDUAL = 'PERSON',
-  STABLE = 'STUD',
-  SYNDICATE = 'HARAS'
+  INDIVIDUAL = "PERSON",
+  STABLE = "STUD",
+  SYNDICATE = "HARAS",
 }

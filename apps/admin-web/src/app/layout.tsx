@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "EquusCronos - Consola de Administración",
-  description: "Plataforma SaaS de Gestión de Competencias Ecuestres y Cronometraje Oficial (FEU)",
+  description:
+    "Plataforma SaaS de Gestión de Competencias Ecuestres y Cronometraje Oficial (FEU)",
 };
 
 import { AdminLayout } from "./AdminLayout";

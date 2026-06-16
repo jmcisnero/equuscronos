@@ -1,26 +1,36 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard("jwt") {
   canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const path = request.path || request.url;
 
-    // Excluir endpoints públicos como login y el leaderboard
-    const isPublic = path.includes('/auth/login') || path.includes('auth/login') || path.includes('/leaderboard') || path.includes('leaderboard');
+    // Excluir endpoints públicos como login, el leaderboard y listar competencias
+    const isPublic =
+      path.includes("/auth/login") ||
+      path.includes("auth/login") ||
+      path.includes("/leaderboard") ||
+      path.includes("leaderboard") ||
+      (path.includes("/admin/competitions") && request.method === "GET") ||
+      (path.includes("admin/competitions") && request.method === "GET");
     if (isPublic) {
       return true;
     }
 
     // Bypass en desarrollo si no hay token de autorización (para el admin-web)
-    const authHeader = request.headers['authorization'];
-    if (!authHeader && process.env.NODE_ENV === 'development') {
+    const authHeader = request.headers["authorization"];
+    if (!authHeader && process.env.NODE_ENV === "development") {
       request.user = {
-        id: 'a2000000-0000-0000-0000-000000000001', // Melo seeded admin user ID
-        email: 'admin@equuscronos.com',
-        role: 'ADMIN',
-        tenantId: '',
+        id: "a2000000-0000-0000-0000-000000000001", // Melo seeded admin user ID
+        email: "admin@equuscronos.com",
+        role: "ADMIN",
+        tenantId: "",
       };
       return true;
     }
@@ -30,7 +40,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
-      throw err || new UnauthorizedException('No autorizado. Token inválido o ausente.');
+      throw (
+        err ||
+        new UnauthorizedException("No autorizado. Token inválido o ausente.")
+      );
     }
     return user;
   }

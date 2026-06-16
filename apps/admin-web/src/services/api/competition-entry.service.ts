@@ -1,17 +1,24 @@
-import { CompetitionEntry, CreateCompetitionEntryDto, UpdateCompetitionEntryDto } from '@/types/competition-entry';
+import {
+  CompetitionEntry,
+  CreateCompetitionEntryDto,
+  UpdateCompetitionEntryDto,
+} from "@/types/competition-entry";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/admin';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
 
 export const CompetitionEntryService = {
   /**
    * Obtiene la Start List (inscripciones de binomios) de una competencia.
    */
-  async getAllByCompetition(competitionId: string): Promise<CompetitionEntry[]> {
+  async getAllByCompetition(
+    competitionId: string,
+  ): Promise<CompetitionEntry[]> {
     const url = `${API_URL}/entries?competitionId=${encodeURIComponent(competitionId)}`;
     const response = await fetch(url);
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al cargar la Start-List');
+      throw new Error(err.message || "Error al cargar la Start-List");
     }
     return response.json();
   },
@@ -23,7 +30,7 @@ export const CompetitionEntryService = {
     const response = await fetch(`${API_URL}/entries/${id}`);
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al obtener la inscripción');
+      throw new Error(err.message || "Error al obtener la inscripción");
     }
     return response.json();
   },
@@ -34,18 +41,22 @@ export const CompetitionEntryService = {
    */
   async create(dto: CreateCompetitionEntryDto): Promise<CompetitionEntry> {
     const response = await fetch(`${API_URL}/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
 
     if (!response.ok) {
-      let errMessage = 'Error al registrar el binomio';
+      let errMessage = "Error al registrar el binomio";
       try {
         const err = await response.json();
         // Si es 409 Conflict o tiene un mensaje de error
         if (response.status === 409) {
-          throw { status: 409, message: err.message || 'Conflicto de unicidad al registrar binomio' };
+          throw {
+            status: 409,
+            message:
+              err.message || "Conflicto de unicidad al registrar binomio",
+          };
         }
         errMessage = err.message || errMessage;
       } catch (e: any) {
@@ -59,19 +70,25 @@ export const CompetitionEntryService = {
   /**
    * Actualiza una inscripción existente.
    */
-  async update(id: string, dto: UpdateCompetitionEntryDto): Promise<CompetitionEntry> {
+  async update(
+    id: string,
+    dto: UpdateCompetitionEntryDto,
+  ): Promise<CompetitionEntry> {
     const response = await fetch(`${API_URL}/entries/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
 
     if (!response.ok) {
       const err = await response.json();
       if (response.status === 409) {
-        throw { status: 409, message: err.message || 'Dorsal duplicado o conflicto de unicidad' };
+        throw {
+          status: 409,
+          message: err.message || "Dorsal duplicado o conflicto de unicidad",
+        };
       }
-      throw new Error(err.message || 'Error al actualizar la inscripción');
+      throw new Error(err.message || "Error al actualizar la inscripción");
     }
     return response.json();
   },
@@ -81,11 +98,11 @@ export const CompetitionEntryService = {
    */
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/entries/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al dar de baja la inscripción');
+      throw new Error(err.message || "Error al dar de baja la inscripción");
     }
-  }
+  },
 };

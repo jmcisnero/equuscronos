@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { WeightControl } from './entities/weight-control.entity';
-import { CreateWeightControlDto } from './dto/create-weight-control.dto';
-import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
-import { Stage } from '../competitions/entities/stage.entity';
-import { ParticipantStatus, AuditAction } from '@equuscronos/shared';
-import { AuditLog } from '../audit/entities/audit-log.entity';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource } from "typeorm";
+import { WeightControl } from "./entities/weight-control.entity";
+import { CreateWeightControlDto } from "./dto/create-weight-control.dto";
+import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
+import { Stage } from "../competitions/entities/stage.entity";
+import { ParticipantStatus, AuditAction } from "@equuscronos/shared";
+import { AuditLog } from "../audit/entities/audit-log.entity";
 
 @Injectable()
 export class WeightControlsService {
@@ -21,47 +25,52 @@ export class WeightControlsService {
   ) {}
 
   async create(dto: CreateWeightControlDto): Promise<WeightControl> {
-    const entry = await this.entryRepo.findOne({ 
+    const entry = await this.entryRepo.findOne({
       where: { id: dto.entryId },
-      relations: ['competition', 'competition.competitionType', 'tenant']
+      relations: ["competition", "competition.competitionType", "tenant"],
     });
-    if (!entry) throw new NotFoundException('Inscripción no encontrada.');
+    if (!entry) throw new NotFoundException("Inscripción no encontrada.");
 
     // 1. Vincular y validar controlType y stageId
-    if (dto.controlType === 'INITIAL') {
+    if (dto.controlType === "INITIAL") {
       // Para pesajes de tipo INITIAL, no debe requerirse stageId y se limpia
       dto.stageId = undefined;
-    } else if (dto.controlType === 'NEUTRALIZATION' || dto.controlType === 'ARRIVAL') {
+    } else if (
+      dto.controlType === "NEUTRALIZATION" ||
+      dto.controlType === "ARRIVAL"
+    ) {
       // Para NEUTRALIZATION y ARRIVAL, el stageId es obligatorio
       if (!dto.stageId) {
         throw new BadRequestException(
-          `El stageId es requerido para controles de tipo ${dto.controlType}.`
+          `El stageId es requerido para controles de tipo ${dto.controlType}.`,
         );
       }
     } else {
-      throw new BadRequestException(`Tipo de control '${dto.controlType}' no válido.`);
+      throw new BadRequestException(
+        `Tipo de control '${dto.controlType}' no válido.`,
+      );
     }
 
     let stage = null;
     if (dto.stageId) {
       stage = await this.stageRepo.findOne({ where: { id: dto.stageId } });
-      if (!stage) throw new NotFoundException('Etapa no encontrada.');
+      if (!stage) throw new NotFoundException("Etapa no encontrada.");
     }
 
     // 2. Buscar el registro previo de tipo INITIAL para ese entryId
     const initialControl = await this.weightRepo.findOne({
       where: {
         entry: { id: dto.entryId },
-        controlType: 'INITIAL',
+        controlType: "INITIAL",
       },
-      order: { recordedAt: 'DESC' },
+      order: { recordedAt: "DESC" },
     });
 
     // 3. Lógica de rechazo si no existe pesaje de "Marcación" (INITIAL) previo para controles posteriores
-    if (dto.controlType === 'NEUTRALIZATION' || dto.controlType === 'ARRIVAL') {
+    if (dto.controlType === "NEUTRALIZATION" || dto.controlType === "ARRIVAL") {
       if (!initialControl) {
         throw new BadRequestException(
-          `No se puede registrar un control de tipo ${dto.controlType} sin un pesaje INITIAL (Marcación) previo.`
+          `No se puede registrar un control de tipo ${dto.controlType} sin un pesaje INITIAL (Marcación) previo.`,
         );
       }
     }
@@ -82,21 +91,23 @@ export class WeightControlsService {
       const savedControl = await manager.save(newControl);
 
       // A) Para INITIAL, validar contra el peso mínimo base (e.g. 85kg)
-      if (dto.controlType === 'INITIAL') {
+      if (dto.controlType === "INITIAL") {
         if (dto.weightRecorded < baseMinWeight) {
           const reason = `Falta de peso mínimo en control INITIAL: Registró ${dto.weightRecorded} kg (Mínimo requerido: ${baseMinWeight} kg)`;
-          
+
           await manager.update(CompetitionEntry, entry.id, {
             status: ParticipantStatus.DQ,
           });
 
-          console.log(`[EquusCronos] Binomio ${entry.bibNumber} DESCALIFICADO por PESO en marcación inicial: ${reason}`);
+          console.log(
+            `[EquusCronos] Binomio ${entry.bibNumber} DESCALIFICADO por PESO en marcación inicial: ${reason}`,
+          );
 
           // Registrar en AuditLog
           const auditLog = manager.create(AuditLog, {
             tenant: entry.tenant || entry.competition?.tenant,
             action: AuditAction.SECURITY_ALERT,
-            entityName: 'weight_controls',
+            entityName: "weight_controls",
             entityId: savedControl.id,
             newData: {
               message: reason,
@@ -111,9 +122,9 @@ export class WeightControlsService {
       }
 
       // B) Para controles posteriores a INITIAL (NEUTRALIZATION, ARRIVAL)
-      if (dto.controlType !== 'INITIAL' && initialControl) {
+      if (dto.controlType !== "INITIAL" && initialControl) {
         const diff = Number(initialControl.weightRecorded) - dto.weightRecorded;
-        
+
         // Si es > 1 kg (según Art. 20), el sistema debe descalificar (DQ) y registrar en AuditLog
         if (diff > 1.0) {
           const reason = `Descalificación por incumplimiento de peso (Art. 20) en control ${dto.controlType}: Peso inicial de marcación fue ${initialControl.weightRecorded} kg y en control actual se registró ${dto.weightRecorded} kg (pérdida de ${diff.toFixed(2)} kg, superando el límite reglamentario de 1.0 kg).`;
@@ -122,13 +133,15 @@ export class WeightControlsService {
             status: ParticipantStatus.DQ,
           });
 
-          console.log(`[EquusCronos] Binomio ${entry.bibNumber} DESCALIFICADO por PESO dentro de transacción: ${reason}`);
+          console.log(
+            `[EquusCronos] Binomio ${entry.bibNumber} DESCALIFICADO por PESO dentro de transacción: ${reason}`,
+          );
 
           // Registrar en AuditLog detallando el incumplimiento de peso
           const auditLog = manager.create(AuditLog, {
             tenant: entry.tenant || entry.competition?.tenant,
             action: AuditAction.SECURITY_ALERT,
-            entityName: 'weight_controls',
+            entityName: "weight_controls",
             entityId: savedControl.id,
             newData: {
               message: reason,

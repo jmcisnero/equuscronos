@@ -1,6 +1,7 @@
-import { Rider, CreateRiderDto, UpdateRiderDto } from '@/types/rider';
+import { Rider, CreateRiderDto, UpdateRiderDto } from "@/types/rider";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/admin';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
 
 export const RiderService = {
   /**
@@ -8,9 +9,11 @@ export const RiderService = {
    * Requerido por la FEU para auditoría de padrón nacional e inmutabilidad de fechas.
    */
   async getAll(search?: string): Promise<Rider[]> {
-    const url = search ? `${API_URL}/riders?search=${encodeURIComponent(search)}` : `${API_URL}/riders`;
+    const url = search
+      ? `${API_URL}/riders?search=${encodeURIComponent(search)}`
+      : `${API_URL}/riders`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Error al cargar la lista de jinetes');
+    if (!response.ok) throw new Error("Error al cargar la lista de jinetes");
     return response.json();
   },
 
@@ -19,7 +22,8 @@ export const RiderService = {
    */
   async getById(id: string): Promise<Rider> {
     const response = await fetch(`${API_URL}/riders/${id}`);
-    if (!response.ok) throw new Error('Error al obtener el jinete especificado');
+    if (!response.ok)
+      throw new Error("Error al obtener el jinete especificado");
     return response.json();
   },
 
@@ -28,13 +32,13 @@ export const RiderService = {
    */
   async create(dto: CreateRiderDto): Promise<Rider> {
     const response = await fetch(`${API_URL}/riders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al registrar el nuevo jinete');
+      throw new Error(err.message || "Error al registrar el nuevo jinete");
     }
     return response.json();
   },
@@ -44,13 +48,13 @@ export const RiderService = {
    */
   async update(id: string, dto: UpdateRiderDto): Promise<Rider> {
     const response = await fetch(`${API_URL}/riders/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al actualizar el jinete');
+      throw new Error(err.message || "Error al actualizar el jinete");
     }
     return response.json();
   },
@@ -60,11 +64,11 @@ export const RiderService = {
    */
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/riders/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al eliminar el jinete');
+      throw new Error(err.message || "Error al eliminar el jinete");
     }
-  }
+  },
 };

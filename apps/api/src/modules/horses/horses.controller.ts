@@ -1,38 +1,61 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { HorsesService } from './horses.service';
-import { CreateHorseDto } from './dto/create-horse.dto';
-import { UpdateHorseDto } from './dto/update-horse.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  Query,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { HorsesService } from "./horses.service";
+import { CreateHorseDto } from "./dto/create-horse.dto";
+import { UpdateHorseDto } from "./dto/update-horse.dto";
 
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@equuscronos/shared';
+import { Roles } from "../auth/decorators/roles.decorator";
+import { UserRole } from "@equuscronos/shared";
 
-@ApiTags('4. Padrón Equino (Horses)')
-@ApiBearerAuth('access-token')
+@ApiTags("4. Padrón Equino (Horses)")
+@ApiBearerAuth("access-token")
 @Roles(UserRole.ADMIN)
-@Controller('admin/horses')
+@Controller("admin/horses")
 export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Dar de alta un caballo' })
-  create(@Body() createHorseDto: CreateHorseDto) { return this.horsesService.create(createHorseDto); }
+  @ApiOperation({ summary: "Dar de alta un caballo" })
+  create(@Body() createHorseDto: CreateHorseDto) {
+    return this.horsesService.create(createHorseDto);
+  }
 
   @Get()
-  @ApiOperation({ summary: 'Listar padrón de caballos con búsqueda unificada (Omni-search)' })
-  findAll(@Query('q') search?: string) { return this.horsesService.findAll(search); }
+  @ApiOperation({
+    summary: "Listar padrón de caballos con búsqueda unificada (Omni-search)",
+  })
+  findAll(@Query("q") search?: string) {
+    return this.horsesService.findAll(search);
+  }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener caballo por ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) { return this.horsesService.findOne(id); }
+  @Get(":id")
+  @ApiOperation({ summary: "Obtener caballo por ID" })
+  findOne(@Param("id", ParseUUIDPipe) id: string) {
+    return this.horsesService.findOne(id);
+  }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar ficha del caballo' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateHorseDto: UpdateHorseDto) {
+  @Patch(":id")
+  @ApiOperation({ summary: "Actualizar ficha del caballo" })
+  update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() updateHorseDto: UpdateHorseDto,
+  ) {
     return this.horsesService.update(id, updateHorseDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar caballo' })
-  remove(@Param('id', ParseUUIDPipe) id: string) { return this.horsesService.remove(id); }
+  @Delete(":id")
+  @ApiOperation({ summary: "Eliminar caballo" })
+  remove(@Param("id", ParseUUIDPipe) id: string) {
+    return this.horsesService.remove(id);
+  }
 }

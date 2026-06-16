@@ -1,6 +1,6 @@
-import { Expose } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
-import { CompetitionStatus } from '@equuscronos/shared';
+import { Expose } from "class-transformer";
+import { ApiProperty } from "@nestjs/swagger";
+import { CompetitionStatus } from "@equuscronos/shared";
 
 export class CompetitionResponseDto {
   @Expose()
@@ -41,7 +41,7 @@ export class CompetitionResponseDto {
 
   @Expose()
   @ApiProperty()
-  stages: any[]; 
+  stages: any[];
 
   @Expose()
   @ApiProperty()

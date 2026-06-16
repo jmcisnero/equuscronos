@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Horse } from './entities/horse.entity';
-import { Owner } from '../owners/entities/owner.entity';
-import { CreateHorseDto } from './dto/create-horse.dto';
-import { UpdateHorseDto } from './dto/update-horse.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Horse } from "./entities/horse.entity";
+import { Owner } from "../owners/entities/owner.entity";
+import { CreateHorseDto } from "./dto/create-horse.dto";
+import { UpdateHorseDto } from "./dto/update-horse.dto";
 
 @Injectable()
 export class HorsesService {
@@ -18,15 +22,25 @@ export class HorsesService {
   async create(createHorseDto: CreateHorseDto): Promise<Horse> {
     // 1. Validar Chips y Pasaportes duplicados
     if (createHorseDto.chipId) {
-      const existingChip = await this.horseRepository.findOne({ where: { chipId: createHorseDto.chipId } });
-      if (existingChip) throw new ConflictException(`El chip ${createHorseDto.chipId} ya está registrado.`);
+      const existingChip = await this.horseRepository.findOne({
+        where: { chipId: createHorseDto.chipId },
+      });
+      if (existingChip)
+        throw new ConflictException(
+          `El chip ${createHorseDto.chipId} ya está registrado.`,
+        );
     }
 
     // 2. Validar que el propietario exista (si se envía)
     let owner = null;
     if (createHorseDto.ownerId) {
-      owner = await this.ownerRepository.findOne({ where: { id: createHorseDto.ownerId } });
-      if (!owner) throw new NotFoundException(`Propietario con ID ${createHorseDto.ownerId} no encontrado.`);
+      owner = await this.ownerRepository.findOne({
+        where: { id: createHorseDto.ownerId },
+      });
+      if (!owner)
+        throw new NotFoundException(
+          `Propietario con ID ${createHorseDto.ownerId} no encontrado.`,
+        );
     }
 
     // 3. Crear Entidad
@@ -39,27 +53,29 @@ export class HorsesService {
   }
 
   async findAll(search?: string): Promise<Horse[]> {
-    const query = this.horseRepository.createQueryBuilder('horse')
-      .leftJoinAndSelect('horse.owner', 'owner');
+    const query = this.horseRepository
+      .createQueryBuilder("horse")
+      .leftJoinAndSelect("horse.owner", "owner");
 
     if (search) {
       const term = `%${search}%`;
       query.where(
-        '(horse.name ILIKE :search OR horse.chipId ILIKE :search OR horse.feuId ILIKE :search OR owner.name ILIKE :search)',
-        { search: term }
+        "(horse.name ILIKE :search OR horse.chipId ILIKE :search OR horse.feuId ILIKE :search OR owner.name ILIKE :search)",
+        { search: term },
       );
     }
 
-    query.orderBy('horse.name', 'ASC');
+    query.orderBy("horse.name", "ASC");
     return await query.getMany();
   }
 
   async findOne(id: string): Promise<Horse> {
-    const horse = await this.horseRepository.findOne({ 
+    const horse = await this.horseRepository.findOne({
       where: { id },
-      relations: ['owner']
+      relations: ["owner"],
     });
-    if (!horse) throw new NotFoundException(`Caballo con ID ${id} no encontrado.`);
+    if (!horse)
+      throw new NotFoundException(`Caballo con ID ${id} no encontrado.`);
     return horse;
   }
 
@@ -68,8 +84,10 @@ export class HorsesService {
 
     // Si están actualizando el dueño, validarlo de nuevo
     if (updateHorseDto.ownerId) {
-      const owner = await this.ownerRepository.findOne({ where: { id: updateHorseDto.ownerId } });
-      if (!owner) throw new NotFoundException('Propietario no encontrado.');
+      const owner = await this.ownerRepository.findOne({
+        where: { id: updateHorseDto.ownerId },
+      });
+      if (!owner) throw new NotFoundException("Propietario no encontrado.");
       horse.owner = owner;
     }
 

@@ -1,4 +1,10 @@
-import { ParticipantStatus, TimeRecordType, EliminationCode, MotricityStatus, ClinicalStatus } from '@equuscronos/shared';
+import {
+  ParticipantStatus,
+  TimeRecordType,
+  EliminationCode,
+  MotricityStatus,
+  ClinicalStatus,
+} from "@equuscronos/shared";
 
 // TypeScript Interfaces for Local SQLite DB
 export interface LocalCompetitionEntry {
@@ -50,8 +56,13 @@ export interface LocalVetInspection {
 
 export interface SyncQueueItem {
   id: number;
-  action_type: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS' | 'UPDATE_TIMING' | 'VOID_TIMING';
-  table_name: 'timing_records' | 'vet_inspections' | 'competition_entries';
+  action_type:
+    | "CREATE_TIMING"
+    | "CREATE_VET_INSPECTION"
+    | "UPDATE_ENTRY_STATUS"
+    | "UPDATE_TIMING"
+    | "VOID_TIMING";
+  table_name: "timing_records" | "vet_inspections" | "competition_entries";
   payload: string; // JSON string
   created_at: string;
   attempts: number;
@@ -121,5 +132,5 @@ export const SQL_CREATE_TABLES = [
     created_at TEXT NOT NULL,
     attempts INTEGER DEFAULT 0,
     error_message TEXT
-  );`
+  );`,
 ];

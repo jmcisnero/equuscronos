@@ -1,45 +1,67 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn, ManyToOne } from 'typeorm';
-import { ClinicalStatus, MotricityStatus } from '@equuscronos/shared';
-import { TimingRecord } from '../../competitions/entities/timing-record.entity';
-import { Tenant } from '../../tenants/entities/tenant.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToOne,
+  JoinColumn,
+  ManyToOne,
+} from "typeorm";
+import { ClinicalStatus, MotricityStatus } from "@equuscronos/shared";
+import { TimingRecord } from "../../competitions/entities/timing-record.entity";
+import { Tenant } from "../../tenants/entities/tenant.entity";
 
-@Entity('vet_inspections')
+@Entity("vet_inspections")
 export class VetInspection {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'tenant_id' })
+  @ManyToOne(() => Tenant, { onDelete: "RESTRICT" })
+  @JoinColumn({ name: "tenant_id" })
   tenant: Tenant;
 
-  @OneToOne(() => TimingRecord, (record) => record.vetInspection, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'timing_record_id' })
+  @OneToOne(() => TimingRecord, (record) => record.vetInspection, {
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "timing_record_id" })
   timingRecord: TimingRecord;
 
-  @Column({ name: 'heart_rate', type: 'int' })
+  @Column({ name: "heart_rate", type: "int" })
   heartRate: number;
 
-  @Column({ type: 'decimal', precision: 4, scale: 1, nullable: true })
+  @Column({ type: "decimal", precision: 4, scale: 1, nullable: true })
   temperature: number;
 
-  @Column({ type: 'enum', enum: MotricityStatus, default: MotricityStatus.APTO })
+  @Column({
+    type: "enum",
+    enum: MotricityStatus,
+    default: MotricityStatus.APTO,
+  })
   motricity: MotricityStatus;
 
-  @Column({ type: 'enum', enum: ClinicalStatus, default: ClinicalStatus.NORMAL })
+  @Column({
+    type: "enum",
+    enum: ClinicalStatus,
+    default: ClinicalStatus.NORMAL,
+  })
   metabolic: ClinicalStatus;
 
-  @Column({ name: 'attempt_number', type: 'int', default: 1 })
+  @Column({ name: "attempt_number", type: "int", default: 1 })
   attemptNumber: number;
 
-  @Column({ name: 'is_recheck_required', type: 'boolean', default: false })
+  @Column({ name: "is_recheck_required", type: "boolean", default: false })
   isRecheckRequired: boolean;
 
-  @Column({ name: 'next_check_time', type: 'timestamp with time zone', nullable: true })
+  @Column({
+    name: "next_check_time",
+    type: "timestamp with time zone",
+    nullable: true,
+  })
   nextCheckTime: Date;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   notes: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

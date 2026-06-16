@@ -1,15 +1,21 @@
-import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent, RemoveEvent } from 'typeorm';
-import { AuditLog } from '../entities/audit-log.entity';
-import { AuditAction } from '@equuscronos/shared';
-import { Tenant } from '../../tenants/entities/tenant.entity';
+import {
+  EventSubscriber,
+  EntitySubscriberInterface,
+  InsertEvent,
+  UpdateEvent,
+  RemoveEvent,
+} from "typeorm";
+import { AuditLog } from "../entities/audit-log.entity";
+import { AuditAction } from "@equuscronos/shared";
+import { Tenant } from "../../tenants/entities/tenant.entity";
 
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
   private static fallbackTenant: Tenant | null = null;
-  
+
   // Escucha cambios en TODAS las entidades del sistema
   listenTo() {
-    return 'all';
+    return "all";
   }
 
   // Intercepta creaciones
@@ -40,9 +46,11 @@ export class AuditSubscriber implements EntitySubscriberInterface {
       tenant,
       action: AuditAction.UPDATE,
       entityName: event.metadata.tableName,
-      entityId: this.extractEntityId(event.entity) || this.extractEntityId(event.databaseEntity),
+      entityId:
+        this.extractEntityId(event.entity) ||
+        this.extractEntityId(event.databaseEntity),
       oldData: event.databaseEntity, // Estado anterior
-      newData: event.entity,         // Estado nuevo
+      newData: event.entity, // Estado nuevo
     });
     await event.manager.save(AuditLog, auditLog);
   }
@@ -71,7 +79,9 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   /**
    * Obtiene el tenant para la auditoría, usando la entidad o un fallback.
    */
-  private async getTenantForEntity(event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>): Promise<Tenant | null> {
+  private async getTenantForEntity(
+    event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>,
+  ): Promise<Tenant | null> {
     const entity = event.entity;
     if (entity) {
       if (entity.tenant) return entity.tenant;
@@ -81,9 +91,11 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (!AuditSubscriber.fallbackTenant) {
       try {
-        AuditSubscriber.fallbackTenant = await event.manager.findOne(Tenant, { order: { name: 'ASC' } });
+        AuditSubscriber.fallbackTenant = await event.manager.findOne(Tenant, {
+          order: { name: "ASC" },
+        });
       } catch (err) {
-        console.error('[AuditSubscriber] Error fetching fallback tenant:', err);
+        console.error("[AuditSubscriber] Error fetching fallback tenant:", err);
       }
     }
     return AuditSubscriber.fallbackTenant;
@@ -94,7 +106,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
    */
   private shouldAudit(tableName: string | undefined): boolean {
     if (!tableName) return false;
-    const excludedTables = ['audit_logs', 'migrations'];
+    const excludedTables = ["audit_logs", "migrations"];
     return !excludedTables.includes(tableName);
   }
 

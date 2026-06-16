@@ -2,7 +2,11 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useCompetitions, Competition, MOCK_COMPETITIONS } from "../hooks/useCompetitions";
+import {
+  useCompetitions,
+  Competition,
+  MOCK_COMPETITIONS,
+} from "../hooks/useCompetitions";
 
 export default function CompetitionFeed() {
   // Consumir gancho useCompetitions con polling en tiempo real a 30s
@@ -28,7 +32,8 @@ export default function CompetitionFeed() {
         comp.location.toLowerCase().includes(searchQuery.toLowerCase());
 
       const modality = comp.competitionType?.modality || "CONTROLLED_SPEED";
-      const matchesModality = selectedModality === "ALL" || modality === selectedModality;
+      const matchesModality =
+        selectedModality === "ALL" || modality === selectedModality;
 
       return matchesSearch && matchesModality;
     });
@@ -37,7 +42,9 @@ export default function CompetitionFeed() {
   // CATEGORIZACIÓN JERÁRQUICA OFICIAL:
   // Prioridad A: En Vivo (ACTIVE, PAUSED)
   const liveCompetitions = useMemo(() => {
-    return filteredCompetitions.filter((c) => c.status === "ACTIVE" || c.status === "PAUSED");
+    return filteredCompetitions.filter(
+      (c) => c.status === "ACTIVE" || c.status === "PAUSED",
+    );
   }, [filteredCompetitions]);
 
   // Prioridad B: Planificadas (PLANNED)
@@ -48,7 +55,10 @@ export default function CompetitionFeed() {
   // Prioridad C: Pasadas (COMPLETED, OFFICIAL, CANCELLED)
   const pastCompetitions = useMemo(() => {
     return filteredCompetitions.filter(
-      (c) => c.status === "COMPLETED" || c.status === "OFFICIAL" || c.status === "CANCELLED"
+      (c) =>
+        c.status === "COMPLETED" ||
+        c.status === "OFFICIAL" ||
+        c.status === "CANCELLED",
     );
   }, [filteredCompetitions]);
 
@@ -82,7 +92,6 @@ export default function CompetitionFeed() {
 
   return (
     <div className="space-y-10">
-      
       {/* ========================================================================= */}
       {/* PANEL DE CONTROL / BUSCADOR Y FILTROS TÁCTILES                            */}
       {/* ========================================================================= */}
@@ -90,21 +99,36 @@ export default function CompetitionFeed() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start space-x-3">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 hidden sm:block">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-black text-slate-900 leading-tight">Portal de Resultados para Espectadores</h2>
+              <h2 className="text-lg font-black text-slate-900 leading-tight">
+                Portal de Resultados para Espectadores
+              </h2>
               <p className="text-xs text-slate-500 font-bold mt-1">
-                Selecciona una competencia activa a continuación para ver clasificaciones, o filtra por club, lugar o modalidad.
+                Selecciona una competencia activa a continuación para ver
+                clasificaciones, o filtra por club, lugar o modalidad.
               </p>
             </div>
           </div>
 
           {/* Toggle de Modo Demo con Amplia Zona de Contacto táctil (>44px) */}
           <div className="flex items-center space-x-3 self-end md:self-auto min-h-[44px]">
-            <span className="text-xs text-slate-700 font-extrabold">Modo Simulado (Demo):</span>
+            <span className="text-xs text-slate-700 font-extrabold">
+              Modo Simulado (Demo):
+            </span>
             <button
               onClick={() => setIsDemoMode(!isDemoMode)}
               aria-label="Alternar modo simulado"
@@ -123,12 +147,21 @@ export default function CompetitionFeed() {
 
         {/* CONTROLES ADAPTATIVOS CON HITBOX MIN DE 44PX (h-11 / py-3) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
           {/* Input de Búsqueda con Altura Táctil de 44px */}
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </span>
             <input
@@ -152,7 +185,11 @@ export default function CompetitionFeed() {
                     : "text-slate-500 hover:text-slate-900"
                 }`}
               >
-                {mod === "ALL" ? "Todos" : mod === "CONTROLLED_SPEED" ? "Raid" : "Endurance"}
+                {mod === "ALL"
+                  ? "Todos"
+                  : mod === "CONTROLLED_SPEED"
+                    ? "Raid"
+                    : "Endurance"}
               </button>
             ))}
           </div>
@@ -195,7 +232,10 @@ export default function CompetitionFeed() {
           <div className="h-6 bg-slate-200 w-1/4 rounded animate-pulse"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
             {[1, 2].map((i) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4">
+              <div
+                key={i}
+                className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4"
+              >
                 <div className="flex justify-between items-center">
                   <div className="h-6 bg-slate-200 w-1/3 rounded"></div>
                   <div className="h-6 bg-slate-200 w-16 rounded-full"></div>
@@ -214,7 +254,6 @@ export default function CompetitionFeed() {
       {/* ========================================================================= */}
       {(!isLoading || isUsingFallback) && (
         <div className="space-y-12">
-          
           {/* ========================================================================= */}
           {/* PRIORIDAD A: EN VIVO (ACTIVE, PAUSED)                                     */}
           {/* ========================================================================= */}
@@ -259,8 +298,18 @@ export default function CompetitionFeed() {
                         {comp.name}
                       </h4>
                       <p className="text-slate-300 text-xs mt-1.5 font-bold flex items-center">
-                        <svg className="h-4 w-4 mr-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <svg
+                          className="h-4 w-4 mr-1 text-slate-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
                         </svg>
                         {comp.location}
                       </p>
@@ -268,15 +317,24 @@ export default function CompetitionFeed() {
 
                     <div className="mt-6 pt-4 border-t border-white/5 grid grid-cols-2 gap-4 text-xs">
                       <div>
-                        <span className="text-slate-400 block uppercase tracking-wider text-[9px] font-bold">Modalidad</span>
+                        <span className="text-slate-400 block uppercase tracking-wider text-[9px] font-bold">
+                          Modalidad
+                        </span>
                         <span className="font-extrabold text-slate-200 mt-0.5 block">
                           {getModalityLabel(comp.competitionType?.modality)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block uppercase tracking-wider text-[9px] font-bold">Distancia</span>
+                        <span className="text-slate-400 block uppercase tracking-wider text-[9px] font-bold">
+                          Distancia
+                        </span>
                         <span className="font-extrabold text-slate-200 mt-0.5 block">
-                          {comp.stages?.length || 0} Etapas ({comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km)
+                          {comp.stages?.length || 0} Etapas (
+                          {comp.stages?.reduce(
+                            (acc, curr) => acc + Number(curr.distanceKm),
+                            0,
+                          ) || 0}{" "}
+                          Km)
                         </span>
                       </div>
                     </div>
@@ -288,8 +346,18 @@ export default function CompetitionFeed() {
                         className="w-full h-12 flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm rounded-2xl shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer"
                       >
                         <span>Ver Tabla de Clasificaciones</span>
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </Link>
                     </div>
@@ -298,12 +366,25 @@ export default function CompetitionFeed() {
               </div>
             ) : (
               <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-center text-slate-500">
-                <svg className="h-10 w-10 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h2v-2.243a4.978 4.978 0 011.07-.19M12 13V9" />
+                <svg
+                  className="h-10 w-10 mx-auto text-slate-400 mb-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h2v-2.243a4.978 4.978 0 011.07-.19M12 13V9"
+                  />
                 </svg>
-                <p className="text-sm font-bold text-slate-800">No hay competencias activas en este momento.</p>
+                <p className="text-sm font-bold text-slate-800">
+                  No hay competencias activas en este momento.
+                </p>
                 <p className="text-xs text-slate-500 mt-1.5 font-semibold">
-                  Activa el "Modo Simulado" arriba en el panel para ver la simulación del Raid Batalla de Tupambaé.
+                  Activa el "Modo Simulado" arriba en el panel para ver la
+                  simulación del Raid Batalla de Tupambaé.
                 </p>
               </div>
             )}
@@ -344,8 +425,18 @@ export default function CompetitionFeed() {
                           {comp.name}
                         </h4>
                         <p className="text-slate-500 text-xs mt-1.5 font-bold flex items-center">
-                          <svg className="h-3.5 w-3.5 mr-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <svg
+                            className="h-3.5 w-3.5 mr-1 text-slate-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
                           </svg>
                           {comp.location}
                         </p>
@@ -354,19 +445,29 @@ export default function CompetitionFeed() {
 
                     <div className="mt-6 pt-4 border-t border-slate-100 space-y-2 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Modalidad:</span>
+                        <span className="text-slate-400 font-bold">
+                          Modalidad:
+                        </span>
                         <span className="font-extrabold text-slate-700">
                           {comp.competitionType?.name || "Raid Hípico"}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Distancia Total:</span>
+                        <span className="text-slate-400 font-bold">
+                          Distancia Total:
+                        </span>
                         <span className="font-extrabold text-slate-700">
-                          {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km ({comp.stages?.length || 0} Etapas)
+                          {comp.stages?.reduce(
+                            (acc, curr) => acc + Number(curr.distanceKm),
+                            0,
+                          ) || 0}{" "}
+                          Km ({comp.stages?.length || 0} Etapas)
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Club Organizador:</span>
+                        <span className="text-slate-400 font-bold">
+                          Club Organizador:
+                        </span>
                         <span className="font-extrabold text-slate-700">
                           {comp.tenant?.name || "Club Oficial"}
                         </span>
@@ -403,7 +504,6 @@ export default function CompetitionFeed() {
 
             {pastCompetitions.length > 0 ? (
               <div className="space-y-4">
-                
                 {/* 1. MÓVIL (TARJETAS HISTÓRICAS) */}
                 <div className="block md:hidden space-y-4">
                   {pastCompetitions.map((comp) => {
@@ -412,14 +512,14 @@ export default function CompetitionFeed() {
                     const statusColors = isCancelled
                       ? "bg-rose-50 text-rose-950 border-rose-200"
                       : isOfficial
-                      ? "bg-green-50 text-green-950 border-green-200"
-                      : "bg-slate-50 text-slate-900 border-slate-200";
+                        ? "bg-green-50 text-green-950 border-green-200"
+                        : "bg-slate-50 text-slate-900 border-slate-200";
 
                     const statusLabel = isCancelled
                       ? "Cancelado"
                       : isOfficial
-                      ? "Oficial (FEU Auditado)"
-                      : "Finalizado";
+                        ? "Oficial (FEU Auditado)"
+                        : "Finalizado";
 
                     return (
                       <div
@@ -427,7 +527,9 @@ export default function CompetitionFeed() {
                         className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4"
                       >
                         <div className="flex justify-between items-start">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black border ${statusColors}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black border ${statusColors}`}
+                          >
                             {statusLabel}
                           </span>
                           <span className="text-[10px] font-bold text-slate-500 font-mono">
@@ -436,19 +538,33 @@ export default function CompetitionFeed() {
                         </div>
 
                         <div>
-                          <h4 className="font-extrabold text-slate-900 text-base">{comp.name}</h4>
-                          <p className="text-xs text-slate-500 font-bold mt-0.5">{comp.tenant?.name || "Organización FEU"}</p>
+                          <h4 className="font-extrabold text-slate-900 text-base">
+                            {comp.name}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-bold mt-0.5">
+                            {comp.tenant?.name || "Organización FEU"}
+                          </p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs font-bold">
                           <div>
-                            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Ubicación</span>
-                            <span className="text-slate-800 font-extrabold">{comp.location}</span>
+                            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">
+                              Ubicación
+                            </span>
+                            <span className="text-slate-800 font-extrabold">
+                              {comp.location}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Distancia Total</span>
+                            <span className="text-slate-400 block text-[9px] uppercase tracking-wider">
+                              Distancia Total
+                            </span>
                             <span className="text-slate-800 font-extrabold">
-                              {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km
+                              {comp.stages?.reduce(
+                                (acc, curr) => acc + Number(curr.distanceKm),
+                                0,
+                              ) || 0}{" "}
+                              Km
                             </span>
                           </div>
                         </div>
@@ -464,8 +580,18 @@ export default function CompetitionFeed() {
                               className="w-full h-11 flex items-center justify-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-950 font-black text-xs rounded-2xl border border-slate-200 transition-all cursor-pointer"
                             >
                               <span>Ver Clasificación Histórica</span>
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2.5}
+                                  d="M9 5l7 7-7 7"
+                                />
                               </svg>
                             </Link>
                           )}
@@ -481,7 +607,9 @@ export default function CompetitionFeed() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-150 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                          <th className="py-4.5 px-6">Raid / Club Organizador</th>
+                          <th className="py-4.5 px-6">
+                            Raid / Club Organizador
+                          </th>
                           <th className="py-4.5 px-6">Fecha</th>
                           <th className="py-4.5 px-6">Ubicación</th>
                           <th className="py-4.5 px-6">Distancia</th>
@@ -496,20 +624,25 @@ export default function CompetitionFeed() {
                           const statusColors = isCancelled
                             ? "bg-rose-50 text-rose-950 border-rose-200"
                             : isOfficial
-                            ? "bg-green-50 text-green-950 border-green-200"
-                            : "bg-slate-50 text-slate-900 border-slate-200";
+                              ? "bg-green-50 text-green-950 border-green-200"
+                              : "bg-slate-50 text-slate-900 border-slate-200";
 
                           const statusLabel = isCancelled
                             ? "Cancelado"
                             : isOfficial
-                            ? "Oficial (FEU Auditado)"
-                            : "Finalizado";
+                              ? "Oficial (FEU Auditado)"
+                              : "Finalizado";
 
                           return (
-                            <tr key={comp.id} className="hover:bg-slate-50/50 transition-colors">
+                            <tr
+                              key={comp.id}
+                              className="hover:bg-slate-50/50 transition-colors"
+                            >
                               {/* RAID / CLUB */}
                               <td className="py-4 px-6">
-                                <div className="font-extrabold text-slate-900">{comp.name}</div>
+                                <div className="font-extrabold text-slate-900">
+                                  {comp.name}
+                                </div>
                                 <div className="text-xs text-slate-500 font-bold mt-0.5">
                                   {comp.tenant?.name || "Organización FEU"}
                                 </div>
@@ -527,12 +660,18 @@ export default function CompetitionFeed() {
 
                               {/* DISTANCIA */}
                               <td className="py-4 px-6 text-slate-700 font-black">
-                                {comp.stages?.reduce((acc, curr) => acc + Number(curr.distanceKm), 0) || 0} Km
+                                {comp.stages?.reduce(
+                                  (acc, curr) => acc + Number(curr.distanceKm),
+                                  0,
+                                ) || 0}{" "}
+                                Km
                               </td>
 
                               {/* ESTADO */}
                               <td className="py-4 px-6 text-center">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusColors}`}>
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusColors}`}
+                                >
                                   {statusLabel}
                                 </span>
                               </td>
@@ -540,15 +679,27 @@ export default function CompetitionFeed() {
                               {/* ACCIÓN (Hitbox táctil > 44px) */}
                               <td className="py-4 px-6 text-right">
                                 {isCancelled ? (
-                                  <span className="text-xs text-slate-400 font-bold px-3">Sin Clasificación</span>
+                                  <span className="text-xs text-slate-400 font-bold px-3">
+                                    Sin Clasificación
+                                  </span>
                                 ) : (
                                   <Link
                                     href={`/leaderboard/${comp.id}`}
                                     className="inline-flex items-center justify-center h-10 px-4 bg-slate-100 hover:bg-equus-green hover:text-white text-slate-800 text-xs font-black rounded-xl border border-slate-200 hover:border-equus-green transition-all cursor-pointer"
                                   >
                                     <span>Ver Tiempos</span>
-                                    <svg className="h-3.5 w-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                    <svg
+                                      className="h-3.5 w-3.5 ml-1"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2.5}
+                                        d="M9 5l7 7-7 7"
+                                      />
                                     </svg>
                                   </Link>
                                 )}
@@ -560,7 +711,6 @@ export default function CompetitionFeed() {
                     </table>
                   </div>
                 </div>
-
               </div>
             ) : (
               <div className="bg-white border border-slate-200/50 rounded-3xl p-8 text-center text-slate-400 font-semibold text-sm">
@@ -568,10 +718,8 @@ export default function CompetitionFeed() {
               </div>
             )}
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

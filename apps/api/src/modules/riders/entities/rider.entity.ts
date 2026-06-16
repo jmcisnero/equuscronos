@@ -1,28 +1,39 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from "typeorm";
 
-@Entity('riders')
+@Entity("riders")
 export class Rider {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ name: 'national_id', type: 'varchar', length: 50, unique: true })
+  @Column({ name: "national_id", type: "varchar", length: 50, unique: true })
   nationalId: string;
 
-  @Column({ name: 'feu_id', type: 'varchar', length: 50, unique: true, nullable: true })
+  @Column({
+    name: "feu_id",
+    type: "varchar",
+    length: 50,
+    unique: true,
+    nullable: true,
+  })
   feuId: string;
 
-  @Column({ name: 'is_feu_active', type: 'boolean', default: false })
+  @Column({ name: "is_feu_active", type: "boolean", default: false })
   isFeuActive: boolean;
 
-  @Column({ name: 'birth_date', type: 'date', nullable: true })
+  @Column({ name: "birth_date", type: "date", nullable: true })
   birthDate: string;
 
-  @Column({ name: 'medical_card_expiration', type: 'date', nullable: true })
+  @Column({ name: "medical_card_expiration", type: "date", nullable: true })
   medicalCardExpiration: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

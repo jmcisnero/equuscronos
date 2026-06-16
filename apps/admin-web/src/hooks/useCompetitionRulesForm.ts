@@ -1,28 +1,28 @@
-import { useState, useEffect } from 'react';
-import { CompetitionRules } from '@/types/competition-type';
+import { useState, useEffect } from "react";
+import { CompetitionRules } from "@/types/competition-type";
 
 export interface UseCompetitionRulesFormReturn {
   name: string;
   setName: (name: string) => void;
-  
+
   // Standard Form Fields
-  maxHeartRate: number | '';
-  setMaxHeartRate: (val: number | '') => void;
-  minWeightKg: number | '';
-  setMinWeightKg: (val: number | '') => void;
-  recoveryTimeMins: number | '';
-  setRecoveryTimeMins: (val: number | '') => void;
-  minSpeedKh: number | '';
-  setMinSpeedKh: (val: number | '') => void;
-  maxTimeMins: number | '';
-  setMaxTimeMins: (val: number | '') => void;
+  maxHeartRate: number | "";
+  setMaxHeartRate: (val: number | "") => void;
+  minWeightKg: number | "";
+  setMinWeightKg: (val: number | "") => void;
+  recoveryTimeMins: number | "";
+  setRecoveryTimeMins: (val: number | "") => void;
+  minSpeedKh: number | "";
+  setMinSpeedKh: (val: number | "") => void;
+  maxTimeMins: number | "";
+  setMaxTimeMins: (val: number | "") => void;
 
   // Expert Mode
   isExpertMode: boolean;
   setIsExpertMode: (val: boolean) => void;
   rulesJsonString: string;
   setRulesJsonString: (val: string) => void;
-  
+
   // Status and Validation
   jsonError: string | null;
   formError: string | null;
@@ -32,7 +32,10 @@ export interface UseCompetitionRulesFormReturn {
   resetForm: () => void;
   loadFromType: (name: string, rules?: CompetitionRules) => void;
   getRulesPayload: () => CompetitionRules | null;
-  handleFieldChange: (field: keyof CompetitionRules, value: number | '') => void;
+  handleFieldChange: (
+    field: keyof CompetitionRules,
+    value: number | "",
+  ) => void;
   handleJsonChange: (value: string) => void;
 }
 
@@ -43,36 +46,49 @@ const DEFAULT_RULES: CompetitionRules = {
 };
 
 export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
-  const [name, setName] = useState('');
-  
+  const [name, setName] = useState("");
+
   // Form fields
-  const [maxHeartRate, setMaxHeartRate] = useState<number | ''>('');
-  const [minWeightKg, setMinWeightKg] = useState<number | ''>('');
-  const [recoveryTimeMins, setRecoveryTimeMins] = useState<number | ''>('');
-  const [minSpeedKh, setMinSpeedKh] = useState<number | ''>('');
-  const [maxTimeMins, setMaxTimeMins] = useState<number | ''>('');
+  const [maxHeartRate, setMaxHeartRate] = useState<number | "">("");
+  const [minWeightKg, setMinWeightKg] = useState<number | "">("");
+  const [recoveryTimeMins, setRecoveryTimeMins] = useState<number | "">("");
+  const [minSpeedKh, setMinSpeedKh] = useState<number | "">("");
+  const [maxTimeMins, setMaxTimeMins] = useState<number | "">("");
 
   // Expert Mode
   const [isExpertMode, setIsExpertMode] = useState(false);
-  const [rulesJsonString, setRulesJsonString] = useState(JSON.stringify(DEFAULT_RULES, null, 2));
+  const [rulesJsonString, setRulesJsonString] = useState(
+    JSON.stringify(DEFAULT_RULES, null, 2),
+  );
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Sync standard fields from a parsed rules object
   const syncFieldsFromRules = (rules: CompetitionRules) => {
-    setMaxHeartRate(rules.max_heart_rate !== undefined ? Number(rules.max_heart_rate) : '');
-    
+    setMaxHeartRate(
+      rules.max_heart_rate !== undefined ? Number(rules.max_heart_rate) : "",
+    );
+
     // Support min_weight_kg primarily, fallback to min_weight
-    const weight = rules.min_weight_kg !== undefined 
-      ? Number(rules.min_weight_kg) 
-      : rules.min_weight !== undefined 
-        ? Number(rules.min_weight) 
-        : '';
+    const weight =
+      rules.min_weight_kg !== undefined
+        ? Number(rules.min_weight_kg)
+        : rules.min_weight !== undefined
+          ? Number(rules.min_weight)
+          : "";
     setMinWeightKg(weight);
-    
-    setRecoveryTimeMins(rules.recovery_time_mins !== undefined ? Number(rules.recovery_time_mins) : '');
-    setMinSpeedKh(rules.min_speed_kh !== undefined ? Number(rules.min_speed_kh) : '');
-    setMaxTimeMins(rules.max_time_mins !== undefined ? Number(rules.max_time_mins) : '');
+
+    setRecoveryTimeMins(
+      rules.recovery_time_mins !== undefined
+        ? Number(rules.recovery_time_mins)
+        : "",
+    );
+    setMinSpeedKh(
+      rules.min_speed_kh !== undefined ? Number(rules.min_speed_kh) : "",
+    );
+    setMaxTimeMins(
+      rules.max_time_mins !== undefined ? Number(rules.max_time_mins) : "",
+    );
   };
 
   // Build a rules object from standard field states, keeping any other extra keys if present in rulesJsonString
@@ -87,13 +103,13 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
     }
 
     // Update standard fields (or remove them if empty)
-    if (maxHeartRate === '') {
+    if (maxHeartRate === "") {
       delete currentRules.max_heart_rate;
     } else {
       currentRules.max_heart_rate = Number(maxHeartRate);
     }
 
-    if (minWeightKg === '') {
+    if (minWeightKg === "") {
       delete currentRules.min_weight_kg;
       delete currentRules.min_weight;
     } else {
@@ -101,19 +117,19 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
       currentRules.min_weight = Number(minWeightKg); // Backward compatibility
     }
 
-    if (recoveryTimeMins === '') {
+    if (recoveryTimeMins === "") {
       delete currentRules.recovery_time_mins;
     } else {
       currentRules.recovery_time_mins = Number(recoveryTimeMins);
     }
 
-    if (minSpeedKh === '') {
+    if (minSpeedKh === "") {
       delete currentRules.min_speed_kh;
     } else {
       currentRules.min_speed_kh = Number(minSpeedKh);
     }
 
-    if (maxTimeMins === '') {
+    if (maxTimeMins === "") {
       delete currentRules.max_time_mins;
     } else {
       currentRules.max_time_mins = Number(maxTimeMins);
@@ -123,15 +139,19 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
   };
 
   // Handle manual field change in the standard UI
-  const handleFieldChange = (field: keyof CompetitionRules, value: number | '') => {
+  const handleFieldChange = (
+    field: keyof CompetitionRules,
+    value: number | "",
+  ) => {
     setFormError(null);
-    
+
     // Update individual state
-    if (field === 'max_heart_rate') setMaxHeartRate(value);
-    if (field === 'min_weight_kg' || field === 'min_weight') setMinWeightKg(value);
-    if (field === 'recovery_time_mins') setRecoveryTimeMins(value);
-    if (field === 'min_speed_kh') setMinSpeedKh(value);
-    if (field === 'max_time_mins') setMaxTimeMins(value);
+    if (field === "max_heart_rate") setMaxHeartRate(value);
+    if (field === "min_weight_kg" || field === "min_weight")
+      setMinWeightKg(value);
+    if (field === "recovery_time_mins") setRecoveryTimeMins(value);
+    if (field === "min_speed_kh") setMinSpeedKh(value);
+    if (field === "max_time_mins") setMaxTimeMins(value);
   };
 
   // Sync field changes to rulesJsonString when standard inputs change (in background)
@@ -141,7 +161,14 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
       setRulesJsonString(JSON.stringify(current, null, 2));
       setJsonError(null);
     }
-  }, [maxHeartRate, minWeightKg, recoveryTimeMins, minSpeedKh, maxTimeMins, isExpertMode]);
+  }, [
+    maxHeartRate,
+    minWeightKg,
+    recoveryTimeMins,
+    minSpeedKh,
+    maxTimeMins,
+    isExpertMode,
+  ]);
 
   // Handle manual JSON change in the expert UI textarea
   const handleJsonChange = (value: string) => {
@@ -152,8 +179,12 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
     }
     try {
       const parsed = JSON.parse(value);
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setJsonError('El JSON de reglas debe ser un objeto: {}');
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        setJsonError("El JSON de reglas debe ser un objeto: {}");
       } else {
         setJsonError(null);
         // Sync standard form fields with the edited JSON on the fly
@@ -165,12 +196,12 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
   };
 
   const resetForm = () => {
-    setName('');
-    setMaxHeartRate('');
-    setMinWeightKg('');
-    setRecoveryTimeMins('');
-    setMinSpeedKh('');
-    setMaxTimeMins('');
+    setName("");
+    setMaxHeartRate("");
+    setMinWeightKg("");
+    setRecoveryTimeMins("");
+    setMinSpeedKh("");
+    setMaxTimeMins("");
     setIsExpertMode(false);
     setRulesJsonString(JSON.stringify(DEFAULT_RULES, null, 2));
     setJsonError(null);
@@ -191,13 +222,19 @@ export function useCompetitionRulesForm(): UseCompetitionRulesFormReturn {
     if (isExpertMode) {
       // Validate JSON first
       if (jsonError) {
-        setFormError('Por favor corrija los errores del JSON de reglas.');
+        setFormError("Por favor corrija los errores del JSON de reglas.");
         return null;
       }
       try {
         const parsed = JSON.parse(rulesJsonString);
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-          setFormError('Las reglas predefinidas deben ser un objeto JSON válido.');
+        if (
+          typeof parsed !== "object" ||
+          parsed === null ||
+          Array.isArray(parsed)
+        ) {
+          setFormError(
+            "Las reglas predefinidas deben ser un objeto JSON válido.",
+          );
           return null;
         }
         return parsed as CompetitionRules;

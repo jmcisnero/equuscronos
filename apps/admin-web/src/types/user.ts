@@ -1,5 +1,5 @@
-import { UserRole } from '@equuscronos/shared';
-import { Tenant } from './tenant';
+import { UserRole } from "@equuscronos/shared";
+import { Tenant } from "./tenant";
 
 export interface User {
   id: string;

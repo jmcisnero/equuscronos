@@ -21,7 +21,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "EquusCronos - Tiempos y Resultados en Vivo",
-  description: "Portal público de clasificaciones de EquusCronos. Sigue los tiempos oficiales de eventos de Raid Hípico y Endurance de la FEU en tiempo real.",
+  description:
+    "Portal público de clasificaciones de EquusCronos. Sigue los tiempos oficiales de eventos de Raid Hípico y Endurance de la FEU en tiempo real.",
   icons: {
     icon: "/favicon.ico",
   },

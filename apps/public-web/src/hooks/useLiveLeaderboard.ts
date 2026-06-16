@@ -5,7 +5,14 @@ export interface LeaderboardEntry {
   bibNumber: number;
   riderName: string;
   horseName: string;
-  status: "IN_RACE" | "VET_CHECK" | "RESTING" | "FINISHED" | "DQ" | "DNF" | "WD";
+  status:
+    | "IN_RACE"
+    | "VET_CHECK"
+    | "RESTING"
+    | "FINISHED"
+    | "DQ"
+    | "DNF"
+    | "WD";
   currentStage: number;
   lastArrivalTime?: string;
   nextVetControlTime?: string;
@@ -28,7 +35,8 @@ const fetcher = async (path: string) => {
   if (!res.ok) {
     const errorInfo = await res.json().catch(() => ({}));
     const error = new Error(
-      errorInfo?.message || "Ocurrió un error al consultar el servidor principal."
+      errorInfo?.message ||
+        "Ocurrió un error al consultar el servidor principal.",
     ) as any;
     error.status = res.status;
     error.info = errorInfo;
@@ -51,9 +59,9 @@ export function useLiveLeaderboard(competitionId: string) {
     fetcher,
     {
       refreshInterval: 30000, // Polling de alta frecuencia: 30 segundos
-      dedupingInterval: 4000,  // Evita re-peticiones repetitivas en cascada rápida
+      dedupingInterval: 4000, // Evita re-peticiones repetitivas en cascada rápida
       revalidateOnFocus: true, // Auto-actualización al enfocar la pestaña
-    }
+    },
   );
 
   return {

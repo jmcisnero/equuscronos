@@ -1,20 +1,28 @@
 "use client";
 
-import React, { use } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CompetitionService } from '@/services/api/competition.service';
+import React, { use } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CompetitionService } from "@/services/api/competition.service";
 
-export default function CompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function CompetitionDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const router = useRouter();
   const queryClient = useQueryClient();
 
   // Fetch de la competencia por ID
-  const { data: comp, isLoading, error } = useQuery({
-    queryKey: ['competition', id],
+  const {
+    data: comp,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["competition", id],
     queryFn: () => CompetitionService.getById(id),
     enabled: !!id,
     retry: 1,
@@ -22,8 +30,11 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
   // Calcular la distancia total recorrida
   const getDistanceTotal = (stages?: any[]) => {
-    if (!stages || stages.length === 0) return '0.00 km';
-    const total = stages.reduce((acc, stage) => acc + parseFloat(stage.distanceKm), 0);
+    if (!stages || stages.length === 0) return "0.00 km";
+    const total = stages.reduce(
+      (acc, stage) => acc + parseFloat(stage.distanceKm),
+      0,
+    );
     return `${total.toFixed(2)} km`;
   };
 
@@ -60,20 +71,35 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
   // Renderizador de Errores (403/404 y fallos de API)
   if (error || !comp) {
-    const errorMsg = error instanceof Error ? error.message : 'No se pudo encontrar el evento especificado o no cuenta con los permisos necesarios.';
+    const errorMsg =
+      error instanceof Error
+        ? error.message
+        : "No se pudo encontrar el evento especificado o no cuenta con los permisos necesarios.";
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
         <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 mb-6 shadow-sm">
-          <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            className="w-12 h-12 mx-auto"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
         </div>
-        <h3 className="text-xl font-extrabold text-slate-800 tracking-tight mb-2">Evento no Encontrado</h3>
+        <h3 className="text-xl font-extrabold text-slate-800 tracking-tight mb-2">
+          Evento no Encontrado
+        </h3>
         <p className="text-sm text-slate-500 leading-relaxed mb-6">
           {errorMsg}
         </p>
         <button
-          onClick={() => router.push('/competitions')}
+          onClick={() => router.push("/competitions")}
           className="inline-flex items-center justify-center px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all shadow-md"
         >
           Volver al Calendario
@@ -82,91 +108,152 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
     );
   }
 
-  const displayDate = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '-';
+  const displayDate = comp.competitionDate
+    ? comp.competitionDate.substring(0, 10)
+    : "-";
 
   return (
     <div className="space-y-8">
       {/* 1. BREADCRUMBS Y NAVEGACIÓN */}
       <nav className="flex items-center space-x-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-        <Link href="/competitions" className="hover:text-equus-green transition-colors">
+        <Link
+          href="/competitions"
+          className="hover:text-equus-green transition-colors"
+        >
           Calendario
         </Link>
-        <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+        <svg
+          className="w-3 h-3 text-slate-300"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-slate-600 truncate max-w-[200px]">{comp.name}</span>
+        <span className="text-slate-600 truncate max-w-[200px]">
+          {comp.name}
+        </span>
       </nav>
 
       {/* 2. HEADER CON ENCABEZADO Y BADGES */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0 pb-6 border-b border-slate-100">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mr-2">{comp.name}</h1>
-            
+            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mr-2">
+              {comp.name}
+            </h1>
+
             {/* Badge de Federado */}
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-              comp.isFederated 
-                ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
-                : 'bg-slate-50 text-slate-500 border-slate-200/50'
-            }`}>
-              {comp.isFederated ? '🏆 FEU Federado' : 'Evento Social'}
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                comp.isFederated
+                  ? "bg-amber-50 text-amber-700 border-amber-200/50"
+                  : "bg-slate-50 text-slate-500 border-slate-200/50"
+              }`}
+            >
+              {comp.isFederated ? "🏆 FEU Federado" : "Evento Social"}
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
             {/* Ubicación */}
             <div className="flex items-center space-x-1.5">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg
+                className="w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
-              <span>{comp.location || 'No especificada'}</span>
+              <span>{comp.location || "No especificada"}</span>
             </div>
 
             {/* Fecha */}
             <div className="flex items-center space-x-1.5 font-mono">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
               <span>{displayDate}</span>
             </div>
 
             {/* Hora de Largada */}
             <div className="flex items-center space-x-1.5 font-mono">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              <svg
+                className="w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
               </svg>
-              <span>{comp.startTime ? comp.startTime.substring(0, 5) : '07:00'} hs</span>
+              <span>
+                {comp.startTime ? comp.startTime.substring(0, 5) : "07:00"} hs
+              </span>
             </div>
           </div>
         </div>
 
         {/* Estado Actual de la Competencia */}
         <div className="flex items-center space-x-3">
-          <span className={`inline-flex rounded-xl px-4 py-2 text-xs font-extrabold border shadow-sm ${
-            comp.status === 'ACTIVE' 
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-              : comp.status === 'COMPLETED' || comp.status === 'OFFICIAL'
-              ? 'bg-blue-50 text-blue-700 border-blue-200'
-              : 'bg-amber-50 text-amber-700 border-amber-200'
-          }`}>
-            {comp.status === 'ACTIVE' ? '🟢 EN CARRERA' : comp.status === 'PLANNED' ? '📅 PLANIFICADO' : `🏁 ${comp.status}`}
+          <span
+            className={`inline-flex rounded-xl px-4 py-2 text-xs font-extrabold border shadow-sm ${
+              comp.status === "ACTIVE"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : comp.status === "COMPLETED" || comp.status === "OFFICIAL"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : "bg-amber-50 text-amber-700 border-amber-200"
+            }`}
+          >
+            {comp.status === "ACTIVE"
+              ? "🟢 EN CARRERA"
+              : comp.status === "PLANNED"
+                ? "📅 PLANIFICADO"
+                : `🏁 ${comp.status}`}
           </span>
         </div>
       </div>
 
       {/* 3. GRID PRINCIPAL DE CONTENIDOS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         {/* Columna Izquierda: Configuración de Etapas */}
         <div className="lg:col-span-2 space-y-8">
-          
           {/* Tarjeta de Etapas */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Plan de Carrera y Etapas</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Vet Gates reglamentarios configurados para el evento</p>
+                <h3 className="text-base font-extrabold text-slate-800">
+                  Plan de Carrera y Etapas
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Vet Gates reglamentarios configurados para el evento
+                </p>
               </div>
               <span className="text-xs font-extrabold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-mono shadow-sm">
                 Total: {getDistanceTotal(comp.stages)}
@@ -197,21 +284,30 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
                                 Etapa {stage.stageNumber} - Vet Gate
                               </h4>
                               <p className="text-xs text-slate-400 mt-0.5">
-                                Requerimiento: Recuperación cardíaca a menos de {comp.maxHeartRate || 65} ppm
+                                Requerimiento: Recuperación cardíaca a menos de{" "}
+                                {comp.maxHeartRate || 65} ppm
                               </p>
                             </div>
 
                             <div className="flex items-center space-x-6">
                               {/* Distancia de la Etapa */}
                               <div>
-                                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distancia</span>
-                                <span className="text-sm font-extrabold text-slate-900 font-mono">{stage.distanceKm} km</span>
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Distancia
+                                </span>
+                                <span className="text-sm font-extrabold text-slate-900 font-mono">
+                                  {stage.distanceKm} km
+                                </span>
                               </div>
 
                               {/* Neutralización */}
                               <div>
-                                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Neut.</span>
-                                <span className="text-sm font-extrabold text-slate-600 font-mono">{stage.neutralizationMinutes} min</span>
+                                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Neut.
+                                </span>
+                                <span className="text-sm font-extrabold text-slate-600 font-mono">
+                                  {stage.neutralizationMinutes} min
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -226,24 +322,40 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
 
         {/* Columna Derecha: Acciones Rápidas y Reglas */}
         <div className="space-y-8">
-          
           {/* Centro de Control de Carrera (Lógica Habilitación y Largada) */}
-          <ControlCenter comp={comp} queryClient={queryClient} router={router} />
+          <ControlCenter
+            comp={comp}
+            queryClient={queryClient}
+            router={router}
+          />
 
           {/* Tarjeta de Acceso Rápido a Start List */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4 flex flex-col">
             <div className="p-3.5 bg-emerald-50 rounded-xl text-equus-green w-fit">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-slate-800">Planilla y Start List</h3>
+              <h3 className="text-sm font-extrabold text-slate-800">
+                Planilla y Start List
+              </h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Inscribir binomios participantes, registrar precintos oficiales FEU, lastres de báscula y controlar la admisión deportiva.
+                Inscribir binomios participantes, registrar precintos oficiales
+                FEU, lastres de báscula y controlar la admisión deportiva.
               </p>
             </div>
-            
+
             <Link
               href={`/competitions/${comp.id}/start-list`}
               className="mt-2 w-full inline-flex items-center justify-center px-4 py-3 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg text-center"
@@ -255,22 +367,38 @@ export default function CompetitionDetailPage({ params }: { params: Promise<{ id
           {/* Tarjeta de Límites Médicos */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-800">Límites y Reglas Sanitarias</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Parámetros aplicados para Vet Check</p>
+              <h3 className="text-sm font-extrabold text-slate-800">
+                Límites y Reglas Sanitarias
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Parámetros aplicados para Vet Check
+              </p>
             </div>
 
             <div className="divide-y divide-slate-50 text-xs">
               <div className="py-2.5 flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Frecuencia Cardíaca Máxima</span>
-                <span className="font-extrabold text-slate-800 font-mono">{comp.maxHeartRate || 65} ppm</span>
+                <span className="text-slate-500 font-medium">
+                  Frecuencia Cardíaca Máxima
+                </span>
+                <span className="font-extrabold text-slate-800 font-mono">
+                  {comp.maxHeartRate || 65} ppm
+                </span>
               </div>
               <div className="py-2.5 flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Habilitación de Lastre</span>
-                <span className="font-extrabold text-emerald-600 font-mono">85.00 kg (Art. 20)</span>
+                <span className="text-slate-500 font-medium">
+                  Habilitación de Lastre
+                </span>
+                <span className="font-extrabold text-emerald-600 font-mono">
+                  85.00 kg (Art. 20)
+                </span>
               </div>
               <div className="py-2.5 flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Tipo de Regulación</span>
-                <span className="font-extrabold text-slate-800">Reglamento FEU</span>
+                <span className="text-slate-500 font-medium">
+                  Tipo de Regulación
+                </span>
+                <span className="font-extrabold text-slate-800">
+                  Reglamento FEU
+                </span>
               </div>
             </div>
           </div>
@@ -288,7 +416,7 @@ interface ControlCenterProps {
 
 function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
   const [currentTime, setCurrentTime] = React.useState(new Date());
-  const [officialStartTime, setOfficialStartTime] = React.useState<string>('');
+  const [officialStartTime, setOfficialStartTime] = React.useState<string>("");
   const [isStarting, setIsStarting] = React.useState(false);
   const [startError, setStartError] = React.useState<string | null>(null);
 
@@ -301,18 +429,24 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
   React.useEffect(() => {
     if (comp) {
-      const compDateStr = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '';
-      const defaultTimeStr = `${compDateStr}T${comp.startTime || '07:00:00'}`;
+      const compDateStr = comp.competitionDate
+        ? comp.competitionDate.substring(0, 10)
+        : "";
+      const defaultTimeStr = `${compDateStr}T${comp.startTime || "07:00:00"}`;
       setOfficialStartTime(defaultTimeStr);
     }
   }, [comp]);
 
   if (!comp) return null;
 
-  const compDateStr = comp.competitionDate ? comp.competitionDate.substring(0, 10) : '';
+  const compDateStr = comp.competitionDate
+    ? comp.competitionDate.substring(0, 10)
+    : "";
 
   // Largada programada: Dynamic "Hora Cero" AM (local uruguayo, GMT-3)
-  const scheduledTime = new Date(`${compDateStr}T${comp.startTime || '07:00:00'}-03:00`);
+  const scheduledTime = new Date(
+    `${compDateStr}T${comp.startTime || "07:00:00"}-03:00`,
+  );
 
   // Diferencia de milisegundos
   const diffMs = scheduledTime.getTime() - currentTime.getTime();
@@ -321,15 +455,16 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
   // Es hoy la carrera? (Zona Horaria Uruguay America/Montevideo)
   const getIsSameDay = () => {
     try {
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/Montevideo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Montevideo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
       });
       const parts = formatter.formatToParts(currentTime);
-      const getVal = (type: string) => parts.find(p => p.type === type)?.value || '';
-      const localTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+      const getVal = (type: string) =>
+        parts.find((p) => p.type === type)?.value || "";
+      const localTodayStr = `${getVal("year")}-${getVal("month")}-${getVal("day")}`;
       return localTodayStr === compDateStr;
     } catch {
       return false;
@@ -338,45 +473,47 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
   const sameDay = getIsSameDay();
   const pastTime = diffMs <= 0;
-  
+
   // Habilitado si es el mismo día y ya pasó la hora programada (07:00 AM)
   // o si es un día posterior (por tolerancia ante retrasos)
   const isDateBefore = !sameDay && secondsLeft > 0;
-  const canStart = comp.status === 'PLANNED' && !!officialStartTime;
+  const canStart = comp.status === "PLANNED" && !!officialStartTime;
 
   const formatCountdown = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
+
     return [
-      String(hours).padStart(2, '0'),
-      String(minutes).padStart(2, '0'),
-      String(seconds).padStart(2, '0')
-    ].join(':');
+      String(hours).padStart(2, "0"),
+      String(minutes).padStart(2, "0"),
+      String(seconds).padStart(2, "0"),
+    ].join(":");
   };
 
   const handleStart = async () => {
     if (!canStart || isStarting) return;
-    
+
     setIsStarting(true);
     setStartError(null);
-    
+
     try {
       // Parse to Uruguay timezone -03:00 ISO string
       let formattedStartTime: string | undefined = undefined;
       if (officialStartTime) {
-        formattedStartTime = new Date(`${officialStartTime}-03:00`).toISOString();
+        formattedStartTime = new Date(
+          `${officialStartTime}-03:00`,
+        ).toISOString();
       }
 
       // LLAMADA OFICIAL AL BACKEND (Seguridad y Transaccionalidad FEU)
       await CompetitionService.start(comp.id, formattedStartTime);
-      
+
       // Sincronizar UI con React-Query e invalidar el caché
-      queryClient.invalidateQueries({ queryKey: ['competition', comp.id] });
+      queryClient.invalidateQueries({ queryKey: ["competition", comp.id] });
       router.refresh();
     } catch (err: any) {
-      setStartError(err.message || 'Error al iniciar la carrera.');
+      setStartError(err.message || "Error al iniciar la carrera.");
     } finally {
       setIsStarting(false);
     }
@@ -384,7 +521,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
   // Renderizar feedback visual según el estado operativo
   const renderStatus = () => {
-    if (comp.status === 'ACTIVE') {
+    if (comp.status === "ACTIVE") {
       return (
         <div className="flex items-center space-x-2 text-emerald-400 font-extrabold text-xs uppercase tracking-widest bg-emerald-950/40 border border-emerald-900/50 px-3 py-1.5 rounded-full w-fit">
           <span className="relative flex h-2 w-2">
@@ -396,7 +533,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
       );
     }
 
-    if (comp.status === 'COMPLETED' || comp.status === 'OFFICIAL') {
+    if (comp.status === "COMPLETED" || comp.status === "OFFICIAL") {
       return (
         <div className="flex items-center space-x-2 text-blue-400 font-extrabold text-xs uppercase tracking-widest bg-blue-950/40 border border-blue-900/50 px-3 py-1.5 rounded-full w-fit">
           <span>Finalizado</span>
@@ -404,7 +541,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
       );
     }
 
-    if (comp.status !== 'PLANNED') {
+    if (comp.status !== "PLANNED") {
       return (
         <div className="flex items-center space-x-2 text-slate-400 font-extrabold text-xs uppercase tracking-widest bg-slate-900/40 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
           <span>{comp.status}</span>
@@ -447,20 +584,34 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
         <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+          <svg
+            className="w-5 h-5 text-emerald-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 5.25v13.5m-7.5-13.5v13.5"
+            />
           </svg>
-          <h3 className="text-xs font-extrabold tracking-wider uppercase text-slate-300">Control de Carrera</h3>
+          <h3 className="text-xs font-extrabold tracking-wider uppercase text-slate-300">
+            Control de Carrera
+          </h3>
         </div>
         {renderStatus()}
       </div>
 
-      {comp.status === 'PLANNED' && (
+      {comp.status === "PLANNED" && (
         <div className="space-y-4">
           {/* Si falta para largar el mismo día */}
           {secondsLeft > 0 && !isDateBefore && (
             <div className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl text-center space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Largada Oficial en</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                Largada Oficial en
+              </span>
               <span className="text-2xl font-extrabold font-mono tracking-wider text-amber-500 animate-pulse block">
                 {formatCountdown(secondsLeft)}
               </span>
@@ -469,7 +620,10 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
           {/* Configuración de hora de largada */}
           <div className="bg-slate-950/40 border border-slate-800 p-4 rounded-xl space-y-3">
-            <label htmlFor="official-start-time" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+            <label
+              htmlFor="official-start-time"
+              className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider"
+            >
               ⏱️ Configurar Hora Oficial de Largada
             </label>
             <input
@@ -480,15 +634,29 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
               className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             />
             <p className="text-[10px] text-slate-400 leading-normal">
-              Ajuste la hora real si hay retrasos. Conforme al reglamento FEU, la largada oficial no puede ser anterior a la programada ({comp.startTime || '07:00'} hs).
+              Ajuste la hora real si hay retrasos. Conforme al reglamento FEU,
+              la largada oficial no puede ser anterior a la programada (
+              {comp.startTime || "07:00"} hs).
             </p>
           </div>
 
           {/* Información del reglamento */}
           <div className="text-[11px] text-slate-400 leading-relaxed space-y-1 bg-slate-950/20 p-3 rounded-lg border border-slate-900">
-            <p className="font-semibold text-slate-300">Reglamento FEU Art. 15:</p>
-            <p>La largada oficial de la primera etapa está planificada para las <strong className="text-white font-mono">{comp.startTime || '07:00:00'} UY</strong> del día <strong className="text-white font-mono">{compDateStr}</strong>.</p>
-            <p className="text-[10px] text-slate-500 italic mt-1">La validación se realiza de forma duplicada tanto en Frontend (UX) como en Backend (Seguridad).</p>
+            <p className="font-semibold text-slate-300">
+              Reglamento FEU Art. 15:
+            </p>
+            <p>
+              La largada oficial de la primera etapa está planificada para las{" "}
+              <strong className="text-white font-mono">
+                {comp.startTime || "07:00:00"} UY
+              </strong>{" "}
+              del día{" "}
+              <strong className="text-white font-mono">{compDateStr}</strong>.
+            </p>
+            <p className="text-[10px] text-slate-500 italic mt-1">
+              La validación se realiza de forma duplicada tanto en Frontend (UX)
+              como en Backend (Seguridad).
+            </p>
           </div>
 
           {/* Manejo de Errores del Backend */}
@@ -503,16 +671,31 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
             onClick={handleStart}
             disabled={!canStart || isStarting}
             className={`w-full inline-flex items-center justify-center px-4 py-3 text-center font-bold text-sm rounded-xl transition-all shadow-md ${
-              canStart 
-                ? 'bg-emerald-600 hover:bg-emerald-500 hover:scale-[1.01] active:scale-[0.99] text-white shadow-emerald-950/30' 
-                : 'bg-slate-850 text-slate-500 border border-slate-800 cursor-not-allowed'
+              canStart
+                ? "bg-emerald-600 hover:bg-emerald-500 hover:scale-[1.01] active:scale-[0.99] text-white shadow-emerald-950/30"
+                : "bg-slate-850 text-slate-500 border border-slate-800 cursor-not-allowed"
             }`}
           >
             {isStarting ? (
               <div className="flex items-center space-x-2">
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 <span>Iniciando Competencia...</span>
               </div>
@@ -523,24 +706,29 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
         </div>
       )}
 
-      {comp.status === 'ACTIVE' && (
+      {comp.status === "ACTIVE" && (
         <div className="bg-emerald-950/10 border border-emerald-900/30 p-4 rounded-xl space-y-2">
-          <p className="text-xs text-emerald-400 font-bold">La competencia se encuentra activa.</p>
+          <p className="text-xs text-emerald-400 font-bold">
+            La competencia se encuentra activa.
+          </p>
           <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
-            Todos los binomios inscriptos han sido largados de la Etapa 1 a la hora oficial del servidor.
+            Todos los binomios inscriptos han sido largados de la Etapa 1 a la
+            hora oficial del servidor.
           </p>
         </div>
       )}
 
-      {(comp.status === 'COMPLETED' || comp.status === 'OFFICIAL') && (
+      {(comp.status === "COMPLETED" || comp.status === "OFFICIAL") && (
         <div className="bg-blue-950/10 border border-blue-900/30 p-4 rounded-xl space-y-2">
-          <p className="text-xs text-blue-400 font-bold">La carrera ha concluido.</p>
+          <p className="text-xs text-blue-400 font-bold">
+            La carrera ha concluido.
+          </p>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Se han registrado todos los tiempos de meta y los resultados finales se encuentran consolidados.
+            Se han registrado todos los tiempos de meta y los resultados finales
+            se encuentran consolidados.
           </p>
         </div>
       )}
     </div>
   );
 }
-

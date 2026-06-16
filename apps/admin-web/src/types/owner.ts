@@ -1,7 +1,7 @@
 export enum OwnerType {
-  INDIVIDUAL = 'INDIVIDUAL',
-  STABLE = 'STABLE',
-  SYNDICATE = 'SYNDICATE'
+  INDIVIDUAL = "INDIVIDUAL",
+  STABLE = "STABLE",
+  SYNDICATE = "SYNDICATE",
 }
 
 export interface Owner {

@@ -1,6 +1,11 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tenantStorage } from '../tenant.storage';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { tenantStorage } from "../tenant.storage";
 
 @Injectable()
 export class TenantInterceptor implements NestInterceptor {
@@ -8,7 +13,8 @@ export class TenantInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     // Extraemos el tenantId del usuario autenticado (inyectado por Passport-JWT)
     // Si el usuario tiene el rol ADMIN, no limitamos su tenant (bypassea RLS)
-    const tenantId = request.user?.role === 'ADMIN' ? '' : (request.user?.tenantId || '');
+    const tenantId =
+      request.user?.role === "ADMIN" ? "" : request.user?.tenantId || "";
 
     // Ejecutamos el flujo de la solicitud dentro del contexto del AsyncLocalStorage
     return new Observable((subscriber) => {

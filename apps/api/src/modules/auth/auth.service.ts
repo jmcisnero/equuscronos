@@ -1,10 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
-import { LoginDto } from './dto/login.dto';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { JwtService } from "@nestjs/jwt";
+import * as bcrypt from "bcrypt";
+import { User } from "../users/entities/user.entity";
+import { LoginDto } from "./dto/login.dto";
 
 @Injectable()
 export class AuthService {
@@ -19,19 +19,19 @@ export class AuthService {
 
     // Obtener el usuario incluyendo explícitamente el hash de la contraseña
     const user = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.tenant', 'tenant')
-      .addSelect('user.passwordHash')
-      .where('user.email = :email', { email })
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.tenant", "tenant")
+      .addSelect("user.passwordHash")
+      .where("user.email = :email", { email })
       .getOne();
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      throw new UnauthorizedException("Credenciales inválidas.");
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      throw new UnauthorizedException("Credenciales inválidas.");
     }
 
     const payload = {

@@ -1,15 +1,24 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { Competition } from './entities/competition.entity';
-import { Stage } from './entities/stage.entity';
-import { Tenant } from '../tenants/entities/tenant.entity';
-import { CompetitionType } from '../competition-types/entities/competition-type.entity';
-import { CreateCompetitionDto } from './dto/create-competition.dto';
-import { UpdateCompetitionDto } from './dto/update-competition.dto';
-import { CompetitionStatus, ParticipantStatus, TimeRecordType } from '@equuscronos/shared';
-import { TimingRecord } from './entities/timing-record.entity';
-import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource } from "typeorm";
+import { Competition } from "./entities/competition.entity";
+import { Stage } from "./entities/stage.entity";
+import { Tenant } from "../tenants/entities/tenant.entity";
+import { CompetitionType } from "../competition-types/entities/competition-type.entity";
+import { CreateCompetitionDto } from "./dto/create-competition.dto";
+import { UpdateCompetitionDto } from "./dto/update-competition.dto";
+import {
+  CompetitionStatus,
+  ParticipantStatus,
+  TimeRecordType,
+} from "@equuscronos/shared";
+import { TimingRecord } from "./entities/timing-record.entity";
+import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
 
 @Injectable()
 export class CompetitionsService {
@@ -19,18 +28,26 @@ export class CompetitionsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async createCompetitionWithStages(dto: CreateCompetitionDto): Promise<Competition> {
+  async createCompetitionWithStages(
+    dto: CreateCompetitionDto,
+  ): Promise<Competition> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       // 1. Validar existencias (Tenant y Tipo de Regla)
-      const tenant = await queryRunner.manager.findOne(Tenant, { where: { id: dto.tenantId } });
-      if (!tenant) throw new NotFoundException('Organización (Tenant) no encontrada.');
+      const tenant = await queryRunner.manager.findOne(Tenant, {
+        where: { id: dto.tenantId },
+      });
+      if (!tenant)
+        throw new NotFoundException("Organización (Tenant) no encontrada.");
 
-      const compType = await queryRunner.manager.findOne(CompetitionType, { where: { id: dto.competitionTypeId } });
-      if (!compType) throw new NotFoundException('Tipo de competencia no encontrado.');
+      const compType = await queryRunner.manager.findOne(CompetitionType, {
+        where: { id: dto.competitionTypeId },
+      });
+      if (!compType)
+        throw new NotFoundException("Tipo de competencia no encontrado.");
 
       // 2. Crear la entidad principal (Competencia)
       const competition = this.compRepository.create({
@@ -44,10 +61,13 @@ export class CompetitionsService {
         status: dto.status,
       });
 
-      const savedCompetition = await queryRunner.manager.save(Competition, competition);
+      const savedCompetition = await queryRunner.manager.save(
+        Competition,
+        competition,
+      );
 
       // 3. Crear y asociar las Etapas
-      const stagesToSave = dto.stages.map(stageDto => {
+      const stagesToSave = dto.stages.map((stageDto) => {
         return queryRunner.manager.create(Stage, {
           competition: savedCompetition,
           tenant: tenant,
@@ -61,12 +81,14 @@ export class CompetitionsService {
 
       // 4. Confirmar transacción
       await queryRunner.commitTransaction();
-      
+
       // Retornar la competencia con sus etapas incluidas
-      return this.findOne(savedCompetition.id); 
+      return this.findOne(savedCompetition.id);
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException(`Error al crear la competencia: ${error.message}`);
+      throw new BadRequestException(
+        `Error al crear la competencia: ${error.message}`,
+      );
     } finally {
       await queryRunner.release();
     }
@@ -75,29 +97,34 @@ export class CompetitionsService {
   async findOne(id: string): Promise<Competition> {
     const comp = await this.compRepository.findOne({
       where: { id },
-      relations: ['stages', 'tenant', 'competitionType'], // Trae los datos anidados
+      relations: ["stages", "tenant", "competitionType"], // Trae los datos anidados
     });
-    if (!comp) throw new NotFoundException('Competencia no encontrada.');
+    if (!comp) throw new NotFoundException("Competencia no encontrada.");
     return comp;
   }
 
   async findAll(): Promise<Competition[]> {
     return this.compRepository.find({
-      order: { competitionDate: 'DESC' },
-      relations: ['stages'],
+      order: { competitionDate: "DESC" },
+      relations: ["stages"],
     });
   }
 
-  async update(id: string, updateDto: UpdateCompetitionDto): Promise<Competition> {
-    const competition = await this.compRepository.findOne({ 
-      where: { id } 
+  async update(
+    id: string,
+    updateDto: UpdateCompetitionDto,
+  ): Promise<Competition> {
+    const competition = await this.compRepository.findOne({
+      where: { id },
     });
     if (!competition) {
       throw new NotFoundException(`Evento con ID ${id} no encontrado`);
     }
     // Bloqueo de estado: Solo se permite editar eventos en estado PLANNED
     if (competition.status !== CompetitionStatus.PLANNED) {
-      throw new BadRequestException("Solo se permite editar eventos en estado PLANNED");
+      throw new BadRequestException(
+        "Solo se permite editar eventos en estado PLANNED",
+      );
     }
 
     // Fusionamos los cambios del DTO en la entidad existente
@@ -108,7 +135,7 @@ export class CompetitionsService {
 
   async remove(id: string): Promise<void> {
     const competition = await this.compRepository.findOne({ where: { id } });
-    if (!competition) throw new NotFoundException('Competencia no encontrada.');
+    if (!competition) throw new NotFoundException("Competencia no encontrada.");
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -118,7 +145,7 @@ export class CompetitionsService {
       // 1. Obtener todos los IDs de inscripciones (competition_entries) para esta competencia
       const entries = await queryRunner.manager.query(
         `SELECT id FROM competition_entries WHERE competition_id = $1`,
-        [id]
+        [id],
       );
       const entryIds = entries.map((e: any) => e.id);
 
@@ -128,50 +155,52 @@ export class CompetitionsService {
           `DELETE FROM vet_inspections WHERE timing_record_id IN (
             SELECT id FROM timing_records WHERE entry_id = ANY($1)
           )`,
-          [entryIds]
+          [entryIds],
         );
 
         // 3. Eliminar los registros de tiempo (timing_records)
         await queryRunner.manager.query(
           `DELETE FROM timing_records WHERE entry_id = ANY($1)`,
-          [entryIds]
+          [entryIds],
         );
 
         // 4. Eliminar los controles de peso (weight_controls)
         await queryRunner.manager.query(
           `DELETE FROM weight_controls WHERE entry_id = ANY($1)`,
-          [entryIds]
+          [entryIds],
         );
 
         // 5. Eliminar las penalizaciones (penalties)
         await queryRunner.manager.query(
           `DELETE FROM penalties WHERE entry_id = ANY($1)`,
-          [entryIds]
+          [entryIds],
         );
 
         // 6. Eliminar las inscripciones (competition_entries)
         await queryRunner.manager.query(
           `DELETE FROM competition_entries WHERE competition_id = $1`,
-          [id]
+          [id],
         );
       }
 
       // 7. Eliminar las etapas (stages)
       await queryRunner.manager.query(
         `DELETE FROM stages WHERE competition_id = $1`,
-        [id]
+        [id],
       );
 
       // 8. Eliminar la competencia principal (competitions)
       await queryRunner.manager.query(
         `DELETE FROM competitions WHERE id = $1`,
-        [id]
+        [id],
       );
 
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException(`No se pudo eliminar la competencia debido a dependencias: ${error.message}`);
+      throw new BadRequestException(
+        `No se pudo eliminar la competencia debido a dependencias: ${error.message}`,
+      );
     } finally {
       await queryRunner.release();
     }
@@ -183,7 +212,10 @@ export class CompetitionsService {
    * La validación temporal se realiza de forma duplicada tanto en el Frontend (para guiar la UX y countdown de precisión)
    * como en el Backend (esta función, para garantizar la inmutabilidad y seguridad conforme al reglamento de la FEU).
    */
-  async startCompetition(id: string, officialStartTime?: string): Promise<Competition> {
+  async startCompetition(
+    id: string,
+    officialStartTime?: string,
+  ): Promise<Competition> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -192,11 +224,11 @@ export class CompetitionsService {
       // 1. Buscar la competencia con relaciones requeridas
       const competition = await queryRunner.manager.findOne(Competition, {
         where: { id },
-        relations: ['stages', 'tenant'],
+        relations: ["stages", "tenant"],
       });
 
       if (!competition) {
-        throw new NotFoundException('Competencia no encontrada.');
+        throw new NotFoundException("Competencia no encontrada.");
       }
 
       // 2. Idempotencia y validación de estado actual
@@ -205,80 +237,105 @@ export class CompetitionsService {
         competition.status === CompetitionStatus.COMPLETED
       ) {
         throw new ConflictException(
-          `La competencia ya se encuentra en estado ${competition.status}.`
+          `La competencia ya se encuentra en estado ${competition.status}.`,
         );
       }
 
       if (competition.status !== CompetitionStatus.PLANNED) {
         throw new BadRequestException(
-          `La competencia no se puede largar. Estado actual: ${competition.status} (Requerido: PLANNED)`
+          `La competencia no se puede largar. Estado actual: ${competition.status} (Requerido: PLANNED)`,
         );
       }
 
       // 3. Validación Temporal (Reglamentaria FEU)
-      // El servidor debe estar en el día de la competencia (competitionDate) y la hora debe ser igual o posterior a la programada (07:00:00).
-      const startTimestamp = officialStartTime ? new Date(officialStartTime) : new Date();
-
       // Formateador en zona horaria oficial uruguaya (America/Montevideo / GMT-3)
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/Montevideo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Montevideo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
         hour12: false,
       });
 
-      const parts = formatter.formatToParts(startTimestamp);
-      const getVal = (type: string) => parts.find((p) => p.type === type).value;
-      
-      const serverTodayStr = `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
-      const serverHour = parseInt(getVal('hour'), 10);
-      const serverMinute = parseInt(getVal('minute'), 10);
+      // Obtener fecha y hora real actual del servidor
+      const realNow = new Date();
+      const realParts = formatter.formatToParts(realNow);
+      const getRealVal = (type: string) => realParts.find((p) => p.type === type).value;
+      const realServerTodayStr = `${getRealVal("year")}-${getRealVal("month")}-${getRealVal("day")}`;
+      const realServerHour = parseInt(getRealVal("hour"), 10);
+      const realServerMinute = parseInt(getRealVal("minute"), 10);
+
+      // Obtener fecha y hora oficial de largada que se desea registrar
+      const startTimestamp = officialStartTime
+        ? new Date(officialStartTime)
+        : realNow;
+      const officialParts = formatter.formatToParts(startTimestamp);
+      const getOfficialVal = (type: string) => officialParts.find((p) => p.type === type).value;
+      const officialTodayStr = `${getOfficialVal("year")}-${getOfficialVal("month")}-${getOfficialVal("day")}`;
+      const officialHour = parseInt(getOfficialVal("hour"), 10);
+      const officialMinute = parseInt(getOfficialVal("minute"), 10);
 
       // Formatear la fecha de la competencia
       const getLocalDateString = (d: any): string => {
-        if (!d) return '';
-        if (typeof d === 'string') return d.substring(0, 10);
+        if (!d) return "";
+        if (typeof d === "string") return d.substring(0, 10);
         const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(d.getUTCDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       };
 
       const compDateStr = getLocalDateString(competition.competitionDate);
 
-      // Validación de Fecha
-      if (compDateStr !== serverTodayStr) {
+      // Validación de Fecha Real del Servidor
+      if (compDateStr !== realServerTodayStr) {
         throw new BadRequestException(
-          `LARGADA DENEGADA (Reglamento FEU): La carrera está programada para la fecha ${compDateStr}, pero hoy en Uruguay es ${serverTodayStr}. No se permiten largadas en fechas incorrectas.`
+          `LARGADA DENEGADA (Reglamento FEU): La carrera está programada para la fecha ${compDateStr}, pero hoy en Uruguay es ${realServerTodayStr}. No se permiten largadas en fechas incorrectas.`,
+        );
+      }
+
+      // Validación de la fecha oficial seleccionada
+      if (compDateStr !== officialTodayStr) {
+        throw new BadRequestException(
+          `LARGADA DENEGADA (Reglamento FEU): La fecha de largada oficial seleccionada (${officialTodayStr}) debe coincidir con la fecha de la competencia (${compDateStr}).`,
         );
       }
 
       // Validación de Hora de Largada Programada (Dynamic "Hora Cero" FEU)
-      const timeParts = (competition.startTime || '07:00:00').split(':');
+      const timeParts = (competition.startTime || "07:00:00").split(":");
       const scheduledHour = parseInt(timeParts[0], 10);
       const scheduledMinute = parseInt(timeParts[1], 10);
-
-      const currentMinutes = serverHour * 60 + serverMinute;
       const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
 
-      if (currentMinutes < scheduledMinutes) {
+      // 1) Verificar que la hora real actual del servidor ya haya alcanzado la hora programada
+      const realCurrentMinutes = realServerHour * 60 + realServerMinute;
+      if (realCurrentMinutes < scheduledMinutes) {
         throw new BadRequestException(
-          `LARGADA DENEGADA (Reglamento FEU): Faltan minutos para la hora programada de largada (${competition.startTime || '07:00:00'}). Hora actual del servidor en Uruguay: ${getVal('hour')}:${getVal('minute')}:${getVal('second')}.`
+          `LARGADA DENEGADA (Reglamento FEU): Faltan minutos para la hora programada de largada (${competition.startTime || "07:00:00"}). Hora actual del servidor en Uruguay: ${getRealVal("hour")}:${getRealVal("minute")}:${getRealVal("second")}.`,
+        );
+      }
+
+      // 2) Verificar que la hora de largada oficial que se quiere registrar no sea anterior a la programada
+      const officialMinutes = officialHour * 60 + officialMinute;
+      if (officialMinutes < scheduledMinutes) {
+        throw new BadRequestException(
+          `LARGADA DENEGADA (Reglamento FEU): La hora oficial de largada seleccionada (${getOfficialVal("hour")}:${getOfficialVal("minute")}:${getOfficialVal("second")}) no puede ser anterior a la hora programada de largada (${competition.startTime || "07:00:00"}).`,
         );
       }
 
       // 4. Obtener la primera etapa
       if (!competition.stages || competition.stages.length === 0) {
         throw new BadRequestException(
-          'La competencia no tiene etapas configuradas para registrar la largada.'
+          "La competencia no tiene etapas configuradas para registrar la largada.",
         );
       }
 
-      const stages = [...competition.stages].sort((a, b) => a.stageNumber - b.stageNumber);
+      const stages = [...competition.stages].sort(
+        (a, b) => a.stageNumber - b.stageNumber,
+      );
       const firstStage = stages[0];
 
       // 5. Prevención de Duplicados (Asegurar que no se creen múltiples START si se dispara la acción en paralelo)
@@ -291,21 +348,71 @@ export class CompetitionsService {
 
       if (existingStart) {
         throw new ConflictException(
-          'La largada oficial ya ha sido registrada previamente para esta competencia.'
+          "La largada oficial ya ha sido registrada previamente para esta competencia.",
         );
       }
 
       // 6. Obtener inscripciones activas (binomios en carrera / habilitados)
       const entries = await queryRunner.manager.find(CompetitionEntry, {
         where: { competition: { id: competition.id } },
+        relations: ["rider", "horse"],
       });
+
+      if (entries.length === 0) {
+        throw new BadRequestException(
+          "LARGADA DENEGADA: La competencia no tiene binomios inscritos.",
+        );
+      }
+
+      // Filtrar los binomios activos que van a largar (status: IN_RACE)
+      const activeEntries = entries.filter(
+        (entry) => entry.status === ParticipantStatus.IN_RACE,
+      );
+
+      if (activeEntries.length === 0) {
+        throw new BadRequestException(
+          "LARGADA DENEGADA: No hay binomios activos habilitados para iniciar la carrera.",
+        );
+      }
+
+      // Validar que todos los binomios activos hayan completado la marcación (precinto y pesaje)
+      const rules = (competition.competitionType as any)?.defaultRules || {};
+      const minWeight = Number(rules.min_weight_kg || rules.min_weight || 85);
+
+      for (const entry of activeEntries) {
+        if (!entry.weighInAt || !entry.sealNumber || entry.sealNumber.trim() === "") {
+          throw new BadRequestException(
+            `LARGADA DENEGADA: El binomio con dorsal #${entry.bibNumber} (${entry.rider?.name || "Jinete"}) no ha realizado la marcación (requiere pesaje de lastre y número de precinto).`,
+          );
+        }
+
+        // Si es una competencia federada, también exigimos que jinete y caballo estén activos/habilitados por la FEU y cumplan con el peso
+        if (competition.isFederated) {
+          if (!entry.rider?.isFeuActive) {
+            throw new BadRequestException(
+              `LARGADA DENEGADA: El jinete del dorsal #${entry.bibNumber} (${entry.rider?.name || "Jinete"}) no está activo en la FEU.`,
+            );
+          }
+          if (!entry.horse?.isFeuActive) {
+            throw new BadRequestException(
+              `LARGADA DENEGADA: El caballo del dorsal #${entry.bibNumber} (${entry.horse?.name || "Caballo"}) no está activo en la FEU.`,
+            );
+          }
+          const totalWeight = Number(entry.ballastWeight || 0);
+          if (totalWeight < minWeight) {
+            throw new BadRequestException(
+              `LARGADA DENEGADA: El peso marcado del dorsal #${entry.bibNumber} (${totalWeight} Kg) es menor al mínimo reglamentario (${minWeight} Kg).`,
+            );
+          }
+        }
+      }
 
       // 7. Actualizar estado de la carrera a ACTIVE y registrar hora oficial
       competition.status = CompetitionStatus.ACTIVE;
-      
-      const hours = getVal('hour');
-      const minutes = getVal('minute');
-      const seconds = getVal('second');
+
+      const hours = getOfficialVal("hour");
+      const minutes = getOfficialVal("minute");
+      const seconds = getOfficialVal("second");
       competition.startTime = `${hours}:${minutes}:${seconds}`;
 
       await queryRunner.manager.save(Competition, competition);
@@ -347,7 +454,9 @@ export class CompetitionsService {
       ) {
         throw error;
       }
-      throw new BadRequestException(`Error al dar la largada oficial: ${error.message}`);
+      throw new BadRequestException(
+        `Error al dar la largada oficial: ${error.message}`,
+      );
     } finally {
       await queryRunner.release();
     }

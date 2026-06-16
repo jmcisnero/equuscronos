@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Tenant } from './entities/tenant.entity';
-import { CreateTenantDto } from './dto/create-tenant.dto';
-import { UpdateTenantDto } from './dto/update-tenant.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Tenant } from "./entities/tenant.entity";
+import { CreateTenantDto } from "./dto/create-tenant.dto";
+import { UpdateTenantDto } from "./dto/update-tenant.dto";
 
 @Injectable()
 export class TenantsService {
@@ -13,30 +17,39 @@ export class TenantsService {
   ) {}
 
   async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
-    const existing = await this.tenantRepository.findOne({ where: { name: createTenantDto.name } });
+    const existing = await this.tenantRepository.findOne({
+      where: { name: createTenantDto.name },
+    });
     if (existing) {
-      throw new ConflictException(`La organización '${createTenantDto.name}' ya existe.`);
+      throw new ConflictException(
+        `La organización '${createTenantDto.name}' ya existe.`,
+      );
     }
     const newTenant = this.tenantRepository.create(createTenantDto);
     return await this.tenantRepository.save(newTenant);
   }
 
   async findAll(): Promise<Tenant[]> {
-    return await this.tenantRepository.find({ order: { name: 'ASC' } });
+    return await this.tenantRepository.find({ order: { name: "ASC" } });
   }
 
   async findOne(id: string): Promise<Tenant> {
     const tenant = await this.tenantRepository.findOne({ where: { id } });
-    if (!tenant) throw new NotFoundException(`Organización con ID ${id} no encontrada.`);
+    if (!tenant)
+      throw new NotFoundException(`Organización con ID ${id} no encontrada.`);
     return tenant;
   }
 
   async update(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
     const tenant = await this.findOne(id);
     if (updateTenantDto.name && updateTenantDto.name !== tenant.name) {
-      const existing = await this.tenantRepository.findOne({ where: { name: updateTenantDto.name } });
+      const existing = await this.tenantRepository.findOne({
+        where: { name: updateTenantDto.name },
+      });
       if (existing) {
-        throw new ConflictException(`La organización '${updateTenantDto.name}' ya existe.`);
+        throw new ConflictException(
+          `La organización '${updateTenantDto.name}' ya existe.`,
+        );
       }
     }
     const updatedTenant = Object.assign(tenant, updateTenantDto);

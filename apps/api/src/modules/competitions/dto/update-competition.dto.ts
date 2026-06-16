@@ -1,5 +1,5 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateCompetitionDto } from './create-competition.dto';
+import { PartialType } from "@nestjs/swagger";
+import { CreateCompetitionDto } from "./create-competition.dto";
 
 /**
  * Hereda todas las validaciones de CreateCompetitionDto.

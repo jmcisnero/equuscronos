@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors } from '../theme/colors';
-import { useAuth } from '../services/AuthContext';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { colors } from "../theme/colors";
+import { useAuth } from "../services/AuthContext";
 
 interface PermissionErrorScreenProps {
   expectedRoles: string[];
@@ -12,7 +12,7 @@ interface PermissionErrorScreenProps {
 export const PermissionErrorScreen: React.FC<PermissionErrorScreenProps> = ({
   expectedRoles,
   currentRole,
-  onBack
+  onBack,
 }) => {
   const { logout } = useAuth();
 
@@ -25,7 +25,8 @@ export const PermissionErrorScreen: React.FC<PermissionErrorScreenProps> = ({
 
         <Text style={styles.title}>Error de Permisos</Text>
         <Text style={styles.description}>
-          Su cuenta no tiene los privilegios necesarios para acceder a esta sección del sistema.
+          Su cuenta no tiene los privilegios necesarios para acceder a esta
+          sección del sistema.
         </Text>
 
         <View style={styles.detailsBox}>
@@ -33,12 +34,15 @@ export const PermissionErrorScreen: React.FC<PermissionErrorScreenProps> = ({
             <Text style={styles.bold}>Su Rol:</Text> {currentRole}
           </Text>
           <Text style={styles.detailText}>
-            <Text style={styles.bold}>Roles requeridos:</Text> {expectedRoles.join(', ')}
+            <Text style={styles.bold}>Roles requeridos:</Text>{" "}
+            {expectedRoles.join(", ")}
           </Text>
         </View>
 
         <TouchableOpacity style={styles.primaryButton} onPress={onBack}>
-          <Text style={styles.primaryButtonText}>Volver al Panel Principal</Text>
+          <Text style={styles.primaryButtonText}>
+            Volver al Panel Principal
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} onPress={logout}>
@@ -53,17 +57,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.equusBg,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 24,
   },
   card: {
     backgroundColor: colors.white,
     borderRadius: 20,
     padding: 32,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -73,9 +77,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 24,
   },
   icon: {
@@ -83,14 +87,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '900',
-    color: '#991B1B',
+    fontWeight: "900",
+    color: "#991B1B",
     marginBottom: 12,
   },
   description: {
     fontSize: 14,
     color: colors.muted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -98,7 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.inputBg,
     borderRadius: 10,
     padding: 16,
-    width: '100%',
+    width: "100%",
     marginBottom: 32,
     borderWidth: 1,
     borderColor: colors.border,
@@ -109,35 +113,35 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   bold: {
-    fontWeight: '800',
+    fontWeight: "800",
     color: colors.muted,
   },
   primaryButton: {
     backgroundColor: colors.equusGreen,
     height: 50,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
     marginBottom: 12,
   },
   primaryButtonText: {
     color: colors.white,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   secondaryButton: {
     height: 50,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
     borderWidth: 1,
     borderColor: colors.border,
   },
   secondaryButtonText: {
     color: colors.muted,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

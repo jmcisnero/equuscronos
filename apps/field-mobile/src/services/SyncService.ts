@@ -1,7 +1,7 @@
-import NetInfo from '@react-native-community/netinfo';
-import { getDatabase } from '../database/db';
-import { SyncQueueItem } from '../database/schema';
-import ApiService from './ApiService';
+import NetInfo from "@react-native-community/netinfo";
+import { getDatabase } from "../database/db";
+import { SyncQueueItem } from "../database/schema";
+import ApiService from "./ApiService";
 
 class SyncService {
   private isSyncing = false;
@@ -11,21 +11,25 @@ class SyncService {
 
   constructor() {
     // Monitor real-time connection status
-    NetInfo.addEventListener(state => {
+    NetInfo.addEventListener((state) => {
       const wasOffline = !this.isConnected;
       this.isConnected = state.isConnected ?? false;
-      
-      console.log(`[SyncService] Connection State: ${this.isConnected ? 'ONLINE' : 'OFFLINE'}`);
-      
+
+      console.log(
+        `[SyncService] Connection State: ${this.isConnected ? "ONLINE" : "OFFLINE"}`,
+      );
+
       if (this.onStatusChangeCallback) {
         this.onStatusChangeCallback(this.isConnected);
       }
 
       // If transition from OFFLINE -> ONLINE, fire sync queue automatically
       if (this.isConnected && wasOffline) {
-        console.log('[SyncService] Internet re-established. Initiating automatic sync...');
-        this.syncPendingItems().catch(err => {
-          console.error('[SyncService] Auto-sync failed:', err);
+        console.log(
+          "[SyncService] Internet re-established. Initiating automatic sync...",
+        );
+        this.syncPendingItems().catch((err) => {
+          console.error("[SyncService] Auto-sync failed:", err);
         });
       }
     });
@@ -59,9 +63,14 @@ class SyncService {
    * If online, it schedules a sync task immediately.
    */
   async enqueueAction(
-    actionType: 'CREATE_TIMING' | 'CREATE_VET_INSPECTION' | 'UPDATE_ENTRY_STATUS' | 'UPDATE_TIMING' | 'VOID_TIMING',
-    tableName: 'timing_records' | 'vet_inspections' | 'competition_entries',
-    payload: any
+    actionType:
+      | "CREATE_TIMING"
+      | "CREATE_VET_INSPECTION"
+      | "UPDATE_ENTRY_STATUS"
+      | "UPDATE_TIMING"
+      | "VOID_TIMING",
+    tableName: "timing_records" | "vet_inspections" | "competition_entries",
+    payload: any,
   ): Promise<void> {
     try {
       const db = await getDatabase();
@@ -71,23 +80,26 @@ class SyncService {
       await db.runAsync(
         `INSERT INTO sync_queue (action_type, table_name, payload, created_at, attempts)
          VALUES (?, ?, ?, ?, 0);`,
-        [actionType, tableName, payloadString, now]
+        [actionType, tableName, payloadString, now],
       );
 
       console.log(`[SyncQueue] Action '${actionType}' stored locally.`);
-      
+
       if (this.onQueueChangeCallback) {
         this.onQueueChangeCallback();
       }
 
       // Attempt to sync immediately if online
       if (this.isConnected) {
-        this.syncPendingItems().catch(err => {
-          console.error('[SyncQueue] Immediate sync failed, will retry later:', err);
+        this.syncPendingItems().catch((err) => {
+          console.error(
+            "[SyncQueue] Immediate sync failed, will retry later:",
+            err,
+          );
         });
       }
     } catch (error) {
-      console.error('[SyncQueue] Error enqueuing action:', error);
+      console.error("[SyncQueue] Error enqueuing action:", error);
       throw error;
     }
   }
@@ -99,23 +111,23 @@ class SyncService {
   async syncPendingItems(): Promise<void> {
     if (this.isSyncing) return;
     if (!this.isConnected) {
-      console.log('[SyncService] Cannot sync: currently OFFLINE.');
+      console.log("[SyncService] Cannot sync: currently OFFLINE.");
       return;
     }
 
     this.isSyncing = true;
-    console.log('[SyncService] Commencing sync queue verification...');
+    console.log("[SyncService] Commencing sync queue verification...");
 
     try {
       const db = await getDatabase();
-      
+
       // Select queued items sorted chronologically (ascending ID)
       const pending = await db.getAllAsync<SyncQueueItem>(
-        'SELECT * FROM sync_queue ORDER BY id ASC;'
+        "SELECT * FROM sync_queue ORDER BY id ASC;",
       );
 
       if (pending.length === 0) {
-        console.log('[SyncService] No pending items in sync queue.');
+        console.log("[SyncService] No pending items in sync queue.");
         this.isSyncing = false;
         return;
       }
@@ -129,24 +141,32 @@ class SyncService {
           // Distribute action to corresponding Api endpoint
           let responseData: any = null;
           switch (item.action_type) {
-            case 'CREATE_TIMING':
+            case "CREATE_TIMING":
               responseData = await ApiService.syncTimingRecord(payload);
               if (responseData && responseData.id) {
                 const newId = responseData.id;
                 const oldId = payload.id;
 
-                console.log(`[SyncService] Propagating new ID from backend: ${oldId} -> ${newId}`);
+                console.log(
+                  `[SyncService] Propagating new ID from backend: ${oldId} -> ${newId}`,
+                );
 
                 // Update SQLite database (temporarily disabling foreign keys to avoid violations)
-                await db.execAsync('PRAGMA foreign_keys = OFF;');
-                await db.runAsync('UPDATE vet_inspections SET timing_record_id = ? WHERE timing_record_id = ?;', [newId, oldId]);
-                await db.runAsync('UPDATE timing_records SET id = ? WHERE id = ?;', [newId, oldId]);
-                await db.execAsync('PRAGMA foreign_keys = ON;');
+                await db.execAsync("PRAGMA foreign_keys = OFF;");
+                await db.runAsync(
+                  "UPDATE vet_inspections SET timing_record_id = ? WHERE timing_record_id = ?;",
+                  [newId, oldId],
+                );
+                await db.runAsync(
+                  "UPDATE timing_records SET id = ? WHERE id = ?;",
+                  [newId, oldId],
+                );
+                await db.execAsync("PRAGMA foreign_keys = ON;");
 
                 // Update remaining items in the sync queue that reference this ID
                 const remainingItems = await db.getAllAsync<SyncQueueItem>(
-                  'SELECT * FROM sync_queue WHERE id > ?;',
-                  [item.id]
+                  "SELECT * FROM sync_queue WHERE id > ?;",
+                  [item.id],
                 );
                 for (const remaining of remainingItems) {
                   let remPayload = JSON.parse(remaining.payload);
@@ -167,50 +187,60 @@ class SyncService {
 
                   if (changed) {
                     await db.runAsync(
-                      'UPDATE sync_queue SET payload = ? WHERE id = ?;',
-                      [JSON.stringify(remPayload), remaining.id]
+                      "UPDATE sync_queue SET payload = ? WHERE id = ?;",
+                      [JSON.stringify(remPayload), remaining.id],
                     );
                   }
                 }
               }
               break;
-            case 'CREATE_VET_INSPECTION':
+            case "CREATE_VET_INSPECTION":
               await ApiService.syncVetInspection(payload);
               break;
-            case 'UPDATE_ENTRY_STATUS':
+            case "UPDATE_ENTRY_STATUS":
               await ApiService.syncEntryStatus(payload.id, payload.status);
               break;
-            case 'UPDATE_TIMING':
-              await ApiService.updateTimingRecord(payload.id, { recordedAt: payload.recordedAt });
+            case "UPDATE_TIMING":
+              await ApiService.updateTimingRecord(payload.id, {
+                recordedAt: payload.recordedAt,
+              });
               break;
-            case 'VOID_TIMING':
-              await ApiService.voidTimingRecord(payload.id, { voidReason: payload.voidReason });
+            case "VOID_TIMING":
+              await ApiService.voidTimingRecord(payload.id, {
+                voidReason: payload.voidReason,
+              });
               break;
             default:
-              throw new Error(`Unsupported sync action type: ${item.action_type}`);
+              throw new Error(
+                `Unsupported sync action type: ${item.action_type}`,
+              );
           }
 
           // Successfully synced -> Remove from queue
-          await db.runAsync('DELETE FROM sync_queue WHERE id = ?;', [item.id]);
-          console.log(`[SyncService] Synced item #${item.id} (${item.action_type}) successfully.`);
-          
+          await db.runAsync("DELETE FROM sync_queue WHERE id = ?;", [item.id]);
+          console.log(
+            `[SyncService] Synced item #${item.id} (${item.action_type}) successfully.`,
+          );
+
           if (this.onQueueChangeCallback) {
             this.onQueueChangeCallback();
           }
         } catch (error: any) {
           const apiErrorData = error?.response?.data;
           const apiErrorMsg = apiErrorData?.message || apiErrorData;
-          const errMsg = apiErrorMsg 
-            ? `${error.message} - API Response: ${JSON.stringify(apiErrorMsg)}` 
-            : error?.message || 'Network endpoint unreachable';
+          const errMsg = apiErrorMsg
+            ? `${error.message} - API Response: ${JSON.stringify(apiErrorMsg)}`
+            : error?.message || "Network endpoint unreachable";
           const nextAttempt = item.attempts + 1;
-          
-          console.error(`[SyncService] Synchronization failed for item #${item.id} (Attempt ${nextAttempt}). Error: ${errMsg}`);
+
+          console.error(
+            `[SyncService] Synchronization failed for item #${item.id} (Attempt ${nextAttempt}). Error: ${errMsg}`,
+          );
 
           // Update local status with retry count and log message
           await db.runAsync(
-            'UPDATE sync_queue SET attempts = ?, error_message = ? WHERE id = ?;',
-            [nextAttempt, errMsg, item.id]
+            "UPDATE sync_queue SET attempts = ?, error_message = ? WHERE id = ?;",
+            [nextAttempt, errMsg, item.id],
           );
 
           if (this.onQueueChangeCallback) {
@@ -220,15 +250,20 @@ class SyncService {
           // CRITICAL: We stop processing the queue.
           // In Offline-First architectures, we MUST preserve serial ordering (FIFO).
           // Continuing would trigger failures in dependent rows (e.g. Vet Inspection for a Timing Record that wasn't created).
-          console.warn('[SyncService] Order integrity block: Halting remaining sync operations.');
+          console.warn(
+            "[SyncService] Order integrity block: Halting remaining sync operations.",
+          );
           break;
         }
       }
     } catch (error) {
-      console.error('[SyncService] Operational database error during sync:', error);
+      console.error(
+        "[SyncService] Operational database error during sync:",
+        error,
+      );
     } finally {
       this.isSyncing = false;
-      console.log('[SyncService] Sync cycle ended.');
+      console.log("[SyncService] Sync cycle ended.");
     }
   }
 
@@ -238,7 +273,9 @@ class SyncService {
   async getQueueSize(): Promise<number> {
     try {
       const db = await getDatabase();
-      const result = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM sync_queue;');
+      const result = await db.getFirstAsync<{ count: number }>(
+        "SELECT COUNT(*) as count FROM sync_queue;",
+      );
       return result ? result.count : 0;
     } catch (e) {
       return 0;
@@ -251,7 +288,9 @@ class SyncService {
   async getQueueItems(): Promise<SyncQueueItem[]> {
     try {
       const db = await getDatabase();
-      return await db.getAllAsync<SyncQueueItem>('SELECT * FROM sync_queue ORDER BY id ASC;');
+      return await db.getAllAsync<SyncQueueItem>(
+        "SELECT * FROM sync_queue ORDER BY id ASC;",
+      );
     } catch (e) {
       return [];
     }
@@ -269,7 +308,7 @@ class SyncService {
    */
   async clearQueue(): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync('DELETE FROM sync_queue;');
+    await db.runAsync("DELETE FROM sync_queue;");
     if (this.onQueueChangeCallback) {
       this.onQueueChangeCallback();
     }

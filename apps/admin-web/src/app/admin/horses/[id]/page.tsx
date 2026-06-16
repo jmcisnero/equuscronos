@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { Horse } from '@/types/horse';
-import { HorseService } from '@/services/api/horse.service';
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Horse } from "@/types/horse";
+import { HorseService } from "@/services/api/horse.service";
 
 export default function HorseDetailPage() {
   const params = useParams();
@@ -23,7 +23,7 @@ export default function HorseDetailPage() {
         const data = await HorseService.getById(id);
         setHorse(data);
       } catch (err: any) {
-        setError(err.message || 'Error al cargar los detalles del equino');
+        setError(err.message || "Error al cargar los detalles del equino");
       } finally {
         setIsLoading(false);
       }
@@ -34,9 +34,24 @@ export default function HorseDetailPage() {
   if (isLoading) {
     return (
       <div className="py-20 text-center text-slate-500 font-medium flex flex-col items-center justify-center space-y-3">
-        <svg className="animate-spin h-8 w-8 text-equus-green" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        <svg
+          className="animate-spin h-8 w-8 text-equus-green"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
         <span>Consultando registro nacional del equino...</span>
       </div>
@@ -47,7 +62,9 @@ export default function HorseDetailPage() {
     return (
       <div className="p-6 max-w-2xl mx-auto text-center">
         <div className="bg-rose-50 border border-rose-100 rounded-2xl p-8 text-rose-600 font-semibold shadow-sm">
-          <p className="text-lg mb-4">⚠️ {error || 'No se encontró el equino solicitado.'}</p>
+          <p className="text-lg mb-4">
+            ⚠️ {error || "No se encontró el equino solicitado."}
+          </p>
           <Link
             href="/horses"
             className="inline-flex items-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all shadow pointer"
@@ -59,8 +76,15 @@ export default function HorseDetailPage() {
     );
   }
 
-  const isExpired = horse.healthRecordsExpiration && new Date(horse.healthRecordsExpiration) < new Date();
-  const initials = horse.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+  const isExpired =
+    horse.healthRecordsExpiration &&
+    new Date(horse.healthRecordsExpiration) < new Date();
+  const initials = horse.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -70,8 +94,18 @@ export default function HorseDetailPage() {
           href="/horses"
           className="inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors group"
         >
-          <svg className="w-5 h-5 mr-1.5 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          <svg
+            className="w-5 h-5 mr-1.5 transform group-hover:-translate-x-1 transition-transform"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
           </svg>
           Volver al Padrón de Caballos
         </Link>
@@ -79,7 +113,6 @@ export default function HorseDetailPage() {
 
       {/* Tarjeta Principal */}
       <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100/80">
-        
         {/* Cabecera Premium */}
         <div className="bg-slate-50 border-b border-slate-100 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center space-x-5">
@@ -87,24 +120,31 @@ export default function HorseDetailPage() {
               {initials}
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">{horse.name}</h1>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">ID Interno: {horse.id}</p>
+              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                {horse.name}
+              </h1>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                ID Interno: {horse.id}
+              </p>
             </div>
           </div>
           <div>
-            <span className={`inline-flex rounded-full px-4 py-1.5 text-xs font-bold shadow-sm ${
-              horse.isFeuActive 
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50' 
-                : 'bg-slate-100 text-slate-500 border border-slate-200'
-            }`}>
-              {horse.isFeuActive ? 'Habilitado FEU' : 'No Habilitado / Suspendido'}
+            <span
+              className={`inline-flex rounded-full px-4 py-1.5 text-xs font-bold shadow-sm ${
+                horse.isFeuActive
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                  : "bg-slate-100 text-slate-500 border border-slate-200"
+              }`}
+            >
+              {horse.isFeuActive
+                ? "Habilitado FEU"
+                : "No Habilitado / Suspendido"}
             </span>
           </div>
         </div>
 
         {/* Ficha de Detalles */}
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          
           {/* Registro del Equino */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
@@ -112,7 +152,9 @@ export default function HorseDetailPage() {
             </h3>
 
             <div className="flex justify-between py-2 border-b border-slate-50">
-              <span className="text-sm font-semibold text-slate-500">Chip Oficial RFID</span>
+              <span className="text-sm font-semibold text-slate-500">
+                Chip Oficial RFID
+              </span>
               <span className="text-sm font-bold font-mono text-slate-800">
                 {horse.chipId ? (
                   <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-mono text-xs">
@@ -125,7 +167,9 @@ export default function HorseDetailPage() {
             </div>
 
             <div className="flex justify-between py-2 border-b border-slate-50">
-              <span className="text-sm font-semibold text-slate-500">Pasaporte FEU</span>
+              <span className="text-sm font-semibold text-slate-500">
+                Pasaporte FEU
+              </span>
               <span className="text-sm font-bold font-mono text-slate-800">
                 {horse.feuId ? (
                   <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-mono text-xs">
@@ -138,9 +182,13 @@ export default function HorseDetailPage() {
             </div>
 
             <div className="flex justify-between py-2">
-              <span className="text-sm font-semibold text-slate-500">Propietario Registrado</span>
+              <span className="text-sm font-semibold text-slate-500">
+                Propietario Registrado
+              </span>
               <span className="text-sm font-bold text-slate-800">
-                {horse.owner?.name || <span className="text-slate-400 italic">Sin Asignar</span>}
+                {horse.owner?.name || (
+                  <span className="text-slate-400 italic">Sin Asignar</span>
+                )}
               </span>
             </div>
           </div>
@@ -152,14 +200,23 @@ export default function HorseDetailPage() {
             </h3>
 
             <div className="flex justify-between py-2 border-b border-slate-50">
-              <span className="text-sm font-semibold text-slate-500">Vence Control Sanitario</span>
+              <span className="text-sm font-semibold text-slate-500">
+                Vence Control Sanitario
+              </span>
               <span className="text-sm font-bold font-mono">
                 {horse.healthRecordsExpiration ? (
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded ${
-                    isExpired ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isExpired ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                    {horse.healthRecordsExpiration.substring(0, 10)} {isExpired && '(Vencido)'}
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded ${
+                      isExpired
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isExpired ? "bg-rose-500" : "bg-emerald-500"}`}
+                    />
+                    {horse.healthRecordsExpiration.substring(0, 10)}{" "}
+                    {isExpired && "(Vencido)"}
                   </span>
                 ) : (
                   <span className="text-slate-400 italic">Sin Control</span>
@@ -168,13 +225,16 @@ export default function HorseDetailPage() {
             </div>
 
             <div className="flex justify-between py-2">
-              <span className="text-sm font-semibold text-slate-500">Fecha Alta Padrón</span>
+              <span className="text-sm font-semibold text-slate-500">
+                Fecha Alta Padrón
+              </span>
               <span className="text-sm font-bold text-slate-800">
-                {horse.createdAt ? new Date(horse.createdAt).toLocaleDateString('es-UY') : '-'}
+                {horse.createdAt
+                  ? new Date(horse.createdAt).toLocaleDateString("es-UY")
+                  : "-"}
               </span>
             </div>
           </div>
-
         </div>
 
         {/* Pié de página del expediente */}
@@ -182,7 +242,6 @@ export default function HorseDetailPage() {
           <span>Trazabilidad Oficial FEU & MGAP - EquusCronos</span>
           <span>Expediente de Equino Oficial</span>
         </div>
-
       </div>
     </div>
   );

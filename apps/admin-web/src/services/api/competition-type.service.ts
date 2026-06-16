@@ -1,6 +1,11 @@
-import { CompetitionType, CreateCompetitionTypeDto, UpdateCompetitionTypeDto } from '@/types/competition-type';
+import {
+  CompetitionType,
+  CreateCompetitionTypeDto,
+  UpdateCompetitionTypeDto,
+} from "@/types/competition-type";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/admin';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
 
 export const CompetitionTypeService = {
   /**
@@ -9,7 +14,8 @@ export const CompetitionTypeService = {
   async getAll(): Promise<CompetitionType[]> {
     const url = `${API_URL}/competition-types`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Error al cargar la lista de modalidades de competencia');
+    if (!response.ok)
+      throw new Error("Error al cargar la lista de modalidades de competencia");
     return response.json();
   },
 
@@ -19,7 +25,8 @@ export const CompetitionTypeService = {
   async getById(id: string): Promise<CompetitionType> {
     const url = `${API_URL}/competition-types/${id}`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Error al obtener la modalidad de competencia');
+    if (!response.ok)
+      throw new Error("Error al obtener la modalidad de competencia");
     return response.json();
   },
 
@@ -28,15 +35,15 @@ export const CompetitionTypeService = {
    */
   async create(dto: CreateCompetitionTypeDto): Promise<CompetitionType> {
     const response = await fetch(`${API_URL}/competition-types`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
       const friendlyMessage = Array.isArray(err.message)
-        ? err.message.join('. ')
-        : (err.message || 'Error al registrar la nueva modalidad');
+        ? err.message.join(". ")
+        : err.message || "Error al registrar la nueva modalidad";
       throw new Error(friendlyMessage);
     }
     return response.json();
@@ -45,17 +52,20 @@ export const CompetitionTypeService = {
   /**
    * Modifica una modalidad existente.
    */
-  async update(id: string, dto: UpdateCompetitionTypeDto): Promise<CompetitionType> {
+  async update(
+    id: string,
+    dto: UpdateCompetitionTypeDto,
+  ): Promise<CompetitionType> {
     const response = await fetch(`${API_URL}/competition-types/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
       const err = await response.json();
       const friendlyMessage = Array.isArray(err.message)
-        ? err.message.join('. ')
-        : (err.message || 'Error al actualizar la modalidad');
+        ? err.message.join(". ")
+        : err.message || "Error al actualizar la modalidad";
       throw new Error(friendlyMessage);
     }
     return response.json();
@@ -66,11 +76,13 @@ export const CompetitionTypeService = {
    */
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/competition-types/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || 'Error al eliminar la modalidad de competencia');
+      throw new Error(
+        err.message || "Error al eliminar la modalidad de competencia",
+      );
     }
-  }
+  },
 };

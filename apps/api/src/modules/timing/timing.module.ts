@@ -1,16 +1,14 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { TimingController } from './timing.controller';
-import { TimingService } from './timing.service';
-import { TimeCalculationService } from './services/time-calculation.service';
-import { TimingRecord } from '../competitions/entities/timing-record.entity';
-import { CompetitionEntry } from '../competition-entries/entities/competition-entry.entity';
-import { Stage } from '../competitions/entities/stage.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { TimingController } from "./timing.controller";
+import { TimingService } from "./timing.service";
+import { TimeCalculationService } from "./services/time-calculation.service";
+import { TimingRecord } from "../competitions/entities/timing-record.entity";
+import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
+import { Stage } from "../competitions/entities/stage.entity";
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([TimingRecord, CompetitionEntry, Stage])
-  ],
+  imports: [TypeOrmModule.forFeature([TimingRecord, CompetitionEntry, Stage])],
   controllers: [TimingController],
   providers: [TimingService, TimeCalculationService],
   exports: [TimingService],
