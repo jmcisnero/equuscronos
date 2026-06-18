@@ -215,6 +215,7 @@ export class CompetitionsService {
   async startCompetition(
     id: string,
     officialStartTime?: string,
+    confirmWd?: boolean,
   ): Promise<Competition> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -379,31 +380,76 @@ export class CompetitionsService {
       const rules = (competition.competitionType as any)?.defaultRules || {};
       const minWeight = Number(rules.min_weight_kg || rules.min_weight || 85);
 
+      const ineligibleEntries: {
+        entry: CompetitionEntry;
+        reasons: string[];
+      }[] = [];
+
       for (const entry of activeEntries) {
+        const reasons: string[] = [];
+
         if (!entry.weighInAt || !entry.sealNumber || entry.sealNumber.trim() === "") {
-          throw new BadRequestException(
-            `LARGADA DENEGADA: El binomio con dorsal #${entry.bibNumber} (${entry.rider?.name || "Jinete"}) no ha realizado la marcación (requiere pesaje de lastre y número de precinto).`,
-          );
+          reasons.push("Falta marcación de pesaje o número de precinto.");
         }
 
         // Si es una competencia federada, también exigimos que jinete y caballo estén activos/habilitados por la FEU y cumplan con el peso
         if (competition.isFederated) {
           if (!entry.rider?.isFeuActive) {
-            throw new BadRequestException(
-              `LARGADA DENEGADA: El jinete del dorsal #${entry.bibNumber} (${entry.rider?.name || "Jinete"}) no está activo en la FEU.`,
-            );
+            reasons.push("El jinete no está activo en la FEU.");
           }
           if (!entry.horse?.isFeuActive) {
-            throw new BadRequestException(
-              `LARGADA DENEGADA: El caballo del dorsal #${entry.bibNumber} (${entry.horse?.name || "Caballo"}) no está activo en la FEU.`,
-            );
+            reasons.push("El caballo no está activo en la FEU.");
           }
           const totalWeight = Number(entry.ballastWeight || 0);
           if (totalWeight < minWeight) {
-            throw new BadRequestException(
-              `LARGADA DENEGADA: El peso marcado del dorsal #${entry.bibNumber} (${totalWeight} Kg) es menor al mínimo reglamentario (${minWeight} Kg).`,
+            reasons.push(
+              `El peso marcado (${totalWeight} Kg) es menor al mínimo reglamentario (${minWeight} Kg).`,
             );
           }
+        }
+
+        if (reasons.length > 0) {
+          ineligibleEntries.push({ entry, reasons });
+        }
+      }
+
+      if (ineligibleEntries.length > 0) {
+        if (!confirmWd) {
+          const missingCompetitors = ineligibleEntries.map((item) => ({
+            id: item.entry.id,
+            bibNumber: item.entry.bibNumber,
+            riderName: item.entry.rider?.name || "Jinete Desconocido",
+            horseName: item.entry.horse?.name || "Caballo Desconocido",
+            reasons: item.reasons,
+          }));
+
+          throw new BadRequestException({
+            message: "LARGADA_PENDIENTE_CONFIRMACION",
+            description:
+              "Hay competidores que no cumplen con los requisitos mínimos para largar la competencia.",
+            missingCompetitors,
+          });
+        } else {
+          // Cambiar automáticamente el estado a WD para los binomios no aptos
+          for (const item of ineligibleEntries) {
+            item.entry.status = ParticipantStatus.WD;
+            await queryRunner.manager.save(CompetitionEntry, item.entry);
+          }
+
+          // Filtrar de activeEntries los que ahora cambiamos a WD
+          const activeAfterWd = activeEntries.filter(
+            (ae) => !ineligibleEntries.some((ie) => ie.entry.id === ae.id),
+          );
+
+          if (activeAfterWd.length === 0) {
+            throw new BadRequestException(
+              "LARGADA DENEGADA: Todos los binomios activos han sido cambiados a WD por no cumplir los requisitos para largar. No quedan competidores habilitados.",
+            );
+          }
+
+          // Actualizar activeEntries con los que realmente van a largar
+          activeEntries.length = 0;
+          activeEntries.push(...activeAfterWd);
         }
       }
 

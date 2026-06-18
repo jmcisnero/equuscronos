@@ -75,6 +75,7 @@ export class CompetitionsController {
     return this.competitionsService.startCompetition(
       id,
       startDto.officialStartTime,
+      startDto.confirmWd,
     );
   }
 

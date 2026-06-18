@@ -2,8 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ParticipantStatus } from "@equuscronos/shared";
 
 export class LeaderboardEntryDto {
-  @ApiProperty({ description: "Posición actual en el ranking", example: 1 })
-  rank: number;
+  @ApiPropertyOptional({ description: "Posición actual en el ranking", example: 1 })
+  rank: number | null;
 
   @ApiProperty({ description: "Número de dorsal", example: 101 })
   bibNumber: number;

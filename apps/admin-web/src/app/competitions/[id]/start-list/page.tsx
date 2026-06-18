@@ -28,13 +28,19 @@ const entrySchema = z.object({
     .int("El dorsal debe ser un número entero")
     .min(1, "El dorsal debe ser un número entero positivo mayor a 0"),
   riderWeight: z
-    .number({ message: "Debe ingresar el peso del jinete" })
-    .min(0, "El peso del jinete no puede ser negativo"),
+    .number()
+    .min(0, "El peso del jinete no puede ser negativo")
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .or(z.nan().transform(() => undefined)),
   tackWeight: z
-    .number({ message: "Debe ingresar el peso de la montura" })
-    .min(0, "El peso de la montura no puede ser negativo"),
+    .number()
+    .min(0, "El peso de la montura no puede ser negativo")
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .or(z.nan().transform(() => undefined)),
   sealedItems: z.array(z.string()).default([]),
-  sealNumbers: z.string().min(1, "El número de precinto es obligatorio"),
+  sealNumbers: z.string().optional().or(z.literal("")),
 });
 
 type EntryFormValues = z.infer<typeof entrySchema>;
@@ -45,6 +51,7 @@ export default function StartListPage() {
   const queryClient = useQueryClient();
 
   // Estados de control para el Modal y Autocompletes
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{
@@ -77,8 +84,8 @@ export default function StartListPage() {
       horseId: "",
       representedTenantId: "",
       bibNumber: undefined,
-      riderWeight: 0,
-      tackWeight: 0,
+      riderWeight: undefined,
+      tackWeight: undefined,
       sealedItems: [],
       sealNumbers: "",
     },
@@ -160,7 +167,7 @@ export default function StartListPage() {
   const createMutation = useMutation({
     mutationFn: (dto: EntryFormValues) => {
       const calculatedTotalWeight = Number(
-        (dto.riderWeight + dto.tackWeight).toFixed(2),
+        ((dto.riderWeight || 0) + (dto.tackWeight || 0)).toFixed(2),
       );
       return CompetitionEntryService.create({
         competitionId,
@@ -168,18 +175,45 @@ export default function StartListPage() {
         horseId: dto.horseId,
         representedTenantId: dto.representedTenantId || undefined,
         bibNumber: dto.bibNumber,
-        ballastWeight: calculatedTotalWeight,
+        ballastWeight: calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
         riderWeight: dto.riderWeight,
         tackWeight: dto.tackWeight,
         sealedItems: dto.sealedItems,
-        sealNumber: dto.sealNumbers,
+        sealNumber: dto.sealNumbers || undefined,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["competition-entries", competitionId],
       });
-      showToast("¡Binomio inscripto y marcado exitosamente!", "success");
+      showToast("¡Binomio inscripto exitosamente!", "success");
+      handleCloseModal();
+    },
+  });
+
+  // Mutación para Actualizar Inscripción / Marcación
+  const updateMutation = useMutation({
+    mutationFn: (dto: EntryFormValues) => {
+      const calculatedTotalWeight = Number(
+        ((dto.riderWeight || 0) + (dto.tackWeight || 0)).toFixed(2),
+      );
+      return CompetitionEntryService.update(editingEntryId!, {
+        riderId: dto.riderId,
+        horseId: dto.horseId,
+        representedTenantId: dto.representedTenantId || undefined,
+        bibNumber: dto.bibNumber,
+        ballastWeight: calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
+        riderWeight: dto.riderWeight,
+        tackWeight: dto.tackWeight,
+        sealedItems: dto.sealedItems,
+        sealNumber: dto.sealNumbers || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["competition-entries", competitionId],
+      });
+      showToast("¡Inscripción/Marcación actualizada exitosamente!", "success");
       handleCloseModal();
     },
   });
@@ -203,7 +237,11 @@ export default function StartListPage() {
     console.log("Current Form Data:", data);
     setSubmitError(null);
     try {
-      await createMutation.mutateAsync(data);
+      if (editingEntryId) {
+        await updateMutation.mutateAsync(data);
+      } else {
+        await createMutation.mutateAsync(data);
+      }
     } catch (err: any) {
       console.error("[MUTATE ERROR]", err);
       if (
@@ -250,11 +288,42 @@ export default function StartListPage() {
     setSelectedHorse(null);
     setRiderSearch("");
     setHorseSearch("");
-    reset();
+    setEditingEntryId(null);
+    reset({
+      riderId: "",
+      horseId: "",
+      representedTenantId: "",
+      bibNumber: undefined,
+      riderWeight: undefined,
+      tackWeight: undefined,
+      sealedItems: [],
+      sealNumbers: "",
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (entry: any) => {
+    setSubmitError(null);
+    setSelectedRider(entry.rider);
+    setSelectedHorse(entry.horse);
+    setRiderSearch(entry.rider?.name || "");
+    setHorseSearch(entry.horse?.name || "");
+    setEditingEntryId(entry.id);
+    reset({
+      riderId: entry.rider?.id || "",
+      horseId: entry.horse?.id || "",
+      representedTenantId: entry.representedTenant?.id || "",
+      bibNumber: entry.bibNumber,
+      riderWeight: entry.riderWeight !== undefined && entry.riderWeight !== null ? Number(entry.riderWeight) : undefined,
+      tackWeight: entry.tackWeight !== undefined && entry.tackWeight !== null ? Number(entry.tackWeight) : undefined,
+      sealedItems: entry.sealedItems || [],
+      sealNumbers: entry.sealNumber || "",
+    });
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    setEditingEntryId(null);
     setIsModalOpen(false);
   };
 
@@ -784,31 +853,52 @@ export default function StartListPage() {
                               🔒 Bloqueado
                             </span>
                           ) : (
-                            <button
-                              onClick={() =>
-                                handleDelete(
-                                  entry.id,
-                                  entry.bibNumber,
-                                  entry.rider?.name || "",
-                                )
-                              }
-                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                              title="Eliminar inscripción de binomio"
-                            >
-                              <svg
-                                className="w-4.5 h-4.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                            <div className="flex justify-end items-center space-x-1">
+                              <button
+                                onClick={() => handleOpenEditModal(entry)}
+                                className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-emerald-50 rounded-lg transition-all"
+                                title="Registrar Marcación / Editar Inscripción"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
+                                <svg
+                                  className="w-4.5 h-4.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDelete(
+                                    entry.id,
+                                    entry.bibNumber,
+                                    entry.rider?.name || "",
+                                  )
+                                }
+                                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                title="Eliminar inscripción de binomio"
+                              >
+                                <svg
+                                  className="w-4.5 h-4.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
                           );
                         })()}
                       </td>
@@ -828,7 +918,7 @@ export default function StartListPage() {
             <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">
-                  Marcación de Pesaje Inicial e Inscripción
+                  {editingEntryId ? "Registrar Marcación / Editar Inscripción" : "Inscribir Nuevo Binomio"}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Asignación de dorsal, control de lastre y número de precinto
@@ -1157,7 +1247,7 @@ export default function StartListPage() {
                   {/* riderWeight */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Peso del Jinete (Kg) *
+                      Peso del Jinete (Kg)
                     </label>
                     <input
                       type="number"
@@ -1177,7 +1267,7 @@ export default function StartListPage() {
                   {/* tackWeight */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Peso de la Montura / Aperos (Kg) *
+                      Peso de la Montura / Aperos (Kg)
                     </label>
                     <input
                       type="number"
@@ -1281,7 +1371,7 @@ export default function StartListPage() {
                 {/* sealNumbers (Input text para números de precinto, separado por comas) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
-                    🔗 Números de Precinto (Separados por comas) *
+                    🔗 Números de Precinto (Separados por comas)
                   </label>
                   <input
                     type="text"
@@ -1308,7 +1398,7 @@ export default function StartListPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || totalWeight < minWeight}
+                  disabled={isSubmitting}
                   className="px-6 py-2 bg-equus-green hover:bg-opacity-95 disabled:bg-slate-100 disabled:text-slate-400 text-white font-extrabold text-sm rounded-xl transition-all shadow-md focus:outline-none flex items-center space-x-2"
                 >
                   {isSubmitting && (
@@ -1332,7 +1422,7 @@ export default function StartListPage() {
                       />
                     </svg>
                   )}
-                  <span>Inscribir Binomio</span>
+                  <span>{editingEntryId ? "Guardar Marcación" : "Inscribir Binomio"}</span>
                 </button>
               </div>
             </form>

@@ -419,6 +419,8 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
   const [officialStartTime, setOfficialStartTime] = React.useState<string>("");
   const [isStarting, setIsStarting] = React.useState(false);
   const [startError, setStartError] = React.useState<string | null>(null);
+  const [pendingConfirmWd, setPendingConfirmWd] = React.useState(false);
+  const [missingCompetitors, setMissingCompetitors] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     const timer = setInterval(() => {
@@ -491,7 +493,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
     ].join(":");
   };
 
-  const handleStart = async () => {
+  const handleStart = async (forceWd: boolean = false) => {
     if (!canStart || isStarting) return;
 
     setIsStarting(true);
@@ -507,13 +509,22 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
       }
 
       // LLAMADA OFICIAL AL BACKEND (Seguridad y Transaccionalidad FEU)
-      await CompetitionService.start(comp.id, formattedStartTime);
+      await CompetitionService.start(comp.id, formattedStartTime, forceWd ? true : undefined);
 
       // Sincronizar UI con React-Query e invalidar el caché
       queryClient.invalidateQueries({ queryKey: ["competition", comp.id] });
+      setPendingConfirmWd(false);
+      setMissingCompetitors([]);
       router.refresh();
     } catch (err: any) {
-      setStartError(err.message || "Error al iniciar la carrera.");
+      console.error("[START ERROR]", err);
+      const details = err.details;
+      if (details && details.message === "LARGADA_PENDIENTE_CONFIRMACION") {
+        setPendingConfirmWd(true);
+        setMissingCompetitors(details.missingCompetitors || []);
+      } else {
+        setStartError(err.message || "Error al iniciar la carrera.");
+      }
     } finally {
       setIsStarting(false);
     }
@@ -668,7 +679,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
 
           {/* Botón de Largada */}
           <button
-            onClick={handleStart}
+            onClick={() => handleStart(false)}
             disabled={!canStart || isStarting}
             className={`w-full inline-flex items-center justify-center px-4 py-3 text-center font-bold text-sm rounded-xl transition-all shadow-md ${
               canStart
@@ -727,6 +738,130 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
             Se han registrado todos los tiempos de meta y los resultados finales
             se encuentran consolidados.
           </p>
+        </div>
+      )}
+
+      {pendingConfirmWd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] transition-all transform scale-100 duration-300">
+            {/* Header */}
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-amber-500 text-lg">⚠️</span>
+                <div className="text-left">
+                  <h3 className="text-base font-extrabold text-amber-900">
+                    Confirmación de Largada
+                  </h3>
+                  <p className="text-xs text-amber-700 mt-0.5 font-medium">
+                    Hay competidores que no cumplen los requisitos reglamentarios.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setPendingConfirmWd(false);
+                  setMissingCompetitors([]);
+                }}
+                className="text-amber-600 hover:text-amber-800 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 overflow-y-auto space-y-4 text-sm text-slate-600 flex-1 text-left">
+              <p className="font-semibold text-slate-800">
+                Los siguientes binomios no están habilitados para largar por tener datos incompletos o inhabilitaciones de la FEU:
+              </p>
+
+              <div className="divide-y divide-slate-100 border border-slate-150 rounded-xl overflow-hidden bg-slate-50">
+                {missingCompetitors.map((item) => (
+                  <div key={item.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-xs font-bold font-mono">
+                        Dorsal #{item.bibNumber}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800">
+                        {item.riderName} / {item.horseName}
+                      </span>
+                    </div>
+                    <ul className="list-disc list-inside text-xs text-rose-600 font-bold pl-1 space-y-0.5">
+                      {item.reasons.map((reason: string, idx: number) => (
+                        <li key={idx}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl space-y-2 text-xs text-amber-800 leading-relaxed font-semibold">
+                <p>
+                  <strong>¿Cómo desea proceder?</strong>
+                </p>
+                <p>
+                  Si selecciona <strong className="text-amber-950">"Confirmar y largar"</strong>, todos los binomios inhabilitados listados arriba cambiarán automáticamente a estado <strong className="text-amber-950">WD (Retirado)</strong> y el resto iniciará la carrera.
+                </p>
+                <p>
+                  Si selecciona <strong className="text-amber-950">"Cancelar"</strong>, podrá ir a la Start List para ingresar el pesaje/precinto faltante de estos competidores para habilitarlos.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingConfirmWd(false);
+                  setMissingCompetitors([]);
+                }}
+                className="px-4 py-2 text-slate-500 hover:text-slate-700 text-sm font-bold transition-all focus:outline-none"
+              >
+                Cancelar y corregir
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStart(true)}
+                disabled={isStarting}
+                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none flex items-center space-x-2"
+              >
+                {isStarting && (
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                )}
+                <span>Confirmar y largar (excluir faltantes)</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

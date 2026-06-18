@@ -1,7 +1,7 @@
 import useSWR from "swr";
 
 export interface LeaderboardEntry {
-  rank: number;
+  rank: number | null;
   bibNumber: number;
   riderName: string;
   horseName: string;

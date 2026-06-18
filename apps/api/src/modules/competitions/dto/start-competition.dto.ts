@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional } from "class-validator";
+import { IsDateString, IsOptional, IsBoolean } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 
 export class StartCompetitionDto {
@@ -9,4 +9,12 @@ export class StartCompetitionDto {
   @IsOptional()
   @IsDateString()
   officialStartTime?: string;
+
+  @ApiPropertyOptional({
+    description: "Confirmar que los competidores no aptos pasarán a estado WD automáticamente",
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmWd?: boolean;
 }

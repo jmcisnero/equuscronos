@@ -46,12 +46,13 @@ export class CreateCompetitionEntryDto {
   qualifiesForPoints?: boolean;
 
   // ÚNICO PESO PERMITIDO EN LA INSCRIPCIÓN (El resto va por weight_controls)
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Peso registrado (lastre o total) en kg",
     example: 85.0,
   })
+  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
-  ballastWeight: number;
+  ballastWeight?: number;
 
   @ApiPropertyOptional({ description: "Peso del jinete en kg", example: 70.0 })
   @IsOptional()
@@ -75,12 +76,13 @@ export class CreateCompetitionEntryDto {
   @IsString({ each: true })
   sealedItems?: string[];
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Número de precinto asignado para el lastre",
     example: "PREC-2026-001",
   })
+  @IsOptional()
   @IsString()
-  sealNumber: string;
+  sealNumber?: string;
 
   @ApiPropertyOptional({
     description: "Timestamp de marcación de pesaje inicial",

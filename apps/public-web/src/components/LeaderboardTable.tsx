@@ -246,11 +246,17 @@ export default function LeaderboardTable({
                 {/* Cabecera de la Tarjeta del Binomio */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <span
-                      className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankBg}`}
-                    >
-                      {entry.rank}
-                    </span>
+                    {entry.rank ? (
+                      <span
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankBg}`}
+                      >
+                        {entry.rank}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center w-8 h-8 text-slate-400 font-mono text-sm">
+                        --
+                      </span>
+                    )}
                     <span className="bg-slate-950 text-white font-mono text-xs font-extrabold px-2 py-1 rounded-lg">
                       #{entry.bibNumber}
                     </span>
@@ -430,11 +436,15 @@ export default function LeaderboardTable({
                     >
                       {/* PUESTO */}
                       <td className="py-4.5 px-2 text-center font-bold">
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
-                        >
-                          {entry.rank}
-                        </span>
+                        {entry.rank ? (
+                          <span
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
+                          >
+                            {entry.rank}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-sm">--</span>
+                        )}
                       </td>
 
                       {/* DORSAL */}

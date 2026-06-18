@@ -76,20 +76,28 @@ export const CompetitionService = {
   /**
    * Da la largada oficial de la carrera bajo reglamento FEU.
    */
-  async start(id: string, officialStartTime?: string): Promise<Competition> {
+  async start(
+    id: string,
+    officialStartTime?: string,
+    confirmWd?: boolean,
+  ): Promise<Competition> {
     const response = await fetch(`${API_URL}/competitions/${id}/start`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-role": "ADMIN",
       },
-      body: JSON.stringify({ officialStartTime }),
+      body: JSON.stringify({ officialStartTime, confirmWd }),
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(
-        err.message || "Error al dar la largada oficial de la carrera.",
-      );
+      const friendlyMessage =
+        typeof err.message === "string"
+          ? err.message
+          : err.description || "Error al dar la largada oficial de la carrera.";
+      const error = new Error(friendlyMessage) as any;
+      error.details = err;
+      throw error;
     }
     return response.json();
   },

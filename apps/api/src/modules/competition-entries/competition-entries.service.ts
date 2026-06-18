@@ -88,18 +88,30 @@ export class CompetitionEntriesService {
         `El dorsal #${dto.bibNumber} ya está en uso en esta carrera.`,
       );
 
-    // 3. Regla de Negocio: Un mismo binomio (Jinete+Caballo) no puede inscribirse dos veces
-    const existingEntry = await this.entryRepo.findOne({
+    // 3. Reglas de Negocio: Un jinete o caballo no puede inscribirse más de una vez en la misma carrera
+    const existingRider = await this.entryRepo.findOne({
       where: {
         competition: { id: dto.competitionId },
         rider: { id: dto.riderId },
+      },
+    });
+    if (existingRider) {
+      throw new ConflictException(
+        `El jinete seleccionado ya está inscripto en esta carrera.`,
+      );
+    }
+
+    const existingHorse = await this.entryRepo.findOne({
+      where: {
+        competition: { id: dto.competitionId },
         horse: { id: dto.horseId },
       },
     });
-    if (existingEntry)
+    if (existingHorse) {
       throw new ConflictException(
-        "Este binomio ya está inscripto en esta carrera.",
+        `El caballo seleccionado ya está inscripto en esta carrera.`,
       );
+    }
 
     // 4. Crear inscripción
     const newEntry = this.entryRepo.create({
@@ -215,6 +227,36 @@ export class CompetitionEntriesService {
         throw new ConflictException(
           `El dorsal #${dto.bibNumber} ya está en uso.`,
         );
+    }
+
+    // Si intentan cambiar el jinete, validar que no esté ya inscripto en esta carrera
+    if (dto.riderId && dto.riderId !== entry.rider.id) {
+      const existingRider = await this.entryRepo.findOne({
+        where: {
+          competition: { id: entry.competition.id },
+          rider: { id: dto.riderId },
+        },
+      });
+      if (existingRider) {
+        throw new ConflictException(
+          "El jinete seleccionado ya está inscripto en esta carrera.",
+        );
+      }
+    }
+
+    // Si intentan cambiar el caballo, validar que no esté ya inscripto en esta carrera
+    if (dto.horseId && dto.horseId !== entry.horse.id) {
+      const existingHorse = await this.entryRepo.findOne({
+        where: {
+          competition: { id: entry.competition.id },
+          horse: { id: dto.horseId },
+        },
+      });
+      if (existingHorse) {
+        throw new ConflictException(
+          "El caballo seleccionado ya está inscripto en esta carrera.",
+        );
+      }
     }
 
     // Si agregan peso o precinto por primera vez, marcar weighInAt

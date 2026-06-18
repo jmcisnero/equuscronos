@@ -114,6 +114,7 @@ export class LeaderboardService {
       // Fallback a la hora de largada de la competencia para la Etapa 1 si no hay registro individual de START
       if (
         !startTime &&
+        entry.status !== ParticipantStatus.WD &&
         entry.competition &&
         (entry.competition.status === CompetitionStatus.ACTIVE ||
           entry.competition.status === CompetitionStatus.COMPLETED ||
@@ -174,10 +175,12 @@ export class LeaderboardService {
       return a.totalRaceTimeMs - b.totalRaceTimeMs; // A igualdad de etapas, menor tiempo neto va primero
     });
 
-    // 4. Asignación de Gaps (Diferencias de tiempo)
+    // 4. Asignación de Gaps (Diferencias de tiempo) y Ranking (solo para activos)
     const leaderTime = leaderboard[0]?.totalRaceTimeMs || 0;
-    leaderboard.forEach((entry, index) => {
-      entry.rank = index + 1;
+    let nextRank = 1;
+    leaderboard.forEach((entry) => {
+      const isActive = activeStatuses.includes(entry.status);
+      entry.rank = isActive ? nextRank++ : null;
       entry.gapToLeaderMs =
         entry.totalRaceTimeMs > 0 ? entry.totalRaceTimeMs - leaderTime : 0;
     });
