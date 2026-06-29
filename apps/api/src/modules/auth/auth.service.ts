@@ -49,6 +49,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         tenantId: user.tenant?.id || null,
+        tenantName: user.tenant?.name || null,
       },
     };
   }

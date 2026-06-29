@@ -98,7 +98,7 @@ export const LoginScreen: React.FC = () => {
             <Text style={styles.label}>Servidor API (Local o Cloud)</Text>
             <TextInput
               style={styles.input}
-              placeholder="http://192.168.1.24:3000"
+              placeholder="http://192.168.1.12:3000"
               placeholderTextColor="#94A3B8"
               value={apiUrl}
               onChangeText={setApiUrl}

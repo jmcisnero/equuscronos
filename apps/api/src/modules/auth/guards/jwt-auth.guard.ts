@@ -7,7 +7,7 @@ import { AuthGuard } from "@nestjs/passport";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard("jwt") {
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const path = request.path || request.url;
 
@@ -20,6 +20,22 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
       (path.includes("/admin/competitions") && request.method === "GET") ||
       (path.includes("admin/competitions") && request.method === "GET");
     if (isPublic) {
+      const authHeader = request.headers["authorization"];
+      if (authHeader) {
+        try {
+          const result = super.canActivate(context);
+          if (result instanceof Promise) {
+            return await result;
+          }
+          if (typeof result === "boolean") {
+            return result;
+          }
+          const { firstValueFrom } = require("rxjs");
+          return await firstValueFrom(result);
+        } catch (e) {
+          return true;
+        }
+      }
       return true;
     }
 

@@ -30,12 +30,14 @@ export class TenantsController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Listar todos los clubes" })
   findAll() {
     return this.tenantsService.findAll();
   }
 
   @Get(":id")
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Obtener club por ID" })
   findOne(@Param("id", ParseUUIDPipe) id: string) {
     return this.tenantsService.findOne(id);

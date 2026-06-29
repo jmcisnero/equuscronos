@@ -21,7 +21,7 @@ import { UserRole } from "@equuscronos/shared";
 @ApiTags("3. Usuarios y Roles (Users)")
 @ApiBearerAuth("access-token")
 @UseInterceptors(ClassSerializerInterceptor)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

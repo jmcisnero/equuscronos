@@ -54,7 +54,15 @@ if (typeof window !== "undefined") {
       }
     }
 
-    return originalFetch(input, modifiedInit);
+    const response = await originalFetch(input, modifiedInit);
+    if (response.status === 401) {
+      const urlStr = typeof input === "string" ? input : (input as any).url || "";
+      if (!urlStr.includes("/auth/login")) {
+        useAuthStore.getState().logout();
+        window.location.href = "/login";
+      }
+    }
+    return response;
   };
 }
 

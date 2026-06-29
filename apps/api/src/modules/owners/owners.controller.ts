@@ -19,12 +19,13 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("2. Propietarios (Owners)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/owners")
 export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Registrar nuevo propietario" })
   create(@Body() createOwnerDto: CreateOwnerDto) {
     return this.ownersService.create(createOwnerDto);
@@ -45,6 +46,7 @@ export class OwnersController {
   }
 
   @Patch(":id")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Modificar propietario" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -54,6 +56,7 @@ export class OwnersController {
   }
 
   @Delete(":id")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Eliminar propietario" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.ownersService.remove(id);

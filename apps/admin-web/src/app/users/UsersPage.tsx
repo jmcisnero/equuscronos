@@ -7,8 +7,10 @@ import { Tenant } from "@/types/tenant";
 import { UserService } from "@/services/api/user.service";
 import { TenantService } from "@/services/api/tenant.service";
 import { UserRole } from "@equuscronos/shared";
+import { useAuthStore } from "@/store/auth.store";
 
 export function UsersPage() {
+  const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,6 +27,7 @@ export function UsersPage() {
   const [role, setRole] = useState<UserRole>(UserRole.USER);
   const [tenantId, setTenantId] = useState<string>("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Dropdown search filter state
   const [tenantFilterQuery, setTenantFilterQuery] = useState("");
@@ -57,6 +60,16 @@ export function UsersPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (currentUser?.role !== UserRole.ADMIN && currentUser?.tenantId) {
+      setTenantId(currentUser.tenantId);
+      const currentTenant = tenants.find((t) => t.id === currentUser.tenantId);
+      if (currentTenant) {
+        setTenantFilterQuery(currentTenant.name);
+      }
+    }
+  }, [currentUser?.role, currentUser?.tenantId, tenants]);
+
   const filteredUsers = users.filter(
     (u) =>
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,6 +94,7 @@ export function UsersPage() {
     setTenantFilterQuery("");
     setFormError(null);
     setEditingUser(null);
+    setShowPassword(false);
   };
 
   const handleOpenAddModal = () => {
@@ -127,6 +141,14 @@ export function UsersPage() {
 
     if (!editingUser && !password.trim()) {
       setFormError("La contraseña es obligatoria para nuevos usuarios.");
+      setIsSaving(false);
+      return;
+    }
+
+    if (role === UserRole.CLUB_ADMIN && !tenantId) {
+      setFormError(
+        "El club/organización es obligatorio para el rol Administrador de Club.",
+      );
       setIsSaving(false);
       return;
     }
@@ -184,6 +206,8 @@ export function UsersPage() {
     switch (role) {
       case UserRole.ADMIN:
         return "bg-rose-50 text-rose-700 border border-rose-200/50";
+      case UserRole.CLUB_ADMIN:
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200/50";
       case UserRole.JUDGE:
         return "bg-violet-50 text-violet-700 border border-violet-200/50";
       case UserRole.VET:
@@ -200,6 +224,8 @@ export function UsersPage() {
     switch (role) {
       case UserRole.ADMIN:
         return "Super Administrador";
+      case UserRole.CLUB_ADMIN:
+        return "Administrador de Club";
       case UserRole.JUDGE:
         return "Juez General";
       case UserRole.VET:
@@ -580,6 +606,9 @@ export function UsersPage() {
                   <option value={UserRole.JUDGE}>
                     Juez General de Comisión
                   </option>
+                  <option value={UserRole.CLUB_ADMIN}>
+                    Administrador de Club
+                  </option>
                   <option value={UserRole.ADMIN}>
                     Super Administrador del Sistema
                   </option>
@@ -596,6 +625,8 @@ export function UsersPage() {
                   <input
                     type="text"
                     value={tenantFilterQuery}
+                    autoComplete="off"
+                    disabled={currentUser?.role !== UserRole.ADMIN && !!currentUser?.tenantId}
                     onChange={(e) => {
                       setTenantFilterQuery(e.target.value);
                       if (e.target.value === "") {
@@ -607,7 +638,7 @@ export function UsersPage() {
                       setTimeout(() => setIsDropdownFocused(false), 200)
                     }
                     placeholder="Escriba para buscar y seleccionar un club..."
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm pr-10"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm pr-10 disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   />
                   {tenantId && (
                     <span className="absolute inset-y-0 right-3 flex items-center text-emerald-600">
@@ -678,17 +709,41 @@ export function UsersPage() {
                     ? "Nueva Contraseña (Opcional)"
                     : "Contraseña de Acceso *"}
                 </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={
-                    editingUser
-                      ? "Dejar en blanco para mantener la actual"
-                      : "Introduzca contraseña inicial"
-                  }
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    autoComplete="new-password"
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={
+                      editingUser
+                        ? "Dejar en blanco para mantener la actual"
+                        : "Introduzca contraseña inicial"
+                    }
+                    className="w-full pl-3.5 pr-10 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onMouseDown={() => setShowPassword(true)}
+                    onMouseUp={() => setShowPassword(false)}
+                    onMouseLeave={() => setShowPassword(false)}
+                    onTouchStart={() => setShowPassword(true)}
+                    onTouchEnd={() => setShowPassword(false)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none select-none"
+                    title="Mantener presionado para ver contraseña"
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.024 10.024 0 014.501-4.829m3.09-1.09A10.024 10.024 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-7-9a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Form Buttons */}

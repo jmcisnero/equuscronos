@@ -18,12 +18,13 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("5. Padrón Jinetes (Riders)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/riders")
 export class RidersController {
   constructor(private readonly ridersService: RidersService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Registrar jinete" })
   create(@Body() createRiderDto: CreateRiderDto) {
     return this.ridersService.create(createRiderDto);
@@ -42,6 +43,7 @@ export class RidersController {
   }
 
   @Patch(":id")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Modificar datos del jinete" })
   update(
     @Param("id", ParseUUIDPipe) id: string,

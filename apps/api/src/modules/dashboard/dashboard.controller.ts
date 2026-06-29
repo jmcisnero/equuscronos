@@ -6,7 +6,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("1. Dashboard Central")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/dashboard")
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

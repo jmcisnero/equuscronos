@@ -8,6 +8,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Request,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { CompetitionsService } from "./competitions.service";
@@ -20,7 +21,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("7. Gestión de Carreras (Competitions)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/competitions")
 export class CompetitionsController {
   constructor(private readonly competitionsService: CompetitionsService) {}
@@ -29,21 +30,24 @@ export class CompetitionsController {
   @ApiOperation({
     summary: "Crear Carrera completa (Transacción SQL anidada con Etapas)",
   })
-  create(@Body() createCompetitionDto: CreateCompetitionDto) {
+  create(@Body() createCompetitionDto: CreateCompetitionDto, @Request() req) {
+    if (req.user?.role === UserRole.CLUB_ADMIN) {
+      createCompetitionDto.tenantId = req.user.tenantId;
+    }
     return this.competitionsService.createCompetitionWithStages(
       createCompetitionDto,
     );
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({ summary: "Listar todas las carreras planificadas y activas" })
   findAll() {
     return this.competitionsService.findAll();
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
   @ApiOperation({
     summary: "Obtener detalle de una carrera, incluyendo sus etapas",
   })
@@ -58,13 +62,17 @@ export class CompetitionsController {
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateCompetitionDto,
+    @Request() req,
   ) {
+    if (req.user?.role === UserRole.CLUB_ADMIN) {
+      delete updateDto.tenantId;
+    }
     return this.competitionsService.update(id, updateDto);
   }
 
   @Post(":id/start")
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, "ORGANIZER")
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, "ORGANIZER")
   @ApiOperation({
     summary: "Dar largada oficial de la carrera bajo reglamento FEU",
   })

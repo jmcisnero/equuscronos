@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -9,6 +10,8 @@ import { User } from "./entities/user.entity";
 import { Tenant } from "../tenants/entities/tenant.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { UserRole } from "@equuscronos/shared";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class UsersService {
@@ -27,6 +30,12 @@ export class UsersService {
       throw new ConflictException("El correo electrónico ya está en uso.");
     }
 
+    if (createUserDto.role === UserRole.CLUB_ADMIN && !createUserDto.tenantId) {
+      throw new BadRequestException(
+        "El club/organización es obligatorio para el rol CLUB_ADMIN.",
+      );
+    }
+
     let tenant = null;
     if (createUserDto.tenantId) {
       tenant = await this.tenantRepository.findOne({
@@ -35,7 +44,17 @@ export class UsersService {
       if (!tenant) throw new NotFoundException("Club asignado no encontrado.");
     }
 
-    const newUser = this.userRepository.create({ ...createUserDto, tenant });
+    // Hash password before saving
+    let passwordHash = createUserDto.passwordHash;
+    if (passwordHash) {
+      passwordHash = await bcrypt.hash(passwordHash, 10);
+    }
+
+    const newUser = this.userRepository.create({
+      ...createUserDto,
+      passwordHash,
+      tenant,
+    });
     return await this.userRepository.save(newUser);
   }
 
@@ -59,12 +78,32 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
 
+    const finalRole =
+      updateUserDto.role !== undefined ? updateUserDto.role : user.role;
+    const finalTenantId =
+      updateUserDto.tenantId !== undefined
+        ? updateUserDto.tenantId
+        : user.tenant?.id;
+
+    if (finalRole === UserRole.CLUB_ADMIN && !finalTenantId) {
+      throw new BadRequestException(
+        "El club/organización es obligatorio para el rol CLUB_ADMIN.",
+      );
+    }
+
     if (updateUserDto.tenantId) {
       const tenant = await this.tenantRepository.findOne({
         where: { id: updateUserDto.tenantId },
       });
       if (!tenant) throw new NotFoundException("Club asignado no encontrado.");
       user.tenant = tenant;
+    } else if (updateUserDto.tenantId === null) {
+      user.tenant = null;
+    }
+
+    if (updateUserDto.passwordHash) {
+      user.passwordHash = await bcrypt.hash(updateUserDto.passwordHash, 10);
+      delete updateUserDto.passwordHash;
     }
 
     const updatedUser = Object.assign(user, updateUserDto);

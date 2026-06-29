@@ -4,7 +4,7 @@ import { LocalTimingRecord, LocalVetInspection } from "../database/schema";
 import { getDatabase } from "../database/db";
 import { UserRole } from "@equuscronos/shared";
 
-const DEFAULT_API_BASE_URL = "http://192.168.1.24:3000";
+const DEFAULT_API_BASE_URL = "http://192.168.1.12:3000";
 
 class ApiService {
   private client: AxiosInstance;

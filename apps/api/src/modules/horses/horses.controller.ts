@@ -19,12 +19,13 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("4. Padrón Equino (Horses)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/horses")
 export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Dar de alta un caballo" })
   create(@Body() createHorseDto: CreateHorseDto) {
     return this.horsesService.create(createHorseDto);
@@ -45,6 +46,7 @@ export class HorsesController {
   }
 
   @Patch(":id")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Actualizar ficha del caballo" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -54,6 +56,7 @@ export class HorsesController {
   }
 
   @Delete(":id")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Eliminar caballo" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.horsesService.remove(id);

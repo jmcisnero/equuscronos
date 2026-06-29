@@ -27,28 +27,15 @@ try {
     });
   }
 } catch (err) {
-  console.log('Could not load .env file, using defaults:', err.message);
+  console.log('Error loading .env:', err.message);
 }
 
 async function queryData() {
-  console.log(`Connecting to ${dbConfig.database} on ${dbConfig.host}:${dbConfig.port}...`);
   const client = new Client(dbConfig);
   try {
     await client.connect();
-    
-    console.log('\n--- ACTIVE TENANT DETAILS ---');
-    const tenantResult = await client.query("SELECT * FROM tenants WHERE name LIKE 'Club Hípico%';");
-    console.table(tenantResult.rows);
-
-    console.log('\n--- USERS IN THOSE TENANTS ---');
-    const usersResult = await client.query(`
-      SELECT u.id, u.email, u.role, u.name, t.name as tenant_name 
-      FROM users u 
-      LEFT JOIN tenants t ON u.tenant_id = t.id 
-      WHERE t.name LIKE 'Club Hípico%' OR u.role != 'SPECTATOR';
-    `);
-    console.table(usersResult.rows);
-
+    const res = await client.query("SELECT * FROM pg_policies;");
+    console.table(res.rows.map(r => ({ tablename: r.tablename, policyname: r.policyname, cmd: r.cmd, qual: r.qual })));
   } catch (error) {
     console.error('Error during query:', error);
   } finally {

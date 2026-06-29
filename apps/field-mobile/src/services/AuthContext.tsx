@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: UserRole;
   tenantId: string | null;
+  tenantName: string | null;
 }
 
 interface AuthContextType {
@@ -68,8 +69,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { access_token, user: loggedUser } = response.data;
 
+      // Guardamos el token y usuario temporalmente para que ApiService lo pueda usar en las llamadas
       await SecureStore.setItemAsync("auth_token", access_token);
       await SecureStore.setItemAsync("auth_user", JSON.stringify(loggedUser));
+
+      // Si el usuario no es ADMIN, verificar que existan competencias activas para su club
+      if (loggedUser.role !== UserRole.ADMIN) {
+        let competitions: any[] = [];
+        try {
+          competitions = await ApiService.fetchCompetitions();
+        } catch (fetchError: any) {
+          await SecureStore.deleteItemAsync("auth_token");
+          await SecureStore.deleteItemAsync("auth_user");
+          throw new Error(fetchError.message || "No se pudo verificar el estado de las competencias en el servidor.");
+        }
+
+        const activeCompetition = competitions.find(
+          (c) => c.status === "ACTIVE",
+        );
+
+        if (!activeCompetition) {
+          await SecureStore.deleteItemAsync("auth_token");
+          await SecureStore.deleteItemAsync("auth_user");
+          const clubName = loggedUser.tenantName || "Ninguno";
+          throw new Error(
+            `No hay competencias activas para su club actual (${clubName}). Por favor, asigne su usuario al club de la competencia activa en la consola de administración web para poder ingresar.`
+          );
+        }
+      }
 
       setToken(access_token);
       setUser(loggedUser);

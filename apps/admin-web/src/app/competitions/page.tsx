@@ -13,12 +13,14 @@ import { Tenant } from "@/types/tenant";
 import { CompetitionType } from "@/types/competition-type";
 import { TenantService } from "@/services/api/tenant.service";
 import { CompetitionTypeService } from "@/services/api/competition-type.service";
+import { useAuthStore } from "@/store/auth.store";
 
 const DEFAULT_TENANT_ID = "a1000000-0000-0000-0000-000000000001"; // Sociedad Hípica de Melo
 const DEFAULT_COMP_TYPE_ID = "c1000000-0000-0000-0000-000000000001"; // Raid FEU 60km
 
 export default function CompetitionsPage() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -107,7 +109,9 @@ export default function CompetitionsPage() {
       setCompetitionTypes(compTypesData);
 
       // Auto-seleccionar el primer tenant y compType si existen
-      if (tenantsData.length > 0) {
+      if (user?.tenantId) {
+        setFormData((prev) => ({ ...prev, tenantId: user.tenantId || "" }));
+      } else if (tenantsData.length > 0) {
         setFormData((prev) => ({ ...prev, tenantId: tenantsData[0].id }));
       }
       if (compTypesData.length > 0) {
@@ -127,7 +131,13 @@ export default function CompetitionsPage() {
   useEffect(() => {
     loadCompetitions();
     loadInitialData();
-  }, []);
+  }, [user?.tenantId]);
+
+  useEffect(() => {
+    if (user?.tenantId) {
+      setFormData((prev) => ({ ...prev, tenantId: user.tenantId || "" }));
+    }
+  }, [user?.tenantId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,7 +155,7 @@ export default function CompetitionsPage() {
       isFederated: true,
       maxHeartRate: 65,
       stages: [],
-      tenantId: tenants[0]?.id || "",
+      tenantId: user?.tenantId || tenants[0]?.id || "",
       competitionTypeId: competitionTypes[0]?.id || "",
     });
     setTempStage({
@@ -773,7 +783,7 @@ export default function CompetitionsPage() {
                   </label>
                   <select
                     required
-                    disabled={editingCompetition !== null}
+                    disabled={editingCompetition !== null || !!user?.tenantId}
                     value={formData.tenantId}
                     onChange={(e) =>
                       setFormData({ ...formData, tenantId: e.target.value })

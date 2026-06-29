@@ -36,18 +36,9 @@ async function queryData() {
   try {
     await client.connect();
     
-    console.log('\n--- ACTIVE TENANT DETAILS ---');
-    const tenantResult = await client.query("SELECT * FROM tenants WHERE name LIKE 'Club Hípico%';");
-    console.table(tenantResult.rows);
-
-    console.log('\n--- USERS IN THOSE TENANTS ---');
-    const usersResult = await client.query(`
-      SELECT u.id, u.email, u.role, u.name, t.name as tenant_name 
-      FROM users u 
-      LEFT JOIN tenants t ON u.tenant_id = t.id 
-      WHERE t.name LIKE 'Club Hípico%' OR u.role != 'SPECTATOR';
-    `);
-    console.table(usersResult.rows);
+    console.log('\n--- AUDIT LOGS (recent 20) ---');
+    const logs = await client.query("SELECT id, action, entity_name, entity_id, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 20;");
+    console.table(logs.rows);
 
   } catch (error) {
     console.error('Error during query:', error);

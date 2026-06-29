@@ -293,6 +293,13 @@ function MainApp() {
     }
   }, [user]);
 
+  // Synchronize local apiUrl state when user logs in to prevent showing stale default IP
+  useEffect(() => {
+    if (user) {
+      setApiUrl(ApiService.getBaseUrl());
+    }
+  }, [user]);
+
   const updateQueueInfo = async () => {
     const size = await SyncService.getQueueSize();
     setPendingSyncCount(size);
@@ -582,7 +589,7 @@ function MainApp() {
           ]}
           value={apiUrl}
           onChangeText={updateApiUrl}
-          placeholder="http://192.168.1.24:3000"
+          placeholder="http://192.168.1.12:3000"
           placeholderTextColor="#64748B"
           autoCapitalize="none"
           autoCorrect={false}
