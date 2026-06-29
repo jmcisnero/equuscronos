@@ -11,7 +11,12 @@ PostgresQueryRunner.prototype.query = async function (
 ) {
   const store = tenantStorage.getStore();
   const tenantId = store?.tenantId || "";
+  
+  // Do not execute set_config for transaction control statements or config queries themselves
+  const isTxControl = /^\s*(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|ABORT|END|START)\b/i.test(query);
+  
   if (
+    !isTxControl &&
     !query.includes("app.current_tenant_id") &&
     !query.includes("set_config") &&
     !query.includes("SET LOCAL")

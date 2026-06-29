@@ -106,7 +106,7 @@ export class CompetitionsService {
   async findAll(): Promise<Competition[]> {
     return this.compRepository.find({
       order: { competitionDate: "DESC" },
-      relations: ["stages"],
+      relations: ["stages", "tenant", "competitionType"],
     });
   }
 

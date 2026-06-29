@@ -115,9 +115,12 @@ export default function CompetitionsPage() {
         setFormData((prev) => ({ ...prev, tenantId: tenantsData[0].id }));
       }
       if (compTypesData.length > 0) {
+        const defaultCompType = compTypesData[0];
+        const defaultHeartRate = defaultCompType.defaultRules?.max_heart_rate ?? 65;
         setFormData((prev) => ({
           ...prev,
-          competitionTypeId: compTypesData[0].id,
+          competitionTypeId: defaultCompType.id,
+          maxHeartRate: defaultHeartRate,
         }));
       }
     } catch (err: any) {
@@ -147,16 +150,18 @@ export default function CompetitionsPage() {
   // Restablecer formulario
   const resetForm = () => {
     setEditingCompetition(null);
+    const defaultCompType = competitionTypes[0];
+    const defaultHeartRate = defaultCompType?.defaultRules?.max_heart_rate ?? 65;
     setFormData({
       name: "",
       competitionDate: "",
       startTime: "07:00",
       location: "",
       isFederated: true,
-      maxHeartRate: 65,
+      maxHeartRate: defaultHeartRate,
       stages: [],
       tenantId: user?.tenantId || tenants[0]?.id || "",
-      competitionTypeId: competitionTypes[0]?.id || "",
+      competitionTypeId: defaultCompType?.id || "",
     });
     setTempStage({
       distanceKm: "",
@@ -809,12 +814,16 @@ export default function CompetitionsPage() {
                     required
                     disabled={editingCompetition !== null}
                     value={formData.competitionTypeId}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedType = competitionTypes.find((t) => t.id === selectedId);
+                      const heartRate = selectedType?.defaultRules?.max_heart_rate ?? 65;
                       setFormData({
                         ...formData,
-                        competitionTypeId: e.target.value,
-                      })
-                    }
+                        competitionTypeId: selectedId,
+                        maxHeartRate: heartRate,
+                      });
+                    }}
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   >
                     <option value="">Seleccione una Modalidad...</option>

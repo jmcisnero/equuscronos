@@ -67,7 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       );
 
-      const { access_token, user: loggedUser } = response.data;
+      const { access_token, user: loggedUser } = response.data || {};
+
+      if (typeof access_token !== "string" || !loggedUser) {
+        throw new Error(
+          "El servidor de API no devolvió una respuesta de autenticación válida. Verifique que la URL y el puerto (por defecto 3000) sean correctos."
+        );
+      }
 
       // Guardamos el token y usuario temporalmente para que ApiService lo pueda usar en las llamadas
       await SecureStore.setItemAsync("auth_token", access_token);

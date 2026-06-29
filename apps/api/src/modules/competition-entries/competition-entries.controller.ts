@@ -23,7 +23,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("8. Inscripciones / Binomios (Entries)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("admin/entries")
 export class CompetitionEntriesController {
   constructor(private readonly entriesService: CompetitionEntriesService) {}
@@ -35,7 +35,13 @@ export class CompetitionEntriesController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.CLUB_ADMIN,
+    UserRole.JUDGE,
+    UserRole.TIMEKEEPER,
+    UserRole.VET,
+  )
   @ApiOperation({ summary: "Obtener la Start List de una Carrera" })
   @ApiQuery({
     name: "competitionId",
@@ -47,14 +53,26 @@ export class CompetitionEntriesController {
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.CLUB_ADMIN,
+    UserRole.JUDGE,
+    UserRole.TIMEKEEPER,
+    UserRole.VET,
+  )
   @ApiOperation({ summary: "Ver detalles de la inscripción de un dorsal" })
   findOne(@Param("id", ParseUUIDPipe) id: string) {
     return this.entriesService.findOne(id);
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.CLUB_ADMIN,
+    UserRole.JUDGE,
+    UserRole.TIMEKEEPER,
+    UserRole.VET,
+  )
   @ApiOperation({ summary: "Modificar pesaje o estado de un competidor" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
