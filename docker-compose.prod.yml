@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # 1. Base de Datos Principal: PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: equuscronos-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-equuscronos}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Inicialización automática de esquema y semillas
+      - ./libs/database/src/migrations/001_init_schema.sql:/docker-entrypoint-initdb.d/001_init_schema.sql:ro
+      - ./libs/database/src/seeds/01_initial_seed.sql:/docker-entrypoint-initdb.d/002_initial_seed.sql:ro
+    networks:
+      - equus-network
+
+  # 2. Caché y Tiempos en Vivo: Redis
+  redis:
+    image: redis:7-alpine
+    container_name: equuscronos-cache
+    restart: always
+    networks:
+      - equus-network
+
+  # 3. API NestJS
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: equuscronos-api
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
+      DB_NAME: ${DB_NAME:-equuscronos}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-equus_jwt_secret_2026_super_secure}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - equus-network
+
+  # 4. Web de Administración Next.js
+  admin-web:
+    build:
+      context: .
+      dockerfile: apps/admin-web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+    container_name: equuscronos-admin-web
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+      PORT: 3001
+    depends_on:
+      - api
+    networks:
+      - equus-network
+
+  # 5. Web Pública Next.js
+  public-web:
+    build:
+      context: .
+      dockerfile: apps/public-web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+    container_name: equuscronos-public-web
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+      PORT: 3002
+    depends_on:
+      - api
+    networks:
+      - equus-network
+
+  # 6. Proxy Inverso: Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: equuscronos-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - admin-web
+      - public-web
+    networks:
+      - equus-network
+
+networks:
+  equus-network:
+    driver: bridge
+
+volumes:
+  pgdata:
