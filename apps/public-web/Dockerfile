@@ -8,7 +8,6 @@ COPY libs/shared/package*.json ./libs/shared/
 
 RUN npm ci
 
-COPY tsconfig.json ./
 COPY apps/public-web ./apps/public-web
 COPY libs/shared ./libs/shared
 
