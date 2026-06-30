@@ -1,0 +1,24 @@
+{
+    # Global configuration options
+    email admin@equuscronos.com
+}
+
+# 1. Web Informativa (Static Site)
+equuscronos.com, www.equuscronos.com {
+    reverse_proxy web-informativa:80
+}
+
+# 2. Web de Administración Next.js
+app.equuscronos.com {
+    reverse_proxy admin-web:3001
+}
+
+# 3. Web Pública Next.js (Leaderboard, etc.)
+live.equuscronos.com {
+    reverse_proxy public-web:3002
+}
+
+# 4. API NestJS
+api.equuscronos.com {
+    reverse_proxy api:3000
+}
