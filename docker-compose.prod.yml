@@ -55,11 +55,11 @@ services:
       context: .
       dockerfile: apps/admin-web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+        NEXT_PUBLIC_API_URL: http://51.79.91.102:3000/admin
     container_name: equuscronos-admin-web
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: http://51.79.91.102:3000
+      NEXT_PUBLIC_API_URL: http://51.79.91.102:3000/admin
       PORT: 3001
     depends_on:
       - api
