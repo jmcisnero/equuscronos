@@ -19,6 +19,8 @@ export interface Tenant {
   id: string;
   name: string;
   location?: string;
+  federationNumber?: number;
+  jerseyImageUrl?: string;
 }
 
 export interface CompetitionType {
