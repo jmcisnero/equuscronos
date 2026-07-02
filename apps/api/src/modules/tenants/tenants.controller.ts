@@ -7,11 +7,14 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { TenantsService } from "./tenants.service";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 import { Roles } from "../auth/decorators/roles.decorator";
 import { UserRole } from "@equuscronos/shared";
@@ -56,5 +59,16 @@ export class TenantsController {
   @ApiOperation({ summary: "Eliminar un club" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.tenantsService.remove(id);
+  }
+
+  @Post(":id/upload-jersey")
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Subir imagen de la camiseta del club" })
+  uploadJersey(
+    @Param("id", ParseUUIDPipe) id: string,
+    @UploadedFile() file: any,
+  ) {
+    return this.tenantsService.uploadJersey(id, file);
   }
 }

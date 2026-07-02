@@ -443,7 +443,9 @@ export default function LeaderboardTable({
                             {entry.rank}
                           </span>
                         ) : (
-                          <span className="text-slate-400 font-mono text-sm">--</span>
+                          <span className="text-slate-400 font-mono text-sm">
+                            --
+                          </span>
                         )}
                       </td>
 

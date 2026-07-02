@@ -11,10 +11,13 @@ PostgresQueryRunner.prototype.query = async function (
 ) {
   const store = tenantStorage.getStore();
   const tenantId = store?.tenantId || "";
-  
+
   // Do not execute set_config for transaction control statements or config queries themselves
-  const isTxControl = /^\s*(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|ABORT|END|START)\b/i.test(query);
-  
+  const isTxControl =
+    /^\s*(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|ABORT|END|START)\b/i.test(
+      query,
+    );
+
   if (
     !isTxControl &&
     !query.includes("app.current_tenant_id") &&
@@ -58,6 +61,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { RolesGuard } from "./modules/auth/guards/roles.guard";
 import { TenantInterceptor } from "./modules/auth/interceptors/tenant.interceptor";
+import { AssetsController } from "./modules/assets/assets.controller";
 
 @Module({
   imports: [
@@ -94,6 +98,7 @@ import { TenantInterceptor } from "./modules/auth/interceptors/tenant.intercepto
     DashboardModule,
     LeaderboardModule,
   ],
+  controllers: [AssetsController],
   providers: [
     {
       provide: APP_GUARD,

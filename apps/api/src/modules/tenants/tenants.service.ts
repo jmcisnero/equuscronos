@@ -8,6 +8,8 @@ import { Repository } from "typeorm";
 import { Tenant } from "./entities/tenant.entity";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
+import * as fs from "fs";
+import * as path from "path";
 
 @Injectable()
 export class TenantsService {
@@ -25,6 +27,18 @@ export class TenantsService {
         `La organización '${createTenantDto.name}' ya existe.`,
       );
     }
+
+    if (createTenantDto.federationNumber) {
+      const dupFed = await this.tenantRepository.findOne({
+        where: { federationNumber: createTenantDto.federationNumber },
+      });
+      if (dupFed) {
+        throw new ConflictException(
+          `El número de federación ${createTenantDto.federationNumber} ya está registrado.`,
+        );
+      }
+    }
+
     const newTenant = this.tenantRepository.create(createTenantDto);
     return await this.tenantRepository.save(newTenant);
   }
@@ -52,6 +66,21 @@ export class TenantsService {
         );
       }
     }
+
+    if (
+      updateTenantDto.federationNumber &&
+      updateTenantDto.federationNumber !== tenant.federationNumber
+    ) {
+      const dupFed = await this.tenantRepository.findOne({
+        where: { federationNumber: updateTenantDto.federationNumber },
+      });
+      if (dupFed) {
+        throw new ConflictException(
+          `El número de federación ${updateTenantDto.federationNumber} ya está registrado.`,
+        );
+      }
+    }
+
     const updatedTenant = Object.assign(tenant, updateTenantDto);
     return await this.tenantRepository.save(updatedTenant);
   }
@@ -59,5 +88,23 @@ export class TenantsService {
   async remove(id: string): Promise<void> {
     const tenant = await this.findOne(id);
     await this.tenantRepository.remove(tenant);
+  }
+
+  async uploadJersey(id: string, file: any): Promise<Tenant> {
+    const tenant = await this.findOne(id);
+    if (!file || !file.buffer) {
+      throw new ConflictException("No se proporcionó un archivo válido.");
+    }
+    const ext = path.extname(file.originalname) || ".png";
+    const filename = `jersey_${id}_${Date.now()}${ext}`;
+    const uploadDir = path.join(process.cwd(), "uploads", "jerseys");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const filePath = path.join(uploadDir, filename);
+    fs.writeFileSync(filePath, file.buffer);
+
+    tenant.jerseyImageUrl = `http://localhost:3000/uploads/jerseys/${filename}`;
+    return await this.tenantRepository.save(tenant);
   }
 }

@@ -79,4 +79,26 @@ export const TenantService = {
       );
     }
   },
+
+  /**
+   * Sube la camiseta oficial del club.
+   */
+  async uploadJersey(id: string, file: File): Promise<Tenant> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${API_URL}/tenants/${id}/upload-jersey`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      const friendlyMessage = Array.isArray(err.message)
+        ? err.message.join(". ")
+        : err.message || "Error al subir la camiseta";
+      throw new Error(friendlyMessage);
+    }
+    return response.json();
+  },
 };

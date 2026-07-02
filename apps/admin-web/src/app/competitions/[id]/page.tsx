@@ -509,7 +509,11 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
       }
 
       // LLAMADA OFICIAL AL BACKEND (Seguridad y Transaccionalidad FEU)
-      await CompetitionService.start(comp.id, formattedStartTime, forceWd ? true : undefined);
+      await CompetitionService.start(
+        comp.id,
+        formattedStartTime,
+        forceWd ? true : undefined,
+      );
 
       // Sincronizar UI con React-Query e invalidar el caché
       queryClient.invalidateQueries({ queryKey: ["competition", comp.id] });
@@ -753,7 +757,8 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
                     Confirmación de Largada
                   </h3>
                   <p className="text-xs text-amber-700 mt-0.5 font-medium">
-                    Hay competidores que no cumplen los requisitos reglamentarios.
+                    Hay competidores que no cumplen los requisitos
+                    reglamentarios.
                   </p>
                 </div>
               </div>
@@ -783,7 +788,8 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
             {/* Body */}
             <div className="px-6 py-5 overflow-y-auto space-y-4 text-sm text-slate-600 flex-1 text-left">
               <p className="font-semibold text-slate-800">
-                Los siguientes binomios no están habilitados para largar por tener datos incompletos o inhabilitaciones de la FEU:
+                Los siguientes binomios no están habilitados para largar por
+                tener datos incompletos o inhabilitaciones de la FEU:
               </p>
 
               <div className="divide-y divide-slate-100 border border-slate-150 rounded-xl overflow-hidden bg-slate-50">
@@ -811,10 +817,20 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
                   <strong>¿Cómo desea proceder?</strong>
                 </p>
                 <p>
-                  Si selecciona <strong className="text-amber-950">"Confirmar y largar"</strong>, todos los binomios inhabilitados listados arriba cambiarán automáticamente a estado <strong className="text-amber-950">WD (Retirado)</strong> y el resto iniciará la carrera.
+                  Si selecciona{" "}
+                  <strong className="text-amber-950">
+                    "Confirmar y largar"
+                  </strong>
+                  , todos los binomios inhabilitados listados arriba cambiarán
+                  automáticamente a estado{" "}
+                  <strong className="text-amber-950">WD (Retirado)</strong> y el
+                  resto iniciará la carrera.
                 </p>
                 <p>
-                  Si selecciona <strong className="text-amber-950">"Cancelar"</strong>, podrá ir a la Start List para ingresar el pesaje/precinto faltante de estos competidores para habilitarlos.
+                  Si selecciona{" "}
+                  <strong className="text-amber-950">"Cancelar"</strong>, podrá
+                  ir a la Start List para ingresar el pesaje/precinto faltante
+                  de estos competidores para habilitarlos.
                 </p>
               </div>
             </div>

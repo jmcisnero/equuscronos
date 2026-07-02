@@ -22,6 +22,8 @@ export class RolesGuard implements CanActivate {
       path.includes("auth/login") ||
       path.includes("/leaderboard") ||
       path.includes("leaderboard") ||
+      path.includes("/uploads") ||
+      path.includes("uploads") ||
       (path.includes("/admin/competitions") && request.method === "GET") ||
       (path.includes("admin/competitions") && request.method === "GET");
 

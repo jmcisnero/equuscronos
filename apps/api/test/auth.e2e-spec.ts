@@ -25,10 +25,18 @@ describe("Security and Multi-Tenancy (e2e)", () => {
     const dataSource = app.get(DataSource);
     await dataSource.query("DELETE FROM vet_inspections;");
     await dataSource.query("DELETE FROM timing_records;");
-    await dataSource.query("DELETE FROM competition_entries WHERE competition_id <> 'c2000000-0000-0000-0000-000000000001';");
-    await dataSource.query("DELETE FROM stages WHERE competition_id <> 'c2000000-0000-0000-0000-000000000001';");
-    await dataSource.query("DELETE FROM competitions WHERE id <> 'c2000000-0000-0000-0000-000000000001';");
-    await dataSource.query("DELETE FROM users WHERE email NOT IN ('admin@equuscronos.com', 'juez@melo.uy', 'veterinario@melo.uy');");
+    await dataSource.query(
+      "DELETE FROM competition_entries WHERE competition_id <> 'c2000000-0000-0000-0000-000000000001';",
+    );
+    await dataSource.query(
+      "DELETE FROM stages WHERE competition_id <> 'c2000000-0000-0000-0000-000000000001';",
+    );
+    await dataSource.query(
+      "DELETE FROM competitions WHERE id <> 'c2000000-0000-0000-0000-000000000001';",
+    );
+    await dataSource.query(
+      "DELETE FROM users WHERE email NOT IN ('admin@equuscronos.com', 'juez@melo.uy', 'veterinario@melo.uy');",
+    );
 
     const jwtService = app.get(JwtService);
 

@@ -11,7 +11,8 @@ export class StartCompetitionDto {
   officialStartTime?: string;
 
   @ApiPropertyOptional({
-    description: "Confirmar que los competidores no aptos pasarán a estado WD automáticamente",
+    description:
+      "Confirmar que los competidores no aptos pasarán a estado WD automáticamente",
     example: false,
   })
   @IsOptional()

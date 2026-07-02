@@ -8,11 +8,14 @@ import {
   Delete,
   ParseUUIDPipe,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { HorsesService } from "./horses.service";
 import { CreateHorseDto } from "./dto/create-horse.dto";
 import { UpdateHorseDto } from "./dto/update-horse.dto";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 import { Roles } from "../auth/decorators/roles.decorator";
 import { UserRole } from "@equuscronos/shared";
@@ -60,5 +63,16 @@ export class HorsesController {
   @ApiOperation({ summary: "Eliminar caballo" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.horsesService.remove(id);
+  }
+
+  @Post(":id/upload-photo")
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Subir foto del caballo" })
+  uploadPhoto(
+    @Param("id", ParseUUIDPipe) id: string,
+    @UploadedFile() file: any,
+  ) {
+    return this.horsesService.uploadPhoto(id, file);
   }
 }

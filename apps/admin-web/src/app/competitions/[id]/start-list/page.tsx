@@ -175,7 +175,8 @@ export default function StartListPage() {
         horseId: dto.horseId,
         representedTenantId: dto.representedTenantId || undefined,
         bibNumber: dto.bibNumber,
-        ballastWeight: calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
+        ballastWeight:
+          calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
         riderWeight: dto.riderWeight,
         tackWeight: dto.tackWeight,
         sealedItems: dto.sealedItems,
@@ -202,7 +203,8 @@ export default function StartListPage() {
         horseId: dto.horseId,
         representedTenantId: dto.representedTenantId || undefined,
         bibNumber: dto.bibNumber,
-        ballastWeight: calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
+        ballastWeight:
+          calculatedTotalWeight > 0 ? calculatedTotalWeight : undefined,
         riderWeight: dto.riderWeight,
         tackWeight: dto.tackWeight,
         sealedItems: dto.sealedItems,
@@ -314,8 +316,14 @@ export default function StartListPage() {
       horseId: entry.horse?.id || "",
       representedTenantId: entry.representedTenant?.id || "",
       bibNumber: entry.bibNumber,
-      riderWeight: entry.riderWeight !== undefined && entry.riderWeight !== null ? Number(entry.riderWeight) : undefined,
-      tackWeight: entry.tackWeight !== undefined && entry.tackWeight !== null ? Number(entry.tackWeight) : undefined,
+      riderWeight:
+        entry.riderWeight !== undefined && entry.riderWeight !== null
+          ? Number(entry.riderWeight)
+          : undefined,
+      tackWeight:
+        entry.tackWeight !== undefined && entry.tackWeight !== null
+          ? Number(entry.tackWeight)
+          : undefined,
       sealedItems: entry.sealedItems || [],
       sealNumbers: entry.sealNumber || "",
     });
@@ -918,7 +926,9 @@ export default function StartListPage() {
             <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">
-                  {editingEntryId ? "Registrar Marcación / Editar Inscripción" : "Inscribir Nuevo Binomio"}
+                  {editingEntryId
+                    ? "Registrar Marcación / Editar Inscripción"
+                    : "Inscribir Nuevo Binomio"}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Asignación de dorsal, control de lastre y número de precinto
@@ -1422,7 +1432,9 @@ export default function StartListPage() {
                       />
                     </svg>
                   )}
-                  <span>{editingEntryId ? "Guardar Marcación" : "Inscribir Binomio"}</span>
+                  <span>
+                    {editingEntryId ? "Guardar Marcación" : "Inscribir Binomio"}
+                  </span>
                 </button>
               </div>
             </form>

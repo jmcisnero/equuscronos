@@ -5,6 +5,13 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Limpiar base de datos si ya existe el esquema
+DROP TABLE IF EXISTS audit_logs, penalties, vet_inspections, timing_records, weight_controls, 
+                     competition_entries, stages, competitions, competition_types, 
+                     riders, horses, owners, users, tenants CASCADE;
+
+DROP TYPE IF EXISTS user_role, owner_type, comp_status, clinical_status, motricity_status, audit_action, participant_status, time_record_type, elimination_code CASCADE;
+
 -- ==========================================================
 -- 1. TIPOS ENUMERADOS (Gobernanza de Datos)
 -- ==========================================================
@@ -34,6 +41,8 @@ CREATE TABLE tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL UNIQUE,
     location VARCHAR(255),
+    federation_number INT UNIQUE,
+    jersey_image_url VARCHAR(550),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -64,7 +73,9 @@ CREATE TABLE horses (
     feu_id VARCHAR(50) UNIQUE,
     chip_id VARCHAR(100) UNIQUE,
     is_feu_active BOOLEAN DEFAULT FALSE,
-	health_records_expiration DATE, -- Sanidad MGAP
+    health_records_expiration DATE, -- Sanidad MGAP
+    birth_date DATE, -- Fecha de Nacimiento
+    image_url VARCHAR(550), -- URL de la foto oficial
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

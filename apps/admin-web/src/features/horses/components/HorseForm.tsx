@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { CreateHorseDto, UpdateHorseDto, Horse, Owner } from "@/types/horse";
 import { OwnerService } from "@/services/api/owner.service";
+import { compressImage } from "@/utils/imageCompression";
 
 interface HorseFormProps {
   initialData?: Horse | null;
-  onSubmit: (data: CreateHorseDto | UpdateHorseDto) => Promise<void>;
+  onSubmit: (
+    data: CreateHorseDto | UpdateHorseDto,
+    file?: File | null,
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -43,10 +47,13 @@ export const HorseForm: React.FC<HorseFormProps> = ({
     chipId: "",
     isFeuActive: false,
     healthRecordsExpiration: "",
+    birthDate: "",
+    imageUrl: "",
     ownerId: "", // Mandatorio
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Buscador asíncrono reactivo de Propietarios con 300ms de Debounce
   useEffect(() => {
@@ -87,12 +94,23 @@ export const HorseForm: React.FC<HorseFormProps> = ({
             : new Date(dateStr).toISOString().split("T")[0];
       }
 
+      let birthDateValue = "";
+      if (initialData.birthDate) {
+        const dateStr = initialData.birthDate;
+        birthDateValue =
+          typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateStr)
+            ? dateStr.substring(0, 10)
+            : new Date(dateStr).toISOString().split("T")[0];
+      }
+
       setFormData({
         name: initialData.name,
         feuId: initialData.feuId || "",
         chipId: initialData.chipId || "",
         isFeuActive: initialData.isFeuActive,
         healthRecordsExpiration: dateValue,
+        birthDate: birthDateValue,
+        imageUrl: initialData.imageUrl || "",
         ownerId: initialData.owner?.id || "",
       });
 
@@ -182,7 +200,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit(formData, selectedFile);
     } catch (err: any) {
       setFormError(
         err.message || "Ocurrió un error al procesar el formulario.",
@@ -379,17 +397,84 @@ export const HorseForm: React.FC<HorseFormProps> = ({
             </div>
           </div>
 
-          {/* Vencimiento de Sanidad - String YYYY-MM-DD */}
+          {/* Fila de Fechas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Vencimiento de Sanidad */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Vencimiento Sanidad (MGAP)
+              </label>
+              <input
+                type="date"
+                name="healthRecordsExpiration"
+                value={formData.healthRecordsExpiration || ""}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+              />
+            </div>
+
+            {/* Fecha de Nacimiento */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Fecha de Nacimiento
+              </label>
+              <input
+                type="date"
+                name="birthDate"
+                value={formData.birthDate || ""}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* URL de la Foto Oficial */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Vencimiento Sanidad / Anemia (MGAP)
+              URL de la Foto Oficial (Reconocimiento Visual)
             </label>
             <input
-              type="date"
-              name="healthRecordsExpiration"
-              value={formData.healthRecordsExpiration || ""}
+              type="text"
+              name="imageUrl"
+              value={formData.imageUrl || ""}
               onChange={handleChange}
+              placeholder="Ej: https://images.unsplash.com/photo..."
               className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+            />
+          </div>
+
+          {/* Subir Foto Local */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Subir Foto Local (Reemplaza URL)
+            </label>
+            {formData.imageUrl && (
+              <div className="mb-2 flex items-center space-x-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <img
+                  src={formData.imageUrl}
+                  alt="Vista previa"
+                  className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                />
+                <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+                  {formData.imageUrl}
+                </span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  try {
+                    const compressed = await compressImage(e.target.files[0]);
+                    setSelectedFile(compressed);
+                  } catch (err) {
+                    console.error("Error compressing image:", err);
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }
+              }}
+              className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200/80 file:cursor-pointer cursor-pointer"
             />
           </div>
 

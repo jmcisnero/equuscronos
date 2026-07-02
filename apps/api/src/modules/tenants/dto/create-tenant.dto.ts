@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+} from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateTenantDto {
@@ -17,4 +24,22 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @ApiPropertyOptional({
+    description: "Número Oficial de Federación (FEU)",
+    example: 123,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(999)
+  federationNumber?: number;
+
+  @ApiPropertyOptional({
+    description: "URL pública de la Camiseta Oficial del Club",
+    example: "https://example.com/jersey.jpg",
+  })
+  @IsOptional()
+  @IsString()
+  jerseyImageUrl?: string;
 }

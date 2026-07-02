@@ -3,6 +3,7 @@
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { LeaderboardEntry } from "../../../hooks/useLiveLeaderboard";
+import { useCompetitions } from "../../../hooks/useCompetitions";
 import LeaderboardTable from "../../../components/LeaderboardTable";
 
 // Datos iniciales de simulación en caso de que la API esté fuera de línea
@@ -86,6 +87,10 @@ interface LeaderboardPageProps {
 export default function LeaderboardPage({ params }: LeaderboardPageProps) {
   const resolvedParams = use(params);
   const competitionId = resolvedParams.id;
+
+  const { competitions } = useCompetitions();
+  const currentCompetition = competitions.find((c) => c.id === competitionId);
+  const tenant = currentCompetition?.tenant;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -185,14 +190,59 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
             </div>
 
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              {isDemoMode
-                ? "Clasificación Simulada (Modo Demo)"
-                : "Monitoreo de Competencia en Vivo"}
+              {currentCompetition?.name ||
+                (isDemoMode
+                  ? "Clasificación Simulada (Modo Demo)"
+                  : "Monitoreo de Competencia en Vivo")}
             </h1>
             <p className="text-slate-300 mt-2 text-xs sm:text-sm max-w-xl">
               Visualización detallada de tiempos de carrera, pulsaciones,
               promedios y estados veterinarios para el evento seleccionado.
             </p>
+
+            <div className="flex items-center space-x-4 mt-5 bg-white/5 border border-white/10 p-3.5 rounded-2xl max-w-md">
+              <div className="flex-shrink-0">
+                {tenant?.jerseyImageUrl ? (
+                  <img
+                    src={tenant.jerseyImageUrl}
+                    alt={`Camiseta oficial de ${tenant.name}`}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-md"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shadow-md text-slate-300"
+                    title="Sin camiseta oficial"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-equus-tan-light block">
+                  Organizador
+                </span>
+                <h4 className="font-extrabold text-sm text-white leading-tight">
+                  {tenant?.name || "Club no registrado"}
+                </h4>
+                {tenant?.location && (
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {tenant.location}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

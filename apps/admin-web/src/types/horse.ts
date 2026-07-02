@@ -10,6 +10,8 @@ export interface Horse {
   chipId?: string;
   isFeuActive: boolean;
   healthRecordsExpiration?: string;
+  birthDate?: string;
+  imageUrl?: string;
   createdAt: string;
   owner?: Owner;
 }
@@ -20,6 +22,8 @@ export interface CreateHorseDto {
   chipId?: string;
   isFeuActive?: boolean;
   healthRecordsExpiration?: string;
+  birthDate?: string;
+  imageUrl?: string;
   // El propietario es requerido para la trazabilidad y las planillas oficiales de la FEU
   ownerId: string;
 }

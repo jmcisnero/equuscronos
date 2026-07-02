@@ -522,19 +522,37 @@ export default function Home() {
                           href={`/admin/horses/${horse.id}`}
                           className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-equus-green hover:bg-slate-50/50 transition-all group"
                         >
-                          <div>
-                            <span className="text-xs font-bold text-slate-800 group-hover:text-equus-green transition-colors block">
-                              {horse.name}
-                            </span>
-                            {horse.chipId ? (
-                              <span className="text-[9px] text-slate-400 font-mono font-semibold">
-                                RFID: {horse.chipId}
-                              </span>
+                          <div className="flex items-center space-x-3">
+                            {horse.imageUrl ? (
+                              <img
+                                src={horse.imageUrl}
+                                alt={horse.name}
+                                className="h-8 w-8 rounded-full object-cover border border-slate-200 shadow-sm"
+                              />
                             ) : (
-                              <span className="text-[9px] text-slate-300 italic font-semibold">
-                                Sin chip RFID
-                              </span>
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-700 to-amber-950 text-white font-bold flex items-center justify-center text-[10px]">
+                                {horse.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .substring(0, 2)
+                                  .toUpperCase()}
+                              </div>
                             )}
+                            <div>
+                              <span className="text-xs font-bold text-slate-800 group-hover:text-equus-green transition-colors block">
+                                {horse.name}
+                              </span>
+                              {horse.chipId ? (
+                                <span className="text-[9px] text-slate-400 font-mono font-semibold">
+                                  RFID: {horse.chipId}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-slate-300 italic font-semibold">
+                                  Sin chip RFID
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <span

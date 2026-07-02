@@ -3,7 +3,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
 import { LeaderboardEntryDto } from "./dto/leaderboard-response.dto";
-import { TimeRecordType, ParticipantStatus, CompetitionStatus } from "@equuscronos/shared";
+import {
+  TimeRecordType,
+  ParticipantStatus,
+  CompetitionStatus,
+} from "@equuscronos/shared";
 
 @Injectable()
 export class LeaderboardService {
@@ -125,7 +129,9 @@ export class LeaderboardService {
           const compDateStr =
             typeof entry.competition.competitionDate === "string"
               ? entry.competition.competitionDate.substring(0, 10)
-              : entry.competition.competitionDate.toISOString().substring(0, 10);
+              : entry.competition.competitionDate
+                  .toISOString()
+                  .substring(0, 10);
           startTime = new Date(`${compDateStr}T${entry.competition.startTime}`);
         }
       }

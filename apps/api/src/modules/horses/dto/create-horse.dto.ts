@@ -72,4 +72,29 @@ export class CreateHorseDto {
     },
   )
   healthRecordsExpiration?: string;
+
+  @ApiPropertyOptional({
+    description: "Fecha de nacimiento del caballo",
+    example: "2020-05-15",
+  })
+  @IsOptional()
+  @IsString({ message: "La fecha de nacimiento debe ser un texto válido." })
+  @IsDateString(
+    {},
+    {
+      message:
+        "La fecha de nacimiento ingresada no es válida. Use el formato YYYY-MM-DD.",
+    },
+  )
+  birthDate?: string;
+
+  @ApiPropertyOptional({
+    description: "URL de la foto oficial del caballo",
+    example: "https://example.com/horse.jpg",
+  })
+  @IsOptional()
+  @IsString({
+    message: "La URL de la imagen de la foto oficial debe ser un texto válido.",
+  })
+  imageUrl?: string;
 }

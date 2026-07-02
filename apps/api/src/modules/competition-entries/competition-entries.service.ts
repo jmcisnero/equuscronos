@@ -67,6 +67,23 @@ export class CompetitionEntriesService {
     const horse = await this.horseRepo.findOne({ where: { id: dto.horseId } });
     if (!horse) throw new NotFoundException("Caballo no encontrado.");
 
+    // Reglamento FEU Art. 24g: Edad mínima de 6 años para competir en Raid FEU
+    if (
+      (competition.competitionType?.name === "Raid FEU" ||
+        competition.competitionType?.name?.startsWith("Raid FEU")) &&
+      horse.birthDate
+    ) {
+      const raceDate = new Date(competition.competitionDate);
+      const birthDate = new Date(horse.birthDate);
+      const diffTime = raceDate.getTime() - birthDate.getTime();
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays < 2190) {
+        throw new BadRequestException(
+          "El equino no cumple con la edad mínima reglamentaria de 6 años para competir (Art. 24g)",
+        );
+      }
+    }
+
     let representedTenant = null;
     if (dto.representedTenantId) {
       representedTenant = await this.tenantRepo.findOne({
@@ -256,6 +273,28 @@ export class CompetitionEntriesService {
         throw new ConflictException(
           "El caballo seleccionado ya está inscripto en esta carrera.",
         );
+      }
+
+      // Validar edad si es Raid FEU
+      const newHorse = await this.horseRepo.findOne({
+        where: { id: dto.horseId },
+      });
+      if (!newHorse) throw new NotFoundException("Caballo no encontrado.");
+
+      if (
+        (entry.competition.competitionType?.name === "Raid FEU" ||
+          entry.competition.competitionType?.name?.startsWith("Raid FEU")) &&
+        newHorse.birthDate
+      ) {
+        const raceDate = new Date(entry.competition.competitionDate);
+        const birthDate = new Date(newHorse.birthDate);
+        const diffTime = raceDate.getTime() - birthDate.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        if (diffDays < 2190) {
+          throw new BadRequestException(
+            "El equino no cumple con la edad mínima reglamentaria de 6 años para competir (Art. 24g)",
+          );
+        }
       }
     }
 

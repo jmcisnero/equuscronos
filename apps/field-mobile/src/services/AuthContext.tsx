@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (typeof access_token !== "string" || !loggedUser) {
         throw new Error(
-          "El servidor de API no devolvió una respuesta de autenticación válida. Verifique que la URL y el puerto (por defecto 3000) sean correctos."
+          "El servidor de API no devolvió una respuesta de autenticación válida. Verifique que la URL y el puerto (por defecto 3000) sean correctos.",
         );
       }
 
@@ -87,7 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         } catch (fetchError: any) {
           await SecureStore.deleteItemAsync("auth_token");
           await SecureStore.deleteItemAsync("auth_user");
-          throw new Error(fetchError.message || "No se pudo verificar el estado de las competencias en el servidor.");
+          throw new Error(
+            fetchError.message ||
+              "No se pudo verificar el estado de las competencias en el servidor.",
+          );
         }
 
         const activeCompetition = competitions.find(
@@ -99,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           await SecureStore.deleteItemAsync("auth_user");
           const clubName = loggedUser.tenantName || "Ninguno";
           throw new Error(
-            `No hay competencias activas para su club actual (${clubName}). Por favor, asigne su usuario al club de la competencia activa en la consola de administración web para poder ingresar.`
+            `No hay competencias activas para su club actual (${clubName}). Por favor, asigne su usuario al club de la competencia activa en la consola de administración web para poder ingresar.`,
           );
         }
       }

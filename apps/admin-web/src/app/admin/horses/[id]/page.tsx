@@ -86,6 +86,23 @@ export default function HorseDetailPage() {
     .substring(0, 2)
     .toUpperCase();
 
+  const getAgeInYears = (birthDateStr?: string) => {
+    if (!birthDateStr) return null;
+    const birthDate = new Date(birthDateStr);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  };
+
+  const age = getAgeInYears(horse.birthDate);
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Volver */}
@@ -113,35 +130,68 @@ export default function HorseDetailPage() {
 
       {/* Tarjeta Principal */}
       <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100/80">
-        {/* Cabecera Premium */}
-        <div className="bg-slate-50 border-b border-slate-100 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center space-x-5">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-500 text-white flex items-center justify-center font-extrabold text-2xl shadow-inner">
-              {initials}
+        {/* Banner/Header con Foto Gigante y Badge de Edad */}
+        <div className="relative h-60 bg-gradient-to-r from-emerald-950 via-emerald-800 to-amber-950 overflow-hidden">
+          <div className="absolute inset-0 bg-black/25"></div>
+          {horse.imageUrl && (
+            <div
+              className="absolute inset-0 bg-cover bg-center blur-sm opacity-20 scale-105"
+              style={{ backgroundImage: `url(${horse.imageUrl})` }}
+            ></div>
+          )}
+          <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col md:flex-row items-center md:items-end justify-between gap-6 translate-y-12">
+            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6 text-center md:text-left">
+              {horse.imageUrl ? (
+                <img
+                  src={horse.imageUrl}
+                  alt={horse.name}
+                  className="w-32 h-32 rounded-full border-4 border-white shadow-2xl object-cover bg-white"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-700 via-amber-800 to-amber-950 text-white font-extrabold flex items-center justify-center text-4xl tracking-wider border-4 border-white shadow-2xl">
+                  {initials}
+                </div>
+              )}
+              <div className="pb-3">
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                  <h1 className="text-3xl font-black text-white drop-shadow-md">
+                    {horse.name}
+                  </h1>
+                  {age !== null && (
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black shadow-md border ${
+                        age < 6
+                          ? "bg-rose-500 text-white border-rose-400 animate-pulse"
+                          : "bg-emerald-500 text-white border-emerald-400"
+                      }`}
+                    >
+                      {age} {age === 1 ? "año" : "años"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-emerald-100 font-mono mt-1 opacity-90 drop-shadow">
+                  ID Interno: {horse.id}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-                {horse.name}
-              </h1>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                ID Interno: {horse.id}
-              </p>
+            <div className="pb-5">
+              <span
+                className={`inline-flex rounded-full px-4 py-1.5 text-xs font-black shadow-lg border ${
+                  horse.isFeuActive
+                    ? "bg-emerald-500 text-white border-emerald-400"
+                    : "bg-slate-800 text-slate-300 border-slate-700"
+                }`}
+              >
+                {horse.isFeuActive
+                  ? "Habilitado FEU"
+                  : "No Habilitado / Suspendido"}
+              </span>
             </div>
-          </div>
-          <div>
-            <span
-              className={`inline-flex rounded-full px-4 py-1.5 text-xs font-bold shadow-sm ${
-                horse.isFeuActive
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
-                  : "bg-slate-100 text-slate-500 border border-slate-200"
-              }`}
-            >
-              {horse.isFeuActive
-                ? "Habilitado FEU"
-                : "No Habilitado / Suspendido"}
-            </span>
           </div>
         </div>
+
+        {/* Spacer for avatar overlap offset */}
+        <div className="h-12 bg-white"></div>
 
         {/* Ficha de Detalles */}
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -220,6 +270,21 @@ export default function HorseDetailPage() {
                   </span>
                 ) : (
                   <span className="text-slate-400 italic">Sin Control</span>
+                )}
+              </span>
+            </div>
+
+            <div className="flex justify-between py-2 border-b border-slate-50">
+              <span className="text-sm font-semibold text-slate-500">
+                Fecha de Nacimiento
+              </span>
+              <span className="text-sm font-bold text-slate-800">
+                {horse.birthDate ? (
+                  <span>
+                    {new Date(horse.birthDate).toLocaleDateString("es-UY")}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 italic">No Registrada</span>
                 )}
               </span>
             </div>

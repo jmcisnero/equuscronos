@@ -44,6 +44,12 @@ export class Horse {
   @Column({ name: "health_records_expiration", type: "date", nullable: true })
   healthRecordsExpiration: Date;
 
+  @Column({ name: "birth_date", type: "date", nullable: true })
+  birthDate: string;
+
+  @Column({ name: "image_url", type: "varchar", length: 550, nullable: true })
+  imageUrl: string;
+
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

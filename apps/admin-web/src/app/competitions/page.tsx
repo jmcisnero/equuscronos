@@ -116,7 +116,8 @@ export default function CompetitionsPage() {
       }
       if (compTypesData.length > 0) {
         const defaultCompType = compTypesData[0];
-        const defaultHeartRate = defaultCompType.defaultRules?.max_heart_rate ?? 65;
+        const defaultHeartRate =
+          defaultCompType.defaultRules?.max_heart_rate ?? 65;
         setFormData((prev) => ({
           ...prev,
           competitionTypeId: defaultCompType.id,
@@ -151,7 +152,8 @@ export default function CompetitionsPage() {
   const resetForm = () => {
     setEditingCompetition(null);
     const defaultCompType = competitionTypes[0];
-    const defaultHeartRate = defaultCompType?.defaultRules?.max_heart_rate ?? 65;
+    const defaultHeartRate =
+      defaultCompType?.defaultRules?.max_heart_rate ?? 65;
     setFormData({
       name: "",
       competitionDate: "",
@@ -324,6 +326,7 @@ export default function CompetitionsPage() {
               : formData.startTime,
           location: formData.location.trim() || undefined,
           maxHeartRate: formData.maxHeartRate,
+          stages: formData.stages,
         });
       } else {
         // Modo Creación
@@ -816,8 +819,11 @@ export default function CompetitionsPage() {
                     value={formData.competitionTypeId}
                     onChange={(e) => {
                       const selectedId = e.target.value;
-                      const selectedType = competitionTypes.find((t) => t.id === selectedId);
-                      const heartRate = selectedType?.defaultRules?.max_heart_rate ?? 65;
+                      const selectedType = competitionTypes.find(
+                        (t) => t.id === selectedId,
+                      );
+                      const heartRate =
+                        selectedType?.defaultRules?.max_heart_rate ?? 65;
                       setFormData({
                         ...formData,
                         competitionTypeId: selectedId,
@@ -979,6 +985,29 @@ export default function CompetitionsPage() {
               {/* ---------------------------------------------------- */}
               {/* SECCIÓN DE ETAPAS (JERARQUÍA DINÁMICA DE FASES) */}
               <div className="border-t border-slate-100 pt-4 space-y-4">
+                {/* Banner de bloqueo de etapas */}
+                {isFieldsDisabled && (
+                  <div className="p-3 bg-amber-50 border border-amber-250 rounded-xl text-amber-705 text-xs font-semibold flex items-center space-x-2">
+                    <svg
+                      className="w-4 h-4 flex-shrink-0 text-amber-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    <span>
+                      Etapas bloqueadas: La competencia ya ha iniciado o
+                      finalizado.
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-800">
@@ -991,7 +1020,7 @@ export default function CompetitionsPage() {
                   </div>
 
                   {/* Preset Autocomplete Button */}
-                  {!editingCompetition && (
+                  {!isFieldsDisabled && (
                     <button
                       type="button"
                       onClick={handleAutocompletePreset}
@@ -1003,7 +1032,7 @@ export default function CompetitionsPage() {
                 </div>
 
                 {/* Editor Temporal de Etapas */}
-                {!editingCompetition && (
+                {!isFieldsDisabled && (
                   <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Campo Distancia */}
@@ -1080,7 +1109,7 @@ export default function CompetitionsPage() {
                           <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">
                             Neutralización
                           </th>
-                          {!editingCompetition && (
+                          {!isFieldsDisabled && (
                             <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase">
                               Remover
                             </th>
@@ -1094,16 +1123,79 @@ export default function CompetitionsPage() {
                               Etapa {stage.stageNumber}
                             </td>
                             <td className="px-4 py-2 text-slate-800 font-semibold">
-                              {stage.distanceKm} Km
+                              {isFieldsDisabled ? (
+                                <span>{stage.distanceKm} Km</span>
+                              ) : (
+                                <div className="flex items-center space-x-1">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    value={stage.distanceKm}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      setFormData((prev) => {
+                                        const updated = [...prev.stages];
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          distanceKm: isNaN(val) ? 0 : val,
+                                        };
+                                        return { ...prev, stages: updated };
+                                      });
+                                    }}
+                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono font-semibold focus:outline-none focus:border-equus-green text-slate-800"
+                                  />
+                                  <span className="text-xs text-slate-400">
+                                    Km
+                                  </span>
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-2 text-slate-600">
-                              {stage.neutralizationMinutes} minutos
+                              {isFieldsDisabled ? (
+                                <span>
+                                  {stage.neutralizationMinutes} minutos
+                                </span>
+                              ) : (
+                                <div className="flex items-center space-x-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={stage.neutralizationMinutes}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setFormData((prev) => {
+                                        const updated = [...prev.stages];
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          neutralizationMinutes: isNaN(val)
+                                            ? 0
+                                            : val,
+                                        };
+                                        return { ...prev, stages: updated };
+                                      });
+                                    }}
+                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono text-slate-700 focus:outline-none focus:border-equus-green"
+                                  />
+                                  <span className="text-xs text-slate-400">
+                                    min
+                                  </span>
+                                </div>
+                              )}
                             </td>
-                            {!editingCompetition && (
+                            {!isFieldsDisabled && (
                               <td className="px-4 py-2 text-right">
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveStage(idx)}
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        `¿Está seguro de que desea eliminar la Etapa ${stage.stageNumber}?`,
+                                      )
+                                    ) {
+                                      handleRemoveStage(idx);
+                                    }
+                                  }}
                                   className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all"
                                   title="Eliminar Etapa"
                                 >

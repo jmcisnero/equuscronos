@@ -40,14 +40,26 @@ export class CompetitionsController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.CLUB_ADMIN,
+    UserRole.JUDGE,
+    UserRole.TIMEKEEPER,
+    UserRole.VET,
+  )
   @ApiOperation({ summary: "Listar todas las carreras planificadas y activas" })
   findAll() {
     return this.competitionsService.findAll();
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.CLUB_ADMIN,
+    UserRole.JUDGE,
+    UserRole.TIMEKEEPER,
+    UserRole.VET,
+  )
   @ApiOperation({
     summary: "Obtener detalle de una carrera, incluyendo sus etapas",
   })
@@ -67,7 +79,7 @@ export class CompetitionsController {
     if (req.user?.role === UserRole.CLUB_ADMIN) {
       delete updateDto.tenantId;
     }
-    return this.competitionsService.update(id, updateDto);
+    return this.competitionsService.update(id, updateDto, req.user);
   }
 
   @Post(":id/start")

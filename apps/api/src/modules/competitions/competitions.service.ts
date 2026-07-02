@@ -16,6 +16,7 @@ import {
   CompetitionStatus,
   ParticipantStatus,
   TimeRecordType,
+  UserRole,
 } from "@equuscronos/shared";
 import { TimingRecord } from "./entities/timing-record.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
@@ -113,24 +114,82 @@ export class CompetitionsService {
   async update(
     id: string,
     updateDto: UpdateCompetitionDto,
+    currentUser?: any,
   ): Promise<Competition> {
-    const competition = await this.compRepository.findOne({
-      where: { id },
+    return await this.dataSource.transaction(async (manager) => {
+      const competition = await manager.findOne(Competition, {
+        where: { id },
+        relations: ["tenant", "stages"],
+      });
+
+      if (!competition) {
+        throw new NotFoundException(`Evento con ID ${id} no encontrado`);
+      }
+
+      // Validar gobernanza RLS para CLUB_ADMIN
+      if (currentUser?.role === UserRole.CLUB_ADMIN) {
+        if (competition.tenant?.id !== currentUser.tenantId) {
+          throw new NotFoundException(`Evento con ID ${id} no encontrado`);
+        }
+      }
+
+      // Bloqueo de estado: Solo se permite editar etapas/eventos si está en PLANNED
+      if (competition.status !== CompetitionStatus.PLANNED) {
+        throw new BadRequestException(
+          "No se pueden modificar las etapas de una competencia activa o finalizada",
+        );
+      }
+
+      const { stages, ...otherFields } = updateDto;
+
+      // Fusionamos los cambios básicos
+      Object.assign(competition, otherFields);
+      await manager.save(Competition, competition);
+
+      if (stages !== undefined) {
+        const existingStages = competition.stages || [];
+        const stageNumbersInDto = stages.map((s) => s.stageNumber);
+
+        // Identificar y eliminar etapas huérfanas
+        const orphanedStages = existingStages.filter(
+          (es) => !stageNumbersInDto.includes(es.stageNumber),
+        );
+        if (orphanedStages.length > 0) {
+          await manager.remove(Stage, orphanedStages);
+        }
+
+        const stagesToSave: Stage[] = [];
+        for (const stageDto of stages) {
+          let stage = existingStages.find(
+            (es) => es.stageNumber === stageDto.stageNumber,
+          );
+
+          if (stage) {
+            stage.distanceKm = stageDto.distanceKm;
+            stage.neutralizationMinutes = stageDto.neutralizationMinutes ?? 0;
+          } else {
+            stage = manager.create(Stage, {
+              competition,
+              tenant: competition.tenant,
+              stageNumber: stageDto.stageNumber,
+              distanceKm: stageDto.distanceKm,
+              neutralizationMinutes: stageDto.neutralizationMinutes ?? 0,
+            });
+          }
+          stagesToSave.push(stage);
+        }
+
+        if (stagesToSave.length > 0) {
+          await manager.save(Stage, stagesToSave);
+        }
+      }
+
+      // Retornar la competencia actualizada con todas las relaciones cargadas
+      return await manager.findOne(Competition, {
+        where: { id },
+        relations: ["stages", "tenant", "competitionType"],
+      });
     });
-    if (!competition) {
-      throw new NotFoundException(`Evento con ID ${id} no encontrado`);
-    }
-    // Bloqueo de estado: Solo se permite editar eventos en estado PLANNED
-    if (competition.status !== CompetitionStatus.PLANNED) {
-      throw new BadRequestException(
-        "Solo se permite editar eventos en estado PLANNED",
-      );
-    }
-
-    // Fusionamos los cambios del DTO en la entidad existente
-    Object.assign(competition, updateDto);
-
-    return await this.compRepository.save(competition);
   }
 
   async remove(id: string): Promise<void> {
@@ -264,7 +323,8 @@ export class CompetitionsService {
       // Obtener fecha y hora real actual del servidor
       const realNow = new Date();
       const realParts = formatter.formatToParts(realNow);
-      const getRealVal = (type: string) => realParts.find((p) => p.type === type).value;
+      const getRealVal = (type: string) =>
+        realParts.find((p) => p.type === type).value;
       const realServerTodayStr = `${getRealVal("year")}-${getRealVal("month")}-${getRealVal("day")}`;
       const realServerHour = parseInt(getRealVal("hour"), 10);
       const realServerMinute = parseInt(getRealVal("minute"), 10);
@@ -274,7 +334,8 @@ export class CompetitionsService {
         ? new Date(officialStartTime)
         : realNow;
       const officialParts = formatter.formatToParts(startTimestamp);
-      const getOfficialVal = (type: string) => officialParts.find((p) => p.type === type).value;
+      const getOfficialVal = (type: string) =>
+        officialParts.find((p) => p.type === type).value;
       const officialTodayStr = `${getOfficialVal("year")}-${getOfficialVal("month")}-${getOfficialVal("day")}`;
       const officialHour = parseInt(getOfficialVal("hour"), 10);
       const officialMinute = parseInt(getOfficialVal("minute"), 10);
@@ -388,7 +449,11 @@ export class CompetitionsService {
       for (const entry of activeEntries) {
         const reasons: string[] = [];
 
-        if (!entry.weighInAt || !entry.sealNumber || entry.sealNumber.trim() === "") {
+        if (
+          !entry.weighInAt ||
+          !entry.sealNumber ||
+          entry.sealNumber.trim() === ""
+        ) {
           reasons.push("Falta marcación de pesaje o número de precinto.");
         }
 

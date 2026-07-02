@@ -81,13 +81,20 @@ export const HorseList: React.FC = () => {
     }
   };
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: any, file?: File | null) => {
     try {
+      let savedHorse: Horse;
       if (editingHorse) {
-        await HorseService.update(editingHorse.id, data);
+        savedHorse = await HorseService.update(editingHorse.id, data);
       } else {
-        await HorseService.create(data);
+        savedHorse = await HorseService.create(data);
       }
+
+      if (file) {
+        const horseId = editingHorse ? editingHorse.id : savedHorse.id;
+        await HorseService.uploadPhoto(horseId, file);
+      }
+
       setIsModalOpen(false);
       fetchHorses(searchTerm);
     } catch (err: any) {
@@ -270,12 +277,30 @@ export const HorseList: React.FC = () => {
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-slate-900">
-                        <Link
-                          href={`/admin/horses/${horse.id}`}
-                          className="text-equus-green hover:underline"
-                        >
-                          {horse.name}
-                        </Link>
+                        <div className="flex items-center space-x-3">
+                          {horse.imageUrl ? (
+                            <img
+                              src={horse.imageUrl}
+                              alt={horse.name}
+                              className="h-10 w-10 rounded-full object-cover border border-slate-200 shadow-sm"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-700 via-amber-800 to-amber-950 text-white font-extrabold flex items-center justify-center text-xs shadow-inner">
+                              {horse.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .substring(0, 2)
+                                .toUpperCase()}
+                            </div>
+                          )}
+                          <Link
+                            href={`/admin/horses/${horse.id}`}
+                            className="text-equus-green hover:underline hover:text-opacity-80 transition-colors"
+                          >
+                            {horse.name}
+                          </Link>
+                        </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">
                         {horse.owner?.name || (

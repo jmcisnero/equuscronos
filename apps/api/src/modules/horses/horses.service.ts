@@ -9,6 +9,8 @@ import { Horse } from "./entities/horse.entity";
 import { Owner } from "../owners/entities/owner.entity";
 import { CreateHorseDto } from "./dto/create-horse.dto";
 import { UpdateHorseDto } from "./dto/update-horse.dto";
+import * as fs from "fs";
+import * as path from "path";
 
 @Injectable()
 export class HorsesService {
@@ -98,5 +100,23 @@ export class HorsesService {
   async remove(id: string): Promise<void> {
     const horse = await this.findOne(id);
     await this.horseRepository.remove(horse);
+  }
+
+  async uploadPhoto(id: string, file: any): Promise<Horse> {
+    const horse = await this.findOne(id);
+    if (!file || !file.buffer) {
+      throw new ConflictException("No se proporcionó un archivo válido.");
+    }
+    const ext = path.extname(file.originalname) || ".webp";
+    const filename = `horse_${id}_${Date.now()}${ext}`;
+    const uploadDir = path.join(process.cwd(), "uploads", "horses");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const filePath = path.join(uploadDir, filename);
+    fs.writeFileSync(filePath, file.buffer);
+
+    horse.imageUrl = `http://localhost:3000/uploads/horses/${filename}`;
+    return await this.horseRepository.save(horse);
   }
 }

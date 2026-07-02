@@ -389,4 +389,295 @@ describe("Tenants & Users Administration (e2e)", () => {
         .expect(404);
     });
   });
+
+  // ==========================================================
+  // E. HORSE REGISTRATION & AGE VALIDATION TESTING (Art. 24g)
+  // ==========================================================
+  describe("Padrón Equino y Regla de Edad FEU (e2e)", () => {
+    let createdHorseId: string;
+    let testCompetitionId: string;
+    const testOwnerId = "b1000000-0000-0000-0000-000000000001"; // Haras El Relincho pre-seeded
+
+    beforeAll(async () => {
+      // Crear una competencia de tipo Raid FEU en estado PLANNED
+      const competitionPayload = {
+        tenantId: "a1000000-0000-0000-0000-000000000001",
+        competitionTypeId: "c1000000-0000-0000-0000-000000000001",
+        name: "Raid FEU E2E Test " + Date.now(),
+        competitionDate: "2026-07-20",
+        startTime: "08:00:00",
+        stages: [
+          { stageNumber: 1, distanceKm: 40, neutralizationMinutes: 60 },
+          { stageNumber: 2, distanceKm: 20, neutralizationMinutes: 0 },
+        ],
+      };
+
+      const res = await request(app.getHttpServer())
+        .post("/admin/competitions")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(competitionPayload)
+        .expect(201);
+
+      testCompetitionId = res.body.id;
+    });
+
+    it("should successfully create a horse with birthDate and imageUrl", async () => {
+      const horsePayload = {
+        name: "Caballo E2E " + Date.now(),
+        ownerId: testOwnerId,
+        birthDate: "2020-06-15",
+        imageUrl: "https://example.com/e2e-horse.jpg",
+        isFeuActive: true,
+      };
+
+      const res = await request(app.getHttpServer())
+        .post("/admin/horses")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(horsePayload)
+        .expect(201);
+
+      createdHorseId = res.body.id;
+      expect(res.body.name).toBe(horsePayload.name);
+      expect(res.body.birthDate).toBe(horsePayload.birthDate);
+      expect(res.body.imageUrl).toBe(horsePayload.imageUrl);
+    });
+
+    it("should successfully read the horse and include the new fields", async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/admin/horses/${createdHorseId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.birthDate).toBe("2020-06-15");
+      expect(res.body.imageUrl).toBe("https://example.com/e2e-horse.jpg");
+    });
+
+    it("should successfully update the horse birthDate and imageUrl", async () => {
+      const updatePayload = {
+        birthDate: "2019-08-20",
+        imageUrl: "https://example.com/e2e-horse-updated.jpg",
+      };
+
+      const res = await request(app.getHttpServer())
+        .patch(`/admin/horses/${createdHorseId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(updatePayload)
+        .expect(200);
+
+      expect(res.body.birthDate).toBe(updatePayload.birthDate);
+      expect(res.body.imageUrl).toBe(updatePayload.imageUrl);
+    });
+
+    it("should block registering a horse under 6 years in a Raid FEU competition", async () => {
+      // 1. Crear un caballo de 5 años respecto a la competencia de 2026-07-20
+      // Fecha nacimiento: 2021-08-15 (Edad a julio 2026: ~4 años y 11 meses, menos de 6 años)
+      const youngHorsePayload = {
+        name: "Caballo Joven E2E " + Date.now(),
+        ownerId: testOwnerId,
+        birthDate: "2021-08-15",
+        imageUrl: "https://example.com/young.jpg",
+        isFeuActive: true,
+      };
+
+      const horseRes = await request(app.getHttpServer())
+        .post("/admin/horses")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(youngHorsePayload)
+        .expect(201);
+
+      const youngHorseId = horseRes.body.id;
+
+      // 2. Intentar registrar una inscripción (CompetitionEntry) para este caballo de 5 años
+      const entryPayload = {
+        competitionId: testCompetitionId,
+        riderId: "f1000000-0000-0000-0000-000000000001", // Mateo Silva
+        horseId: youngHorseId,
+        representedTenantId: "a1000000-0000-0000-0000-000000000001", // Melo
+        bibNumber: 999, // Dorsal de prueba
+      };
+
+      const entryRes = await request(app.getHttpServer())
+        .post("/admin/entries")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(entryPayload)
+        .expect(400);
+
+      expect(entryRes.body.message).toContain(
+        "El equino no cumple con la edad mínima reglamentaria de 6 años para competir (Art. 24g)",
+      );
+
+      // Limpiar caballo joven
+      await request(app.getHttpServer())
+        .delete(`/admin/horses/${youngHorseId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+    });
+
+    it("should permit registering a horse 6 years or older in a Raid FEU competition", async () => {
+      // 1. Crear un caballo de 6 años respecto a la competencia de 2026-07-20
+      // Fecha nacimiento: 2020-03-01 (Edad a julio 2026: 6 años y 4 meses)
+      const oldHorsePayload = {
+        name: "Caballo Adulto E2E " + Date.now(),
+        ownerId: testOwnerId,
+        birthDate: "2020-03-01",
+        imageUrl: "https://example.com/old.jpg",
+        isFeuActive: true,
+      };
+
+      const horseRes = await request(app.getHttpServer())
+        .post("/admin/horses")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(oldHorsePayload)
+        .expect(201);
+
+      const oldHorseId = horseRes.body.id;
+
+      // 2. Registrar una inscripción para este caballo de 6 años
+      const entryPayload = {
+        competitionId: testCompetitionId,
+        riderId: "f1000000-0000-0000-0000-000000000002", // Lucía Gómez
+        horseId: oldHorseId,
+        representedTenantId: "a1000000-0000-0000-0000-000000000001", // Melo
+        bibNumber: 888, // Dorsal de prueba
+      };
+
+      const entryRes = await request(app.getHttpServer())
+        .post("/admin/entries")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(entryPayload)
+        .expect(201);
+
+      const createdEntryId = entryRes.body.id;
+
+      // Limpiar entrada y caballo
+      await request(app.getHttpServer())
+        .delete(`/admin/entries/${createdEntryId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .delete(`/admin/horses/${oldHorseId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+    });
+
+    afterAll(async () => {
+      if (createdHorseId) {
+        await request(app.getHttpServer())
+          .delete(`/admin/horses/${createdHorseId}`)
+          .set("Authorization", `Bearer ${adminToken}`)
+          .expect(200);
+      }
+      if (testCompetitionId) {
+        await request(app.getHttpServer())
+          .delete(`/admin/competitions/${testCompetitionId}`)
+          .set("Authorization", `Bearer ${adminToken}`)
+          .expect(200);
+      }
+    });
+  });
+
+  // ==========================================================
+  // F. FEU FEDERATION NUMBER & JERSEY UPLOAD TESTING
+  // ==========================================================
+  describe("Gobernanza de Clubes: Federación y Camiseta (e2e)", () => {
+    let testTenantId: string;
+
+    it("debería rechazar la creación de un tenant si el federationNumber es menor a 10 (400 Bad Request)", async () => {
+      const invalidTenant = {
+        name: "Club Inválido Min " + Date.now(),
+        federationNumber: 9,
+      };
+
+      await request(app.getHttpServer())
+        .post("/admin/tenants")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(invalidTenant)
+        .expect(400);
+    });
+
+    it("debería rechazar la creación de un tenant si el federationNumber es mayor a 999 (400 Bad Request)", async () => {
+      const invalidTenant = {
+        name: "Club Inválido Max " + Date.now(),
+        federationNumber: 1000,
+      };
+
+      await request(app.getHttpServer())
+        .post("/admin/tenants")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(invalidTenant)
+        .expect(400);
+    });
+
+    it("debería registrar exitosamente un tenant con federationNumber y jerseyImageUrl válidos", async () => {
+      const validTenant = {
+        name: "Club Afiliado Válido " + Date.now(),
+        federationNumber: 450,
+        jerseyImageUrl: "https://drive.google.com/uc?export=download&id=123",
+      };
+
+      const res = await request(app.getHttpServer())
+        .post("/admin/tenants")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(validTenant)
+        .expect(201);
+
+      testTenantId = res.body.id;
+      expect(res.body.federationNumber).toBe(450);
+      expect(res.body.jerseyImageUrl).toBe(validTenant.jerseyImageUrl);
+    });
+
+    it("debería rechazar la actualización si se intenta usar un federationNumber duplicado (409 Conflict)", async () => {
+      // Registrar otro tenant con federationNumber = 451
+      const anotherTenant = {
+        name: "Club de Apoyo " + Date.now(),
+        federationNumber: 451,
+      };
+
+      const creationRes = await request(app.getHttpServer())
+        .post("/admin/tenants")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(anotherTenant)
+        .expect(201);
+
+      const anotherId = creationRes.body.id;
+
+      // Intentar actualizar el primer tenant (testTenantId) para que use el número 451
+      await request(app.getHttpServer())
+        .patch(`/admin/tenants/${testTenantId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ federationNumber: 451 })
+        .expect(409);
+
+      // Limpiar tenant extra
+      await request(app.getHttpServer())
+        .delete(`/admin/tenants/${anotherId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+    });
+
+    it("debería subir correctamente la camiseta oficial en formato multipart/form-data y guardar la URL local (201 Created)", async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/admin/tenants/${testTenantId}/upload-jersey`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .attach(
+          "file",
+          Buffer.from("fake-binary-image-data-here"),
+          "jersey.png",
+        )
+        .expect(201);
+
+      expect(res.body.id).toBe(testTenantId);
+      expect(res.body.jerseyImageUrl).toContain("/uploads/jerseys/");
+    });
+
+    afterAll(async () => {
+      if (testTenantId) {
+        await request(app.getHttpServer())
+          .delete(`/admin/tenants/${testTenantId}`)
+          .set("Authorization", `Bearer ${adminToken}`)
+          .expect(200);
+      }
+    });
+  });
 });

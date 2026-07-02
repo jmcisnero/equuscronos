@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Tenant, CreateTenantDto, UpdateTenantDto } from "@/types/tenant";
 import { TenantService } from "@/services/api/tenant.service";
+import { compressImage } from "@/utils/imageCompression";
 
 export function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -17,6 +18,9 @@ export function TenantsPage() {
   // Form Fields
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [federationNumber, setFederationNumber] = useState("");
+  const [jerseyImageUrl, setJerseyImageUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -48,6 +52,9 @@ export function TenantsPage() {
   const resetForm = () => {
     setName("");
     setLocation("");
+    setFederationNumber("");
+    setJerseyImageUrl("");
+    setSelectedFile(null);
     setFormError(null);
     setEditingTenant(null);
   };
@@ -61,6 +68,13 @@ export function TenantsPage() {
     setEditingTenant(tenant);
     setName(tenant.name);
     setLocation(tenant.location || "");
+    setFederationNumber(
+      tenant.federationNumber !== undefined && tenant.federationNumber !== null
+        ? tenant.federationNumber.toString()
+        : "",
+    );
+    setJerseyImageUrl(tenant.jerseyImageUrl || "");
+    setSelectedFile(null);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -81,17 +95,40 @@ export function TenantsPage() {
       return;
     }
 
+    const fedNum = federationNumber.trim()
+      ? parseInt(federationNumber.trim(), 10)
+      : undefined;
+    if (
+      fedNum !== undefined &&
+      (isNaN(fedNum) || fedNum < 10 || fedNum > 999)
+    ) {
+      setFormError(
+        "El número de federación debe ser un entero entre 10 y 999.",
+      );
+      setIsSaving(false);
+      return;
+    }
+
     const payload: CreateTenantDto = {
       name: name.trim(),
       location: location.trim() || undefined,
+      federationNumber: fedNum,
+      jerseyImageUrl: jerseyImageUrl.trim() || undefined,
     };
 
     try {
+      let savedTenant: Tenant;
       if (editingTenant) {
-        await TenantService.update(editingTenant.id, payload);
+        savedTenant = await TenantService.update(editingTenant.id, payload);
       } else {
-        await TenantService.create(payload);
+        savedTenant = await TenantService.create(payload);
       }
+
+      if (selectedFile) {
+        const tenantId = editingTenant ? editingTenant.id : savedTenant.id;
+        await TenantService.uploadJersey(tenantId, selectedFile);
+      }
+
       setIsModalOpen(false);
       resetForm();
       loadTenants();
@@ -264,6 +301,18 @@ export function TenantsPage() {
                     scope="col"
                     className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
                   >
+                    Nro. Fed.
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >
+                    Camiseta
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >
                     Identificador Único (UUID)
                   </th>
                   <th
@@ -293,6 +342,38 @@ export function TenantsPage() {
                       {tenant.location || (
                         <span className="text-slate-400 italic">
                           No registrada
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-700">
+                      {tenant.federationNumber || (
+                        <span className="text-slate-400 italic font-normal">
+                          -
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
+                      {tenant.jerseyImageUrl ? (
+                        <img
+                          src={tenant.jerseyImageUrl}
+                          alt="Camiseta"
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <span className="text-slate-300" title="Sin camiseta">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z"
+                            />
+                          </svg>
                         </span>
                       )}
                     </td>
@@ -443,6 +524,73 @@ export function TenantsPage() {
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Ej: Cerro Largo, Uruguay o Florida"
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                />
+              </div>
+
+              {/* Federation Number */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Número de Federación FEU (2-3 dígitos)
+                </label>
+                <input
+                  type="number"
+                  min="10"
+                  max="999"
+                  value={federationNumber}
+                  onChange={(e) => setFederationNumber(e.target.value)}
+                  placeholder="Ej: 45"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold"
+                />
+              </div>
+
+              {/* Jersey Image URL (External) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  URL de Camiseta (Opcional - Google Drive / Web)
+                </label>
+                <input
+                  type="text"
+                  value={jerseyImageUrl}
+                  onChange={(e) => setJerseyImageUrl(e.target.value)}
+                  placeholder="https://example.com/jersey.jpg"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                />
+              </div>
+
+              {/* Local File Upload */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Subir Archivo de Camiseta Local (Reemplaza URL)
+                </label>
+                {jerseyImageUrl && (
+                  <div className="mb-2 flex items-center space-x-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <img
+                      src={jerseyImageUrl}
+                      alt="Vista previa"
+                      className="w-10 h-10 rounded-full object-cover border border-slate-200 animate-fade-in"
+                    />
+                    <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+                      {jerseyImageUrl}
+                    </span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      try {
+                        const compressed = await compressImage(
+                          e.target.files[0],
+                        );
+                        setSelectedFile(compressed);
+                      } catch (err) {
+                        console.error("Error compressing image:", err);
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }
+                  }}
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200/80 file:cursor-pointer cursor-pointer"
                 />
               </div>
 

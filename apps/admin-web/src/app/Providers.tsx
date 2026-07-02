@@ -56,7 +56,8 @@ if (typeof window !== "undefined") {
 
     const response = await originalFetch(input, modifiedInit);
     if (response.status === 401) {
-      const urlStr = typeof input === "string" ? input : (input as any).url || "";
+      const urlStr =
+        typeof input === "string" ? input : (input as any).url || "";
       if (!urlStr.includes("/auth/login")) {
         useAuthStore.getState().logout();
         window.location.href = "/login";

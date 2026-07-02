@@ -45,4 +45,16 @@ export const HorseService = {
     });
     if (!response.ok) throw new Error("Error al dar de baja el caballo");
   },
+
+  async uploadPhoto(id: string, file: File): Promise<Horse> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${API_URL}/horses/${id}/upload-photo`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error("Error al subir la foto del caballo");
+    return response.json();
+  },
 };
