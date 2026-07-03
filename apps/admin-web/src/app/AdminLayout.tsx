@@ -49,7 +49,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Mapeo dinámico de títulos de página basado en la ruta actual
   const getPageTitle = (path: string) => {
-    if (path === "/") return "Dashboard Central";
+    if (path === "/") return "Panel de Control";
     if (path.startsWith("/horses")) return "Padrón de Caballos";
     if (path.startsWith("/owners")) return "Gestión de Propietarios";
     if (path.startsWith("/riders")) return "Padrón de Jinetes";
@@ -62,233 +62,264 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     return "Consola de Administración";
   };
 
-  // Menú de navegación principal reordenado según especificaciones con iconos minimalistas consistentes
-  const navItems = [
+  interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ReactNode;
+  }
+
+  interface NavGroup {
+    category: string | null;
+    items: NavItem[];
+  }
+
+  // Menú de navegación principal categorizado por áreas de negocio
+  const navGroups: NavGroup[] = [
     {
-      name: "Dashboard",
-      href: "/",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <rect x="3" y="3" width="7" height="9" rx="1" />
-          <rect x="14" y="3" width="7" height="5" rx="1" />
-          <rect x="14" y="12" width="7" height="9" rx="1" />
-          <rect x="3" y="16" width="7" height="5" rx="1" />
-        </svg>
-      ),
+      category: null,
+      items: [
+        {
+          name: "Panel de Control",
+          href: "/",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <rect x="3" y="3" width="7" height="9" rx="1" />
+              <rect x="14" y="3" width="7" height="5" rx="1" />
+              <rect x="14" y="12" width="7" height="9" rx="1" />
+              <rect x="3" y="16" width="7" height="5" rx="1" />
+            </svg>
+          ),
+        },
+      ],
     },
     {
-      name: "Competencias",
-      href: "/competitions",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"
-          />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 22h16" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 2a6 6 0 0 1 6 6v3c0 2.5-2.5 4.5-6 4.5S6 13.5 6 11V8a6 6 0 0 1 6-6Z"
-          />
-        </svg>
-      ),
+      category: "GESTIÓN DE EVENTOS",
+      items: [
+        {
+          name: "Competencias",
+          href: "/competitions",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 22h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 2a6 6 0 0 1 6 6v3c0 2.5-2.5 4.5-6 4.5S6 13.5 6 11V8a6 6 0 0 1 6-6Z"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Reglas y Modalidades",
+          href: "/competition-types",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h10" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 10h10" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h10" />
+            </svg>
+          ),
+        },
+      ],
     },
     {
-      name: "Caballos",
-      href: "/horses",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3 10c2-1 4.5-1 6.5 0l2.5 1.5c1 .5 2.5 0 3-1l1-2c.5-1 2-1.5 3-1h1.5c.8 0 1.5.7 1.5 1.5v2.5c0 1.5-1 3-2.5 3.5l-2.5 1c-1.5.5-3 0-4-.5L9.5 14C8.5 13.5 6 13.5 5 14l-2 1"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 5c-1-1.5-2.5-2-4-2S5 4 4.5 5.5"
-          />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19h7" />
-        </svg>
-      ),
+      category: "PADRÓN ECUESTRE",
+      items: [
+        {
+          name: "Caballos",
+          href: "/horses",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 10c2-1 4.5-1 6.5 0l2.5 1.5c1 .5 2.5 0 3-1l1-2c.5-1 2-1.5 3-1h1.5c.8 0 1.5.7 1.5 1.5v2.5c0 1.5-1 3-2.5 3.5l-2.5 1c-1.5.5-3 0-4-.5L9.5 14C8.5 13.5 6 13.5 5 14l-2 1"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 5c-1-1.5-2.5-2-4-2S5 4 4.5 5.5"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19h7" />
+            </svg>
+          ),
+        },
+        {
+          name: "Jinetes",
+          href: "/riders",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M18 21a6 6 0 0 0-12 0"
+              />
+              <circle cx="12" cy="10" r="4" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v2" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7 3.5c1-1 2.5-1.5 5-1.5s4 .5 5 1.5"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Propietarios",
+          href: "/owners",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+              />
+              <circle cx="12" cy="10" r="3" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 17c0-2.5 1.5-4 4-4s4 1.5 4 4"
+              />
+            </svg>
+          ),
+        },
+      ],
     },
     {
-      name: "Jinetes",
-      href: "/riders",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M18 21a6 6 0 0 0-12 0"
-          />
-          <circle cx="12" cy="10" r="4" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v2" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M7 3.5c1-1 2.5-1.5 5-1.5s4 .5 5 1.5"
-          />
-        </svg>
-      ),
-    },
-    {
-      name: "Propietarios",
-      href: "/owners",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-          />
-          <circle cx="12" cy="10" r="3" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M8 17c0-2.5 1.5-4 4-4s4 1.5 4 4"
-          />
-        </svg>
-      ),
-    },
-    {
-      name: "Usuarios",
-      href: "/users",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-          />
-          <circle cx="9" cy="7" r="4" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M22 21v-2a4 4 0 0 0-3-3.87"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16 3.13a4 4 0 0 1 0 7.75"
-          />
-        </svg>
-      ),
-    },
-    {
-      name: "Clubes",
-      href: "/tenants",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 21V10l7-6 7 6v11"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M9 21v-4a3 3 0 0 1 6 0v4"
-          />
-          <circle cx="12" cy="11" r="1.5" />
-        </svg>
-      ),
-    },
-    {
-      name: "Reglas y Modalidades",
-      href: "/competition-types",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"
-          />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h10" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 10h10" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h10" />
-        </svg>
-      ),
-    },
-    {
-      name: "Auditoría de Sistema",
-      href: "/admin/audit",
-      icon: (
-        <svg
-          className="h-5 w-5 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 0v1.5"
-          />
-        </svg>
-      ),
+      category: "ADMINISTRACIÓN Y SEGURIDAD",
+      items: [
+        {
+          name: "Usuarios",
+          href: "/users",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+              />
+              <circle cx="9" cy="7" r="4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M22 21v-2a4 4 0 0 0-3-3.87"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16 3.13a4 4 0 0 1 0 7.75"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Clubes",
+          href: "/tenants",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 21V10l7-6 7 6v11"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 21v-4a3 3 0 0 1 6 0v4"
+              />
+              <circle cx="12" cy="11" r="1.5" />
+            </svg>
+          ),
+        },
+        {
+          name: "Auditoría de Sistema",
+          href: "/admin/audit",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 0v1.5"
+              />
+            </svg>
+          ),
+        },
+      ],
     },
   ];
 
@@ -330,46 +361,55 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Enlaces de Navegación del Sidebar */}
           <div className="flex-1 flex flex-col overflow-y-auto px-3 py-6 transition-all duration-300">
-            <nav className="flex-1 space-y-1.5">
-              {navItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center rounded-xl transition-all duration-200 group relative ${
-                      isCollapsed
-                        ? "justify-center p-3"
-                        : "px-4 py-3 text-sm font-medium"
-                    } ${
-                      isActive
-                        ? "bg-white/10 text-equus-tan-light border-l-4 border-equus-tan-dark shadow-sm" +
-                          (isCollapsed ? " pl-2" : " pl-3 scale-[1.02]")
-                        : "text-white/70 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <span
-                      className={`transition-colors duration-200 ${isCollapsed ? "" : "mr-3"} ${isActive ? "text-equus-tan-light" : "text-white/50 group-hover:text-equus-tan-light"}`}
-                    >
-                      {item.icon}
-                    </span>
-                    {!isCollapsed && (
-                      <span className="transition-opacity duration-300 whitespace-nowrap animate-fade-in">
-                        {item.name}
-                      </span>
-                    )}
+            <nav className="flex-1 space-y-4">
+              {navGroups.map((group, groupIdx) => (
+                <div key={groupIdx} className="space-y-1.5">
+                  {group.category && !isCollapsed && (
+                    <div className="text-[10px] text-white/40 font-bold tracking-widest uppercase mt-4 mb-2 px-4 select-none animate-fade-in">
+                      {group.category}
+                    </div>
+                  )}
+                  {group.items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/" && pathname.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`flex items-center rounded-xl transition-all duration-200 group relative ${
+                          isCollapsed
+                            ? "justify-center p-3"
+                            : "px-4 py-3 text-sm font-medium"
+                        } ${
+                          isActive
+                            ? "bg-white/10 text-equus-tan-light border-l-4 border-equus-tan-dark shadow-sm" +
+                              (isCollapsed ? " pl-2" : " pl-3 scale-[1.02]")
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span
+                          className={`transition-colors duration-200 ${isCollapsed ? "" : "mr-3"} ${isActive ? "text-equus-tan-light" : "text-white/50 group-hover:text-equus-tan-light"}`}
+                        >
+                          {item.icon}
+                        </span>
+                        {!isCollapsed && (
+                          <span className="transition-opacity duration-300 whitespace-nowrap animate-fade-in">
+                            {item.name}
+                          </span>
+                        )}
 
-                    {/* Premium Tooltip shown only when collapsed */}
-                    {isCollapsed && (
-                      <div className="absolute left-16 bg-slate-900 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 shadow-md whitespace-nowrap z-50">
-                        {item.name}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
+                        {/* Premium Tooltip shown only when collapsed */}
+                        {isCollapsed && (
+                          <div className="absolute left-16 bg-slate-900 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 shadow-md whitespace-nowrap z-50">
+                            {item.name}
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
           </div>
 
@@ -521,27 +561,36 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
 
           {/* Enlaces de Navegación del Drawer */}
-          <nav className="flex-1 space-y-1.5 overflow-y-auto py-6">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group ${
-                    isActive
-                      ? "bg-white/10 text-equus-tan-light border-l-4 border-equus-tan-dark pl-3 scale-[1.01]"
-                      : "text-white/70 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.name}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 space-y-4 overflow-y-auto py-6">
+            {navGroups.map((group, groupIdx) => (
+              <div key={groupIdx} className="space-y-1.5">
+                {group.category && (
+                  <div className="text-[10px] text-white/40 font-bold tracking-widest uppercase mt-4 mb-2 px-4 select-none">
+                    {group.category}
+                  </div>
+                )}
+                {group.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group ${
+                        isActive
+                          ? "bg-white/10 text-equus-tan-light border-l-4 border-equus-tan-dark pl-3 scale-[1.01]"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span className="mr-3">{item.icon}</span>
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           {/* Mobile Logout and Tenant Info */}
