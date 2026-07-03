@@ -279,9 +279,6 @@ export function CompetitionTypesPage() {
                     <h3 className="font-bold text-slate-800 text-lg leading-snug">
                       {type.name}
                     </h3>
-                    <span className="bg-slate-100 text-slate-500 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md">
-                      UUID
-                    </span>
                   </div>
 
                   {/* RULE VALUES DISPLAY */}

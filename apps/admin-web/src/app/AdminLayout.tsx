@@ -58,6 +58,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       return "Modalidades de Competencia";
     if (path.startsWith("/tenants")) return "Clubes y Organizaciones";
     if (path.startsWith("/users")) return "Usuarios";
+    if (path.startsWith("/admin/audit")) return "Auditoría de Sistema";
     return "Consola de Administración";
   };
 
@@ -267,6 +268,25 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h10" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 10h10" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h10" />
+        </svg>
+      ),
+    },
+    {
+      name: "Auditoría de Sistema",
+      href: "/admin/audit",
+      icon: (
+        <svg
+          className="h-5 w-5 flex-shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 0v1.5"
+          />
         </svg>
       ),
     },

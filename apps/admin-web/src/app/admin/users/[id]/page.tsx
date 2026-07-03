@@ -169,9 +169,6 @@ export default function UserDetailPage() {
               <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
                 {user.name}
               </h1>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                ID Interno: {user.id}
-              </p>
             </div>
           </div>
           <div>

@@ -313,12 +313,6 @@ export function TenantsPage() {
                     scope="col"
                     className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
                   >
-                    Identificador Único (UUID)
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >
                     Fecha Alta
                   </th>
                   <th
@@ -355,9 +349,9 @@ export function TenantsPage() {
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
                       {tenant.jerseyImageUrl ? (
                         <img
-                          src={tenant.jerseyImageUrl}
-                          alt="Camiseta"
-                          className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                           src={tenant.jerseyImageUrl}
+                           alt="Camiseta"
+                           className="w-8 h-8 rounded-full object-cover border border-slate-200"
                         />
                       ) : (
                         <span className="text-slate-300" title="Sin camiseta">
@@ -376,9 +370,6 @@ export function TenantsPage() {
                           </svg>
                         </span>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-xs font-mono text-slate-400">
-                      {tenant.id}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-400">
                       {tenant.createdAt ? (

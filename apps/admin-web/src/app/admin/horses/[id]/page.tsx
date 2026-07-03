@@ -169,9 +169,6 @@ export default function HorseDetailPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-emerald-100 font-mono mt-1 opacity-90 drop-shadow">
-                  ID Interno: {horse.id}
-                </p>
               </div>
             </div>
             <div className="pb-5">
