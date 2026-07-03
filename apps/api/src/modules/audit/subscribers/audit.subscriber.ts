@@ -1,17 +1,26 @@
 import {
   EventSubscriber,
   EntitySubscriberInterface,
+  DataSource,
   InsertEvent,
   UpdateEvent,
   RemoveEvent,
 } from "typeorm";
+import { Injectable } from "@nestjs/common";
 import { AuditLog } from "../entities/audit-log.entity";
 import { AuditAction } from "@equuscronos/shared";
 import { Tenant } from "../../tenants/entities/tenant.entity";
+import { User } from "../../users/entities/user.entity";
+import { tenantStorage } from "../../auth/tenant.storage";
 
+@Injectable()
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
   private static fallbackTenant: Tenant | null = null;
+
+  constructor(private readonly dataSource: DataSource) {
+    this.dataSource.subscribers.push(this);
+  }
 
   // Escucha cambios en TODAS las entidades del sistema
   listenTo() {
@@ -25,8 +34,11 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const tenant = await this.getTenantForEntity(event);
     if (!tenant) return;
 
+    const user = await this.getCurrentUser(event);
+
     const auditLog = event.manager.create(AuditLog, {
       tenant,
+      user,
       action: AuditAction.INSERT,
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity),
@@ -35,15 +47,18 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     await event.manager.save(AuditLog, auditLog);
   }
 
-  // Intercepta modificaciones (Ej: Cambio de pulso de 65 a 60)
+  // Intercepta modificaciones
   async afterUpdate(event: UpdateEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
     const tenant = await this.getTenantForEntity(event);
     if (!tenant) return;
 
+    const user = await this.getCurrentUser(event);
+
     const auditLog = event.manager.create(AuditLog, {
       tenant,
+      user,
       action: AuditAction.UPDATE,
       entityName: event.metadata.tableName,
       entityId:
@@ -62,8 +77,11 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const tenant = await this.getTenantForEntity(event);
     if (!tenant) return;
 
+    const user = await this.getCurrentUser(event);
+
     const auditLog = event.manager.create(AuditLog, {
       tenant,
+      user,
       action: AuditAction.DELETE,
       entityName: event.metadata.tableName,
       entityId: event.entityId,
@@ -77,6 +95,26 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   // ====================================================================
 
   /**
+   * Obtiene el usuario autenticado de la sesión.
+   */
+  private async getCurrentUser(
+    event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>,
+  ): Promise<User | null> {
+    const store = tenantStorage.getStore();
+    const userId = store?.userId;
+    if (userId) {
+      try {
+        return await event.manager.findOne(User, {
+          where: { id: userId },
+        });
+      } catch (err) {
+        console.error("[AuditSubscriber] Error fetching current user:", err);
+      }
+    }
+    return null;
+  }
+
+  /**
    * Obtiene el tenant para la auditoría, usando la entidad o un fallback.
    */
   private async getTenantForEntity(
@@ -85,8 +123,29 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const entity = event.entity;
     if (entity) {
       if (entity.tenant) return entity.tenant;
+      if (entity.tenantId) {
+        try {
+          const tenant = await event.manager.findOne(Tenant, {
+            where: { id: entity.tenantId },
+          });
+          if (tenant) return tenant;
+        } catch {}
+      }
       if (entity.competition?.tenant) return entity.competition.tenant;
       if (entity.entry?.tenant) return entity.entry.tenant;
+    }
+
+    const store = tenantStorage.getStore();
+    const tenantId = store?.tenantId;
+    if (tenantId) {
+      try {
+        const tenant = await event.manager.findOne(Tenant, {
+          where: { id: tenantId },
+        });
+        if (tenant) return tenant;
+      } catch (err) {
+        console.error("[AuditSubscriber] Error fetching tenant from store:", err);
+      }
     }
 
     if (!AuditSubscriber.fallbackTenant) {

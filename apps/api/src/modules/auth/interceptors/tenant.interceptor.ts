@@ -11,14 +11,13 @@ import { tenantStorage } from "../tenant.storage";
 export class TenantInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    // Extraemos el tenantId del usuario autenticado (inyectado por Passport-JWT)
-    // Si el usuario tiene el rol ADMIN, no limitamos su tenant (bypassea RLS)
     const tenantId =
       request.user?.role === "ADMIN" ? "" : request.user?.tenantId || "";
+    const userId = request.user?.id || "";
 
     // Ejecutamos el flujo de la solicitud dentro del contexto del AsyncLocalStorage
     return new Observable((subscriber) => {
-      tenantStorage.run({ tenantId }, () => {
+      tenantStorage.run({ tenantId, userId }, () => {
         next.handle().subscribe({
           next: (val) => subscriber.next(val),
           error: (err) => subscriber.error(err),
