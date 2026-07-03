@@ -67,7 +67,11 @@ export default function CompetitionEditPage({
         location: comp.location || "",
         isFederated: comp.isFederated ?? false,
         maxHeartRate: comp.maxHeartRate ?? 65,
-        stages: comp.stages || [],
+        stages: (comp.stages || []).map((s) => ({
+          stageNumber: s.stageNumber,
+          distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
+          neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+        })),
       });
     }
   }, [comp]);
@@ -183,6 +187,12 @@ export default function CompetitionEditPage({
       return;
     }
 
+    const cleanStages = (formData.stages || []).map((s) => ({
+      stageNumber: s.stageNumber,
+      distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
+      neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+    }));
+
     try {
       await CompetitionService.update(comp.id, {
         name: formData.name.trim(),
@@ -193,7 +203,7 @@ export default function CompetitionEditPage({
             : formData.startTime,
         location: formData.location.trim() || undefined,
         maxHeartRate: formData.maxHeartRate,
-        stages: formData.stages,
+        stages: cleanStages,
       });
 
       queryClient.invalidateQueries({ queryKey: ["competition", comp.id] });

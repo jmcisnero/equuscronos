@@ -194,7 +194,11 @@ export default function CompetitionsPage() {
       location: comp.location || "",
       isFederated: comp.isFederated ?? false,
       maxHeartRate: comp.maxHeartRate ?? 65,
-      stages: comp.stages || [],
+      stages: (comp.stages || []).map((s) => ({
+        stageNumber: s.stageNumber,
+        distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
+        neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+      })),
       tenantId: comp.tenant?.id || "",
       competitionTypeId: comp.competitionType?.id || "",
     });
@@ -314,6 +318,12 @@ export default function CompetitionsPage() {
       }
     }
 
+    const cleanStages = (formData.stages || []).map((s) => ({
+      stageNumber: s.stageNumber,
+      distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
+      neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+    }));
+
     try {
       if (editingCompetition) {
         // Modo Edición
@@ -326,7 +336,7 @@ export default function CompetitionsPage() {
               : formData.startTime,
           location: formData.location.trim() || undefined,
           maxHeartRate: formData.maxHeartRate,
-          stages: formData.stages,
+          stages: cleanStages,
         });
       } else {
         // Modo Creación
@@ -342,7 +352,7 @@ export default function CompetitionsPage() {
           location: formData.location.trim() || undefined,
           isFederated: formData.isFederated,
           maxHeartRate: formData.maxHeartRate,
-          stages: formData.stages,
+          stages: cleanStages,
         };
         await CompetitionService.create(createDto);
       }
