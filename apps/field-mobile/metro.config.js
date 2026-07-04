@@ -19,22 +19,34 @@ config.resolver.nodeModulesPaths = [
 // 3. Enable hierarchical lookup (recommended in modern Metro to resolve transitive/nested dependencies)
 config.resolver.disableHierarchicalLookup = false;
 
-// 4. Force all resolutions of 'react' and 'react-native' to use the mobile app's local node_modules (React 18)
-// to prevent duplicate package versions (React 18 vs React 19) in the monorepo bundling process.
+const reactPath = path.dirname(require.resolve('react/package.json'));
+const reactNativePath = path.dirname(require.resolve('react-native/package.json'));
+let virtualizedListsPath;
+try {
+  virtualizedListsPath = path.dirname(require.resolve('@react-native/virtualized-lists/package.json'));
+} catch (e) {
+  virtualizedListsPath = path.resolve(reactNativePath, 'node_modules/@react-native/virtualized-lists');
+}
+
+// 4. Force all resolutions of 'react', 'react-native' and '@react-native/virtualized-lists'
+// to use the exact resolved package paths in the monorepo bundling process.
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'react' || moduleName.startsWith('react/')) {
-    const redirectedName = moduleName.replace('react', path.resolve(projectRoot, 'node_modules/react'));
+    const redirectedName = moduleName === 'react'
+      ? reactPath
+      : moduleName.replace('react/', reactPath + '/');
     return context.resolveRequest(context, redirectedName, platform);
   }
   if (moduleName === 'react-native' || moduleName.startsWith('react-native/')) {
-    const redirectedName = moduleName.replace('react-native', path.resolve(projectRoot, 'node_modules/react-native'));
+    const redirectedName = moduleName === 'react-native'
+      ? reactNativePath
+      : moduleName.replace('react-native/', reactNativePath + '/');
     return context.resolveRequest(context, redirectedName, platform);
   }
   if (moduleName === '@react-native/virtualized-lists' || moduleName.startsWith('@react-native/virtualized-lists/')) {
-    const redirectedName = moduleName.replace(
-      '@react-native/virtualized-lists',
-      path.resolve(projectRoot, 'node_modules/react-native/node_modules/@react-native/virtualized-lists')
-    );
+    const redirectedName = moduleName === '@react-native/virtualized-lists'
+      ? virtualizedListsPath
+      : moduleName.replace('@react-native/virtualized-lists/', virtualizedListsPath + '/');
     return context.resolveRequest(context, redirectedName, platform);
   }
   return context.resolveRequest(context, moduleName, platform);
