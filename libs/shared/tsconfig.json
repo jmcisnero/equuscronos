@@ -5,7 +5,8 @@
     "target": "es2021",
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": false
+    "strict": false,
+    "skipLibCheck": true
   },
   "include": ["src/**/*"]
 }
