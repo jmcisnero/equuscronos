@@ -33,6 +33,9 @@
         "projectId": "6074fa71-883c-4f9a-8178-364113aea896"
       }
     },
-    "owner": "equuscronos"
+    "owner": "equuscronos",
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
