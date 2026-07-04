@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FDFBF7"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.equuscronos.fieldmobile"
@@ -25,6 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6074fa71-883c-4f9a-8178-364113aea896"
+      }
+    },
+    "owner": "equuscronos"
   }
 }

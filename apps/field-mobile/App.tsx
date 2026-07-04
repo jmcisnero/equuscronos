@@ -589,7 +589,7 @@ function MainApp() {
           ]}
           value={apiUrl}
           onChangeText={updateApiUrl}
-          placeholder="http://192.168.1.12:3000"
+          placeholder="https://api.equuscronos.com"
           placeholderTextColor="#64748B"
           autoCapitalize="none"
           autoCorrect={false}
