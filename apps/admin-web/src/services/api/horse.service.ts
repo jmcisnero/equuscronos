@@ -9,13 +9,21 @@ export const HorseService = {
       ? `${API_URL}/horses?q=${encodeURIComponent(search)}`
       : `${API_URL}/horses`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error("Error al cargar la lista de caballos");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al cargar la lista de caballos");
+    }
     return response.json();
   },
 
   async getById(id: string): Promise<Horse> {
     const response = await fetch(`${API_URL}/horses/${id}`);
-    if (!response.ok) throw new Error("Error al cargar los datos del caballo");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al cargar los datos del caballo");
+    }
     return response.json();
   },
 
@@ -25,7 +33,11 @@ export const HorseService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Error al registrar el caballo");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al registrar el caballo");
+    }
     return response.json();
   },
 
@@ -35,7 +47,11 @@ export const HorseService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Error al actualizar el caballo");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al actualizar el caballo");
+    }
     return response.json();
   },
 
@@ -43,7 +59,11 @@ export const HorseService = {
     const response = await fetch(`${API_URL}/horses/${id}`, {
       method: "DELETE",
     });
-    if (!response.ok) throw new Error("Error al dar de baja el caballo");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al dar de baja el caballo");
+    }
   },
 
   async uploadPhoto(id: string, file: File): Promise<Horse> {
@@ -54,7 +74,11 @@ export const HorseService = {
       method: "POST",
       body: formData,
     });
-    if (!response.ok) throw new Error("Error al subir la foto del caballo");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Error al subir la foto del caballo");
+    }
     return response.json();
   },
 };

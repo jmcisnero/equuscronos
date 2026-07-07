@@ -28,7 +28,7 @@ export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Dar de alta un caballo" })
   create(@Body() createHorseDto: CreateHorseDto) {
     return this.horsesService.create(createHorseDto);
@@ -49,7 +49,7 @@ export class HorsesController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Actualizar ficha del caballo" })
   update(
     @Param("id", ParseUUIDPipe) id: string,

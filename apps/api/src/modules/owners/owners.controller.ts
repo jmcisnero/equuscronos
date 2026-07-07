@@ -25,7 +25,7 @@ export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Registrar nuevo propietario" })
   create(@Body() createOwnerDto: CreateOwnerDto) {
     return this.ownersService.create(createOwnerDto);
@@ -46,7 +46,7 @@ export class OwnersController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Modificar propietario" })
   update(
     @Param("id", ParseUUIDPipe) id: string,

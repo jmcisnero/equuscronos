@@ -474,9 +474,9 @@ export default function RidersPage() {
       {/* 4. MODALFORM (DISEÑO LIMPIO Y PREMIUM) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 animate-slide-up">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-100 animate-slide-up">
             {/* Cabecera del Modal */}
-            <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+            <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">
                   {editingRider
@@ -509,7 +509,7 @@ export default function RidersPage() {
             </div>
 
             {/* Formulario */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               {formError && (
                 <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-semibold flex items-center space-x-2">
                   <svg

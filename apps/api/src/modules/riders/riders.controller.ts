@@ -24,7 +24,7 @@ export class RidersController {
   constructor(private readonly ridersService: RidersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Registrar jinete" })
   create(@Body() createRiderDto: CreateRiderDto) {
     return this.ridersService.create(createRiderDto);
@@ -43,7 +43,7 @@ export class RidersController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Modificar datos del jinete" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
