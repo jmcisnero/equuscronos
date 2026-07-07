@@ -14,12 +14,14 @@ import { CompetitionType } from "@/types/competition-type";
 import { TenantService } from "@/services/api/tenant.service";
 import { CompetitionTypeService } from "@/services/api/competition-type.service";
 import { useAuthStore } from "@/store/auth.store";
+import { useQueryClient } from "@tanstack/react-query";
 
 const DEFAULT_TENANT_ID = "a1000000-0000-0000-0000-000000000001"; // Sociedad Hípica de Melo
 const DEFAULT_COMP_TYPE_ID = "c1000000-0000-0000-0000-000000000001"; // Raid FEU 60km
 
 export default function CompetitionsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -338,6 +340,8 @@ export default function CompetitionsPage() {
           maxHeartRate: formData.maxHeartRate,
           stages: cleanStages,
         });
+        queryClient.invalidateQueries({ queryKey: ["competition", editingCompetition.id] });
+        queryClient.invalidateQueries({ queryKey: ["competitions"] });
       } else {
         // Modo Creación
         const createDto: CreateCompetitionDto = {
@@ -355,6 +359,7 @@ export default function CompetitionsPage() {
           stages: cleanStages,
         };
         await CompetitionService.create(createDto);
+        queryClient.invalidateQueries({ queryKey: ["competitions"] });
       }
       setIsModalOpen(false);
       setEditingCompetition(null);
@@ -381,6 +386,8 @@ export default function CompetitionsPage() {
     ) {
       try {
         await CompetitionService.delete(id);
+        queryClient.invalidateQueries({ queryKey: ["competition", id] });
+        queryClient.invalidateQueries({ queryKey: ["competitions"] });
         loadCompetitions(searchQuery);
       } catch (err: any) {
         alert(err.message || "No se pudo eliminar la competencia.");

@@ -246,28 +246,42 @@ export default function StartListPage() {
       }
     } catch (err: any) {
       console.error("[MUTATE ERROR]", err);
+      const errMsg = err.message || "";
+      
       if (
-        err.status === 409 ||
-        (err.message &&
-          (err.message.includes("dorsal") ||
-            err.message.includes("ya está en uso") ||
-            err.message.includes("duplicado") ||
-            err.message.includes("Conflict")))
+        errMsg.includes("dorsal") ||
+        errMsg.includes("ya está en uso") ||
+        errMsg.includes("bibNumber")
       ) {
         setSubmitError(
           "Dorsal duplicado: El número ya fue asignado a otro binomio en esta carrera.",
         );
       } else if (
-        err.message &&
-        (err.message.includes("binomio") ||
-          err.message.includes("ya está inscripto"))
+        errMsg.includes("jinete") ||
+        errMsg.includes("rider")
       ) {
         setSubmitError(
-          "Binomio duplicado: Este jinete y caballo ya están registrados juntos en esta carrera.",
+          "Jinete duplicado: El jinete seleccionado ya está inscripto en esta carrera.",
+        );
+      } else if (
+        errMsg.includes("caballo") ||
+        errMsg.includes("horse")
+      ) {
+        setSubmitError(
+          "Caballo duplicado: El caballo seleccionado ya está inscripto en esta carrera.",
+        );
+      } else if (
+        err.status === 409 ||
+        errMsg.includes("Conflict") ||
+        errMsg.includes("duplicado") ||
+        errMsg.includes("ya está inscripto")
+      ) {
+        setSubmitError(
+          errMsg || "Conflicto: Algunos de los datos ya están registrados en esta carrera.",
         );
       } else {
         setSubmitError(
-          err.message ||
+          errMsg ||
             "Error inesperado al registrar el binomio. Verifique los datos.",
         );
       }
