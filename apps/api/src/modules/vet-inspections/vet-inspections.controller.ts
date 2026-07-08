@@ -7,7 +7,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("Clínica Veterinaria (Vet Inspections)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.VET)
+@Roles(UserRole.VET, UserRole.ADMIN)
 @Controller("vet-inspections")
 export class VetInspectionsController {
   constructor(private readonly vetInspectionsService: VetInspectionsService) {}
