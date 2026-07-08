@@ -59,6 +59,7 @@ export class CompetitionsService {
         startTime: dto.startTime,
         location: dto.location,
         isFederated: dto.isFederated ?? false,
+        maxHeartRate: dto.maxHeartRate,
         status: dto.status,
       });
 
