@@ -90,4 +90,14 @@ export class LeaderboardEntryDto {
     example: 1,
   })
   completedStages?: number;
+
+  @ApiPropertyOptional({
+    description: "Club/Tenant representado por el competidor",
+  })
+  representedTenant?: {
+    id: string;
+    name: string;
+    location?: string;
+    jerseyImageUrl?: string;
+  };
 }

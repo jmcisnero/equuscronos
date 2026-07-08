@@ -317,13 +317,13 @@ describe("Tenants & Users Administration (e2e)", () => {
         .expect(200);
     });
 
-    it("debería denegar a un CLUB_ADMIN la creación o modificación de datos globales (POST /admin/horses -> 403)", async () => {
+    it("debería denegar a un CLUB_ADMIN la creación o modificación de datos globales (POST /admin/tenants -> 403)", async () => {
       await request(app.getHttpServer())
-        .post("/admin/horses")
+        .post("/admin/tenants")
         .set("Authorization", `Bearer ${clubAdminToken}`)
         .send({
-          name: "Caballo No Autorizado",
-          gatePass: "12345",
+          name: "Club No Autorizado",
+          location: "Uruguay",
         })
         .expect(403);
     });

@@ -6,6 +6,81 @@ import {
   LeaderboardEntry,
 } from "../hooks/useLiveLeaderboard";
 
+const FallbackJersey = ({
+  representedTenant,
+}: {
+  representedTenant?: {
+    name: string;
+  } | null;
+}) => {
+  const initials = representedTenant?.name
+    ? representedTenant.name
+        .split(" ")
+        .filter((w) => w.length > 1) // Evitar preposiciones cortas
+        .map((w) => w[0])
+        .join("")
+        .substring(0, 3)
+        .toUpperCase()
+    : "L";
+
+  return (
+    <div
+      className="relative flex items-center justify-center w-7 h-7 group cursor-help"
+      title={representedTenant?.name || "Inscripción Libre / Sin Club"}
+    >
+      <svg
+        className="w-7 h-7 text-slate-100 fill-slate-50 stroke-slate-400 stroke-1 hover:text-slate-200 transition-all drop-shadow-sm"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M12 6.5 L16.5 3.5 L21.5 6 L19.5 10.5 H17.5 V21 H6.5 V10.5 H4.5 L2.5 6 L7.5 3.5 Z"
+          strokeLinejoin="round"
+        />
+        <path d="M9 3.5 L12 6.5 L15 3.5" fill="none" />
+      </svg>
+      <span className="absolute text-[8px] font-black text-slate-700 pointer-events-none mt-1.5 tracking-tight uppercase">
+        {initials}
+      </span>
+    </div>
+  );
+};
+
+const ClubJersey = ({
+  representedTenant,
+}: {
+  representedTenant?: {
+    id: string;
+    name: string;
+    location?: string;
+    jerseyImageUrl?: string;
+  } | null;
+}) => {
+  const shirtUrl =
+    representedTenant?.jerseyImageUrl ||
+    (representedTenant as any)?.shirtUrl;
+
+  const [hasError, setHasError] = React.useState(false);
+
+  if (shirtUrl && !hasError) {
+    return (
+      <div
+        className="relative flex items-center justify-center w-7 h-7 group"
+        title={representedTenant?.name}
+      >
+        <img
+          src={shirtUrl}
+          alt={`Camiseta de ${representedTenant?.name || "Club"}`}
+          className="w-7 h-7 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]"
+          onError={() => setHasError(true)}
+        />
+      </div>
+    );
+  }
+
+  return <FallbackJersey representedTenant={representedTenant} />;
+};
+
 interface LeaderboardTableProps {
   competitionId: string;
   searchQuery?: string;
@@ -257,9 +332,12 @@ export default function LeaderboardTable({
                         --
                       </span>
                     )}
-                    <span className="bg-slate-950 text-white font-mono text-xs font-extrabold px-2 py-1 rounded-lg">
-                      #{entry.bibNumber}
-                    </span>
+                    <div className="flex items-center space-x-1.5">
+                      <ClubJersey representedTenant={entry.representedTenant} />
+                      <span className="bg-slate-950 text-white font-mono text-xs font-extrabold px-2 py-1 rounded-lg">
+                        #{entry.bibNumber}
+                      </span>
+                    </div>
                   </div>
                   {renderStatusBadge(entry.status)}
                 </div>
@@ -451,9 +529,12 @@ export default function LeaderboardTable({
 
                       {/* DORSAL */}
                       <td className="py-4.5 px-3 text-center">
-                        <span className="inline-block bg-slate-900 text-white font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg">
-                          #{entry.bibNumber}
-                        </span>
+                        <div className="flex flex-col items-center space-y-1.5">
+                          <ClubJersey representedTenant={entry.representedTenant} />
+                          <span className="inline-block bg-slate-900 text-white font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg">
+                            #{entry.bibNumber}
+                          </span>
+                        </div>
                       </td>
 
                       {/* BINOMIO */}

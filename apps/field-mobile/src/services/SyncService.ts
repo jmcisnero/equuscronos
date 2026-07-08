@@ -8,6 +8,13 @@ class SyncService {
   private isConnected = true;
   private onStatusChangeCallback: ((connected: boolean) => void) | null = null;
   private onQueueChangeCallback: (() => void) | null = null;
+  private lastAttemptTimes = new Map<number, number>();
+  private retryTimeout: any = null;
+
+  private getBackoffDelay(attempts: number): number {
+    // Delay = 2^attempts * 1000 ms, capped at 60s
+    return Math.min(Math.pow(2, attempts) * 1000, 60000);
+  }
 
   constructor() {
     // Monitor real-time connection status
@@ -115,6 +122,11 @@ class SyncService {
       return;
     }
 
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
+
     this.isSyncing = true;
     console.log("[SyncService] Commencing sync queue verification...");
 
@@ -135,6 +147,27 @@ class SyncService {
       console.log(`[SyncService] ${pending.length} pending items found.`);
 
       for (const item of pending) {
+        // Exponential backoff check
+        if (item.attempts > 0) {
+          const lastAttempt = this.lastAttemptTimes.get(item.id) || 0;
+          const delay = this.getBackoffDelay(item.attempts);
+          const nextAllowedTime = lastAttempt + delay;
+          if (Date.now() < nextAllowedTime) {
+            const remainingDelay = nextAllowedTime - Date.now();
+            console.log(
+              `[SyncService] Item #${item.id} is in backoff window. Skipping remaining queue to preserve order. Next retry in ${Math.round(remainingDelay / 1000)}s`,
+            );
+            if (!this.retryTimeout) {
+              this.retryTimeout = setTimeout(() => {
+                this.syncPendingItems().catch((err) =>
+                  console.error("[SyncService] Retry trigger failed:", err),
+                );
+              }, Math.max(remainingDelay, 100));
+            }
+            break;
+          }
+        }
+
         try {
           const payload = JSON.parse(item.payload);
 
@@ -237,6 +270,9 @@ class SyncService {
             `[SyncService] Synchronization failed for item #${item.id} (Attempt ${nextAttempt}). Error: ${errMsg}`,
           );
 
+          // Track the attempt timestamp in memory
+          this.lastAttemptTimes.set(item.id, Date.now());
+
           // Update local status with retry count and log message
           await db.runAsync(
             "UPDATE sync_queue SET attempts = ?, error_message = ? WHERE id = ?;",
@@ -246,6 +282,18 @@ class SyncService {
           if (this.onQueueChangeCallback) {
             this.onQueueChangeCallback();
           }
+
+          // Schedule a retry after backoff delay
+          const delay = this.getBackoffDelay(nextAttempt);
+          console.log(`[SyncService] Scheduling retry in ${delay / 1000}s due to error.`);
+          if (this.retryTimeout) {
+            clearTimeout(this.retryTimeout);
+          }
+          this.retryTimeout = setTimeout(() => {
+            this.syncPendingItems().catch((err) =>
+              console.error("[SyncService] Retry trigger failed:", err),
+            );
+          }, delay);
 
           // CRITICAL: We stop processing the queue.
           // In Offline-First architectures, we MUST preserve serial ordering (FIFO).

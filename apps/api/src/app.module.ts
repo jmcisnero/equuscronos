@@ -4,13 +4,14 @@ import { tenantStorage } from "./modules/auth/tenant.storage";
 
 const originalQuery = PostgresQueryRunner.prototype.query;
 PostgresQueryRunner.prototype.query = async function (
-  this: PostgresQueryRunner,
+  this: any,
   query: string,
   parameters?: any[],
   useZeroQuery?: boolean,
 ) {
   const store = tenantStorage.getStore();
   const tenantId = store?.tenantId || "";
+  const isTx = this.isTransactionActive;
 
   // Do not execute set_config for transaction control statements or config queries themselves
   const isTxControl =
@@ -24,12 +25,16 @@ PostgresQueryRunner.prototype.query = async function (
     !query.includes("set_config") &&
     !query.includes("SET LOCAL")
   ) {
-    const isTx = this.isTransactionActive;
-    await originalQuery.call(
-      this,
-      `SELECT set_config('app.current_tenant_id', $1, $2)`,
-      [tenantId || "", isTx],
-    );
+    const needsConfig = this._lastTenantId !== tenantId || this._lastTxActive !== isTx;
+    if (needsConfig) {
+      await originalQuery.call(
+        this,
+        `SELECT set_config('app.current_tenant_id', $1, $2)`,
+        [tenantId || "", isTx],
+      );
+      this._lastTenantId = tenantId;
+      this._lastTxActive = isTx;
+    }
   }
   return originalQuery.call(this, query, parameters, useZeroQuery);
 };
@@ -56,6 +61,7 @@ import { VetInspectionsModule } from "./modules/vet-inspections/vet-inspections.
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { LeaderboardModule } from "./modules/leaderboard/leaderboard.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 
 // Guards & Interceptors Globales
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
@@ -81,6 +87,12 @@ import { AssetsController } from "./modules/assets/assets.controller";
       logging: ["query", "error"],
     }),
 
+    // Configuración de Throttler para prevenir inundación de sincronización
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minuto
+      limit: 300, // Máximo 300 peticiones por minuto por cliente
+    }]),
+
     // 3. Registro de Módulos (Rutas y Lógica de Negocio)
     AuthModule,
     TenantsModule,
@@ -100,6 +112,10 @@ import { AssetsController } from "./modules/assets/assets.controller";
   ],
   controllers: [AssetsController],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

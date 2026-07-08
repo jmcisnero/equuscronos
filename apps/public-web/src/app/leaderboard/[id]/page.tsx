@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LeaderboardEntry } from "../../../hooks/useLiveLeaderboard";
 import { useCompetitions } from "../../../hooks/useCompetitions";
 import LeaderboardTable from "../../../components/LeaderboardTable";
+import { useSyncStatus } from "../../Providers";
 
 // Datos iniciales de simulación en caso de que la API esté fuera de línea
 const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
@@ -24,6 +25,11 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     averageSpeed: 26.765,
     heartRate: 62,
     nextStageDepartureTime: "2026-03-15T09:29:40Z",
+    representedTenant: {
+      id: "tenant-1",
+      name: "Sociedad Hípica de Melo",
+      location: "Melo, Cerro Largo",
+    },
   },
   {
     rank: 2,
@@ -100,6 +106,14 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
   const [countdown, setCountdown] = useState(30);
   const [hasError, setHasError] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const { setIsConnected } = useSyncStatus();
+
+  useEffect(() => {
+    setIsConnected(!hasError);
+    return () => {
+      setIsConnected(true);
+    };
+  }, [hasError, setIsConnected]);
 
   // Manejar contador regresivo de sincronización en vivo
   useEffect(() => {
@@ -158,49 +172,50 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
 
   return (
     <div className="min-h-screen bg-equus-bg font-sans text-equus-text pb-20">
-      {/* 1. SECCIÓN PRINCIPAL HÉROE */}
-      <div className="relative overflow-hidden bg-slate-900 text-white py-6 px-4 sm:px-6 lg:px-8 shadow-inner">
+      <div className="relative overflow-hidden bg-slate-900 text-white pt-12 pb-8 px-4 sm:px-6 lg:px-8 shadow-inner">
         {/* Decoraciones de fondo */}
         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-96 h-96 bg-equus-green opacity-20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-96 h-96 bg-equus-tan-light opacity-10 rounded-full blur-3xl"></div>
 
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="max-w-3xl">
-            {/* Botón premium de retorno con hitbox de 44px de alto */}
-            <div className="mb-3">
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center space-x-2 text-xs font-black text-equus-tan-light hover:text-white transition-all bg-white/5 border border-white/10 px-4 h-11 rounded-xl hover:bg-white/10"
+          {/* Botón premium de retorno con hitbox de 44px de alto */}
+          <div className="mb-6">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center space-x-2 text-xs font-black text-equus-tan-light hover:text-white transition-all bg-white/5 border border-white/10 px-4 h-11 rounded-xl hover:bg-white/10"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                <span>Volver a Competencias</span>
-              </Link>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              <span>Volver a Competencias</span>
+            </Link>
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl">
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                {currentCompetition?.name ||
+                  (isDemoMode
+                    ? "Clasificación Simulada (Modo Demo)"
+                    : "Monitoreo de Competencia en Vivo")}
+              </h1>
+              <p className="text-slate-300 mt-2 text-xs sm:text-sm">
+                Visualización detallada de tiempos de carrera, pulsaciones,
+                promedios y estados veterinarios para el evento seleccionado.
+              </p>
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              {currentCompetition?.name ||
-                (isDemoMode
-                  ? "Clasificación Simulada (Modo Demo)"
-                  : "Monitoreo de Competencia en Vivo")}
-            </h1>
-            <p className="text-slate-300 mt-2 text-xs sm:text-sm max-w-xl">
-              Visualización detallada de tiempos de carrera, pulsaciones,
-              promedios y estados veterinarios para el evento seleccionado.
-            </p>
-
-            <div className="flex items-center space-x-4 mt-5 bg-white/5 border border-white/10 p-3.5 rounded-2xl max-w-md">
+            <div className="flex items-center space-x-4 bg-white/5 border border-white/10 p-3.5 rounded-2xl w-full lg:w-auto max-w-md lg:flex-shrink-0">
               <div className="flex-shrink-0">
                 {tenant?.jerseyImageUrl ? (
                   <img
@@ -249,91 +264,34 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
 
       {/* 2. ÁREA DE CONTENIDO */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-        {/* Banner informativo de sincronización y controles unificado en una sola barra */}
-        <div className="flex flex-col sm:flex-row items-center justify-between bg-white border border-slate-150 p-4.5 rounded-2xl shadow-sm mb-6 gap-4">
-          <div className="flex items-center space-x-3 text-sm font-bold">
-            {isValidating && !isDemoMode ? (
-              <>
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                </span>
-                <span className="text-amber-850 animate-pulse">
-                  Actualizando clasificaciones en vivo...
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span className="text-slate-800">
-                  Tiempos en Vivo Sincronizados
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => {
-                setIsDemoMode(!isDemoMode);
-                if (!isDemoMode) {
-                  setSimulatedData(INITIAL_SIMULATED_DATA);
-                }
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
-                isDemoMode
-                  ? "bg-equus-tan-light text-slate-900 border-equus-tan-dark shadow-sm"
-                  : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/60"
-              }`}
-            >
-              {isDemoMode ? "Simulación Activa" : "Activar Simulador"}
-            </button>
-          </div>
-        </div>
-
-        {/* 2.1 ALERTA DE ERROR / SUGERENCIA DE SIMULACION */}
+        {/* 2.1 ALERTA DE ERROR */}
         {shouldShowErrorAlert && (
           <div className="mb-8 bg-rose-50 border-l-4 border-rose-500 rounded-xl p-5 shadow-sm animate-fade-in">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start space-x-3">
-                <div className="p-2 rounded-lg bg-rose-100 text-rose-700 mt-0.5 sm:mt-0">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-rose-900">
-                    Conexión en vivo temporalmente no disponible
-                  </h3>
-                  <p className="text-xs text-rose-700 mt-1">
-                    No fue posible contactar al servidor de cronometraje en este
-                    momento. Puedes activar la simulación en vivo para explorar
-                    los datos en modo de prueba.
-                  </p>
-                </div>
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-lg bg-rose-100 text-rose-700 flex-shrink-0">
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
               </div>
-              <button
-                onClick={() => {
-                  setIsDemoMode(true);
-                  setSimulatedData(INITIAL_SIMULATED_DATA);
-                }}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg px-4 py-2 shadow-sm transition-all whitespace-nowrap self-stretch sm:self-auto text-center"
-              >
-                Activar Modo Simulación (Demo)
-              </button>
+              <div>
+                <h3 className="text-sm font-bold text-rose-900">
+                  Conexión en vivo temporalmente no disponible
+                </h3>
+                <p className="text-xs text-rose-700 mt-1">
+                  No fue posible contactar al servidor de cronometraje en este
+                  momento.
+                </p>
+              </div>
             </div>
           </div>
         )}

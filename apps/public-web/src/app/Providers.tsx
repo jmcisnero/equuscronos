@@ -1,22 +1,37 @@
 "use client";
 
-import React from "react";
+import React, { createContext, useState, useContext } from "react";
 import { SWRConfig } from "swr";
+
+interface SyncStatusContextType {
+  isConnected: boolean;
+  setIsConnected: (connected: boolean) => void;
+}
+
+export const SyncStatusContext = createContext<SyncStatusContextType>({
+  isConnected: true,
+  setIsConnected: () => {},
+});
+
+export const useSyncStatus = () => useContext(SyncStatusContext);
 
 interface ProvidersProps {
   children: React.ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
+  const [isConnected, setIsConnected] = useState(true);
+
   return (
-    <SWRConfig
+    <SyncStatusContext.Provider value={{ isConnected, setIsConnected }}>
+      <SWRConfig
       value={{
         // Revalidar al enfocar la pestaña
         revalidateOnFocus: true,
         // Revalidar al recuperar conexión
         revalidateOnReconnect: true,
         // Configuración de reintentos resilientes con Backoff Exponencial en errores 5xx del backend
-        onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+        onErrorRetry: (error: any, key: any, config: any, revalidate: any, { retryCount }: { retryCount: number }) => {
           const status = error?.status;
 
           // No reintentar si es error de cliente 4xx (400, 401, 403, 404, etc.)
@@ -51,5 +66,6 @@ export function Providers({ children }: ProvidersProps) {
     >
       {children}
     </SWRConfig>
+    </SyncStatusContext.Provider>
   );
 }

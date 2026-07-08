@@ -19,12 +19,12 @@ export class LeaderboardService {
   async getLiveLeaderboard(
     competitionId: string,
   ): Promise<LeaderboardEntryDto[]> {
-    // 1. Extracción Profunda Optimizada (Traemos Tiempos y Clínica de una sola vez)
     const entries = await this.entryRepository
       .createQueryBuilder("entry")
       .innerJoinAndSelect("entry.rider", "rider")
       .innerJoinAndSelect("entry.horse", "horse")
       .innerJoinAndSelect("entry.competition", "competition")
+      .leftJoinAndSelect("entry.representedTenant", "representedTenant")
       .leftJoinAndSelect("entry.currentStage", "currentStage")
       .leftJoinAndSelect("entry.timingRecords", "timing")
       .leftJoinAndSelect("timing.stage", "stage")
@@ -154,6 +154,14 @@ export class LeaderboardService {
         arrivalTime: arrivalTime,
         vetInTime: vetInTime,
         completedStages: stats.completedStages,
+        representedTenant: entry.representedTenant
+          ? {
+              id: entry.representedTenant.id,
+              name: entry.representedTenant.name,
+              location: entry.representedTenant.location,
+              jerseyImageUrl: entry.representedTenant.jerseyImageUrl,
+            }
+          : null,
       };
     });
 

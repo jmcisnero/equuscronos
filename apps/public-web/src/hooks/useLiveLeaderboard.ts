@@ -25,6 +25,12 @@ export interface LeaderboardEntry {
   arrivalTime?: string;
   vetInTime?: string;
   completedStages?: number;
+  representedTenant?: {
+    id: string;
+    name: string;
+    location?: string;
+    jerseyImageUrl?: string;
+  } | null;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
