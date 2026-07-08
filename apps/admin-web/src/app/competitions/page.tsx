@@ -600,7 +600,7 @@ export default function CompetitionsPage() {
                       <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-slate-900">
                         <Link
                           href={`/competitions/${comp.id}`}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           className="text-equus-green hover:underline cursor-pointer"
                         >
                           {comp.name}
@@ -655,7 +655,7 @@ export default function CompetitionsPage() {
                         <div className="flex items-center justify-end space-x-2">
                           <Link
                             href={`/competitions/${comp.id}/start-list`}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-emerald-50 rounded-lg transition-all"
                             title={`Ver Start List / Inscripciones de ${comp.name}`}
                           >
@@ -675,7 +675,7 @@ export default function CompetitionsPage() {
                           </Link>
 
                           <button
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               handleEditCompetition(comp);
                             }}
@@ -702,7 +702,7 @@ export default function CompetitionsPage() {
                           </button>
 
                           <button
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               handleDeleteCompetition(comp.id, comp.name);
                             }}
