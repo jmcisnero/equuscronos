@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -22,7 +23,16 @@ export class UsersService {
     private readonly tenantRepository: Repository<Tenant>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto, executor?: any): Promise<User> {
+    if (createUserDto.role === UserRole.ADMIN) {
+      if (!executor || executor.role !== UserRole.ADMIN) {
+        console.error(`[AUDIT SECURITY ALERT] Intento de escalada de privilegios: El usuario ${executor?.email || executor?.id || "Desconocido"} (Rol: ${executor?.role || "Ninguno"}) intentó crear un SuperAdmin.`);
+        throw new ForbiddenException(
+          "Operación no autorizada: Escalada de privilegios denegada"
+        );
+      }
+    }
+
     const existingEmail = await this.userRepository.findOne({
       where: { email: createUserDto.email },
     });
@@ -75,7 +85,26 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    executor?: any,
+  ): Promise<User> {
+    if (updateUserDto.role === UserRole.ADMIN) {
+      if (!executor || executor.role !== UserRole.ADMIN) {
+        console.error(
+          `[AUDIT SECURITY ALERT] Intento de escalada de privilegios: El usuario ${
+            executor?.email || executor?.id || "Desconocido"
+          } (Rol: ${
+            executor?.role || "Ninguno"
+          }) intentó asignar el rol ADMIN al usuario ${id}.`,
+        );
+        throw new ForbiddenException(
+          "Operación no autorizada: Escalada de privilegios denegada",
+        );
+      }
+    }
+
     const user = await this.findOne(id);
 
     const finalRole =

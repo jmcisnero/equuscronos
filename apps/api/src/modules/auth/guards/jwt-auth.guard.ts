@@ -2,6 +2,7 @@ import {
   Injectable,
   ExecutionContext,
   UnauthorizedException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 
@@ -53,7 +54,21 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
       return true;
     }
 
-    return super.canActivate(context);
+    const isActivated = await super.canActivate(context);
+    if (isActivated) {
+      const user = request.user;
+      if (user) {
+        const isMobileRole = ["USER", "TIMEKEEPER", "VET"].includes(user.role);
+        const isWebAdminEndpoint = path.includes("/admin/") || path.includes("admin/");
+        if (isMobileRole && isWebAdminEndpoint) {
+          throw new ForbiddenException(
+            "Acceso denegado: Los roles móviles no tienen permitido el acceso a la consola de administración web."
+          );
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   handleRequest(err: any, user: any, info: any) {

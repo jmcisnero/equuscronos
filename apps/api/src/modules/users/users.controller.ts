@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
+  Request,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
@@ -28,8 +29,8 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: "Crear cuenta de usuario/staff" })
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Body() createUserDto: CreateUserDto, @Request() req) {
+    return this.usersService.create(createUserDto, req.user);
   }
 
   @Get()
@@ -49,8 +50,9 @@ export class UsersController {
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @Request() req,
   ) {
-    return this.usersService.update(id, updateUserDto);
+    return this.usersService.update(id, updateUserDto, req.user);
   }
 
   @Delete(":id")

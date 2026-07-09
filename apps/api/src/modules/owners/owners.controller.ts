@@ -19,7 +19,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("2. Propietarios (Owners)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE)
 @Controller("admin/owners")
 export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}

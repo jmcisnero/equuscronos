@@ -22,7 +22,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("4. Padrón Equino (Horses)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE)
 @Controller("admin/horses")
 export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}

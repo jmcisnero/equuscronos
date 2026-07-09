@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
+import { TenantService } from "@/services/api/tenant.service";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -25,9 +26,36 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const logout = useAuthStore((state) => state.logout);
 
   const [isMounted, setIsMounted] = useState(false);
+  const [loadedTenant, setLoadedTenant] = useState<any>(null);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMounted && user) {
+      const isMobileRole = ["USER", "TIMEKEEPER", "VET"].includes(user.role);
+      if (isMobileRole) {
+        logout();
+        router.push("/login?error=roles_mecanismo_web_denegado");
+        router.refresh();
+      }
+    }
+  }, [isMounted, user, logout, router]);
+
+  useEffect(() => {
+    if (user?.tenantId) {
+      TenantService.getById(user.tenantId)
+        .then((t) => {
+          setLoadedTenant(t);
+        })
+        .catch((err) => {
+          console.error("Error cargando organización en layout:", err);
+        });
+    } else {
+      setLoadedTenant(null);
+    }
+  }, [user?.tenantId]);
 
   const handleLogout = () => {
     logout();
@@ -46,6 +74,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           .substring(0, 2)
           .toUpperCase()
       : "AD";
+
+  const activeTenant = loadedTenant || user?.tenant;
+  const rawTenantName = activeTenant?.name || (user as any)?.tenantName;
+
+  const tenantName = isMounted
+    ? (rawTenantName || "Consola Global / EquusCronos")
+    : "Cargando...";
+
+  const tenantIdentifier = isMounted
+    ? (activeTenant?.location || (activeTenant?.id ? activeTenant.id.substring(0, 8) : (user?.tenantId ? user.tenantId.substring(0, 8) : "Administración Maestra")))
+    : "...";
+
+  const tenantInitials = isMounted && rawTenantName
+    ? (rawTenantName.split(/\s+/).filter(Boolean).length >= 2
+        ? rawTenantName
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((w: string) => w[0])
+            .join("")
+        : rawTenantName
+      )
+        .substring(0, 3)
+        .toUpperCase()
+    : "EC";
 
   // Mapeo dinámico de títulos de página basado en la ruta actual
   const getPageTitle = (path: string) => {
@@ -323,6 +375,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
   ];
 
+  // Filter navGroups based on user role
+  const filteredNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.href === "/users" && user?.role === "JUDGE") {
+          return false;
+        }
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <div className="min-h-screen bg-equus-bg flex flex-col md:flex-row font-sans text-equus-text">
       {/* 1. SIDEBAR DESKTOP */}
@@ -362,7 +427,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           {/* Enlaces de Navegación del Sidebar */}
           <div className="flex-1 flex flex-col overflow-y-auto px-3 py-6 transition-all duration-300">
             <nav className="flex-1 space-y-4">
-              {navGroups.map((group, groupIdx) => (
+              {filteredNavGroups.map((group, groupIdx) => (
                 <div key={groupIdx} className="space-y-1.5">
                   {group.category && !isCollapsed && (
                     <div className="text-[10px] text-white/40 font-bold tracking-widest uppercase mt-4 mb-2 px-4 select-none animate-fade-in">
@@ -421,16 +486,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <div className="flex items-center space-x-3 min-w-0">
                 <div className="h-9 w-9 rounded-lg bg-equus-tan-light/20 flex items-center justify-center border border-equus-tan-light/30 flex-shrink-0">
                   <span className="text-xs font-bold text-equus-tan-light">
-                    HER
+                    {tenantInitials}
                   </span>
                 </div>
                 {!isCollapsed && (
                   <div className="flex flex-col min-w-0 transition-opacity duration-300 animate-fade-in">
                     <span className="text-xs font-bold text-slate-100 truncate">
-                      Haras El Relincho
+                      {tenantName}
                     </span>
                     <span className="text-[10px] text-white/50 truncate">
-                      FEU Nro. 1204
+                      {tenantIdentifier}
                     </span>
                   </div>
                 )}
@@ -562,7 +627,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Enlaces de Navegación del Drawer */}
           <nav className="flex-1 space-y-4 overflow-y-auto py-6">
-            {navGroups.map((group, groupIdx) => (
+            {filteredNavGroups.map((group, groupIdx) => (
               <div key={groupIdx} className="space-y-1.5">
                 {group.category && (
                   <div className="text-[10px] text-white/40 font-bold tracking-widest uppercase mt-4 mb-2 px-4 select-none">
@@ -632,18 +697,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             <div className="flex items-center space-x-3 p-2 rounded-xl bg-white/5">
               <div className="h-9 w-9 rounded bg-equus-tan-light/20 flex items-center justify-center text-xs font-bold text-equus-tan-light">
-                {isMounted && user?.tenantId ? "CLB" : "GLB"}
+                {tenantInitials}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-slate-100 truncate">
-                  {isMounted && user?.tenantId
-                    ? "Organización Club"
-                    : "Administrador Global"}
+                  {tenantName}
                 </span>
                 <span className="text-[9px] text-white/50 truncate">
-                  {isMounted && user?.tenantId
-                    ? `ID: ${user.tenantId.substring(0, 8)}`
-                    : "Todas las Organizaciones"}
+                  {tenantIdentifier}
                 </span>
               </div>
             </div>

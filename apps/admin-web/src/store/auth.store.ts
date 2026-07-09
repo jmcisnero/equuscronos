@@ -7,6 +7,13 @@ export interface User {
   email: string;
   role: string;
   tenantId: string | null;
+  tenant?: {
+    id: string;
+    name: string;
+    location?: string;
+    federationNumber?: number;
+    jerseyImageUrl?: string;
+  } | null;
 }
 
 interface AuthState {

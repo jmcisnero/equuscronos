@@ -50,6 +50,15 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenant?.id || null,
         tenantName: user.tenant?.name || null,
+        tenant: user.tenant
+          ? {
+              id: user.tenant.id,
+              name: user.tenant.name,
+              location: user.tenant.location,
+              federationNumber: user.tenant.federationNumber,
+              jerseyImageUrl: user.tenant.jerseyImageUrl,
+            }
+          : null,
       },
     };
   }

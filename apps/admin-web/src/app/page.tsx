@@ -153,21 +153,21 @@ export default function Home() {
       <div className="bg-gradient-to-br from-equus-green to-emerald-950 rounded-2xl p-6 md:p-8 text-white shadow-xl border border-white/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
         <div className="max-w-3xl relative z-10">
+          <div className="mb-3 flex items-center space-x-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-xs font-bold text-slate-300 tracking-wider uppercase">
+              BASE DE DATOS OPERATIVA
+            </span>
+          </div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
             ¡Hola, {isMounted && user ? user.name : "Administrador"}!
           </h2>
           <p className="mt-2 text-slate-200 text-sm md:text-base leading-relaxed font-medium">
-            Bienvenido al panel maestro de **EquusCronos**. Desde aquí puedes
+            Bienvenido al panel maestro de <span className="font-extrabold text-white">EquusCronos</span>. Desde aquí puedes
             controlar la gobernanza deportiva del club, administrar binomios,
             fiscalizar inspecciones veterinarias en Vet Gates, y asegurar el
             cumplimiento de normativas sanitarias vigentes.
           </p>
-          <div className="mt-4 flex items-center space-x-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs font-bold text-slate-300 tracking-wider uppercase">
-              Conectado a la base de datos nacional FEU
-            </span>
-          </div>
         </div>
       </div>
 
