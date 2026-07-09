@@ -29,8 +29,9 @@ import {
 import { AuthProvider, useAuth } from "./src/services/AuthContext";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { PermissionErrorScreen } from "./src/screens/PermissionErrorScreen";
+import { SyncMonitorScreen } from "./src/screens/SyncMonitorScreen";
 
-type ScreenType = "LIST" | "TIMING" | "VET_GATE";
+type ScreenType = "LIST" | "TIMING" | "VET_GATE" | "SYNC_MONITOR";
 
 function MainApp() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -478,6 +479,19 @@ function MainApp() {
     await reloadEntries(); // Refresh to catch local mutations
   };
 
+  const handleBackFromSyncMonitor = () => {
+    if (user?.role === UserRole.VET) {
+      setCurrentScreen("VET_GATE");
+    } else if (
+      user?.role === UserRole.TIMEKEEPER ||
+      user?.role === UserRole.JUDGE
+    ) {
+      setCurrentScreen("TIMING");
+    } else {
+      setCurrentScreen("LIST");
+    }
+  };
+
   // Render Loading Splash
   if (!dbReady || authLoading) {
     return (
@@ -506,7 +520,7 @@ function MainApp() {
 
   // Force screen redirects/guards based on role to block unauthorized navigation
   let activeScreen = currentScreen;
-  if (user) {
+  if (user && currentScreen !== "SYNC_MONITOR") {
     if (user.role === UserRole.VET) {
       activeScreen = "VET_GATE";
     } else if (
@@ -563,7 +577,9 @@ function MainApp() {
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           {/* Connectivity Status Badge */}
-          <View
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setCurrentScreen("SYNC_MONITOR")}
             style={[
               styles.networkBadge,
               isOnline ? styles.badgeOnline : styles.badgeOffline,
@@ -577,8 +593,9 @@ function MainApp() {
             />
             <Text style={styles.networkText}>
               {isOnline ? "CONECTADO" : "SIN CONEXIÓN"}
+              {pendingSyncCount > 0 && ` (${pendingSyncCount})`}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Logout Button */}
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -883,6 +900,7 @@ function MainApp() {
           stationRecordType={stationRecordType}
           onBack={handleBackToList}
           onRecordSuccess={handleBackToList}
+          onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
         />
       )}
 
@@ -891,6 +909,13 @@ function MainApp() {
           entry={selectedEntry}
           onBack={handleBackToList}
           onInspectionSuccess={handleBackToList}
+          onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
+        />
+      )}
+
+      {activeScreen === "SYNC_MONITOR" && (
+        <SyncMonitorScreen
+          onBack={handleBackFromSyncMonitor}
         />
       )}
     </SafeAreaView>

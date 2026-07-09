@@ -28,6 +28,7 @@ interface TimingScreenProps {
   stationRecordType?: TimeRecordType;
   onBack: () => void;
   onRecordSuccess: () => void;
+  onNavigateToSyncMonitor?: () => void;
 }
 
 interface SessionRecord {
@@ -48,8 +49,42 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   stationRecordType = TimeRecordType.ARRIVAL,
   onBack,
   onRecordSuccess,
+  onNavigateToSyncMonitor,
 }) => {
   const { user } = useAuth();
+  
+  // Real-time synchronization states
+  const [pendingCount, setPendingCount] = useState(0);
+  const [hasErrors, setHasErrors] = useState(false);
+  const [isOnline, setIsOnline] = useState(SyncService.isOnline());
+
+  useEffect(() => {
+    const updateCount = async () => {
+      const size = await SyncService.getQueueSize();
+      setPendingCount(size);
+      
+      try {
+        const db = await getDatabase();
+        const failed = await db.getFirstAsync<{ count: number }>(
+          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;"
+        );
+        setHasErrors(failed ? failed.count > 0 : false);
+      } catch (err) {
+        console.warn("[TimingScreen] Error querying errors count:", err);
+      }
+    };
+
+    updateCount();
+    const unsubscribeQueue = SyncService.registerQueueListener(updateCount);
+    const unsubscribeStatus = SyncService.registerStatusListener((connected) => {
+      setIsOnline(connected);
+    });
+
+    return () => {
+      unsubscribeQueue();
+      unsubscribeStatus();
+    };
+  }, []);
   const [showDqAlert, setShowDqAlert] = useState(false);
   const showBackButton =
     user?.role !== UserRole.TIMEKEEPER && user?.role !== UserRole.JUDGE;
@@ -622,11 +657,31 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       >
         {/* Header */}
         <View style={styles.header}>
-          {showBackButton && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backText}>⬅️ Volver</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {showBackButton && (
+              <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                <Text style={styles.backText}>⬅️ Volver</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Sync Badge Trigger */}
+            <TouchableOpacity 
+              onPress={onNavigateToSyncMonitor}
+              style={styles.syncHeaderTrigger}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.syncCloudIcon}>{isOnline ? "☁️" : "📶"}</Text>
+              {pendingCount > 0 && (
+                <View style={[
+                  styles.syncBadgeCircle,
+                  { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" }
+                ]}>
+                  <Text style={styles.syncBadgeText}>{pendingCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
-          )}
+          </View>
+          
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.title}>
               {recordType === TimeRecordType.START
@@ -1528,5 +1583,33 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 16,
     textAlign: "center",
+  },
+  syncHeaderTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E293B",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#334155",
+    marginLeft: 8,
+  },
+  syncCloudIcon: {
+    fontSize: 18,
+  },
+  syncBadgeCircle: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    marginLeft: 6,
+  },
+  syncBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
   },
 });

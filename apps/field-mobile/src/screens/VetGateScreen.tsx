@@ -28,14 +28,49 @@ interface VetGateScreenProps {
   entry: LocalCompetitionEntry | null;
   onBack?: () => void;
   onInspectionSuccess: () => void;
+  onNavigateToSyncMonitor?: () => void;
 }
 
 export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   entry,
   onBack,
   onInspectionSuccess,
+  onNavigateToSyncMonitor,
 }) => {
   const { user } = useAuth();
+  
+  // Real-time synchronization states
+  const [pendingCount, setPendingCount] = useState(0);
+  const [hasErrors, setHasErrors] = useState(false);
+  const [isOnline, setIsOnline] = useState(SyncService.isOnline());
+
+  useEffect(() => {
+    const updateCount = async () => {
+      const size = await SyncService.getQueueSize();
+      setPendingCount(size);
+      
+      try {
+        const db = await getDatabase();
+        const failed = await db.getFirstAsync<{ count: number }>(
+          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;"
+        );
+        setHasErrors(failed ? failed.count > 0 : false);
+      } catch (err) {
+        console.warn("[VetGateScreen] Error querying errors count:", err);
+      }
+    };
+
+    updateCount();
+    const unsubscribeQueue = SyncService.registerQueueListener(updateCount);
+    const unsubscribeStatus = SyncService.registerStatusListener((connected) => {
+      setIsOnline(connected);
+    });
+
+    return () => {
+      unsubscribeQueue();
+      unsubscribeStatus();
+    };
+  }, []);
   const searchInputRef = useRef<TextInput>(null);
 
   // Search & matching states
@@ -508,11 +543,30 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
     <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {showBackButton && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backText}> Volver</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {showBackButton && (
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backText}> Volver</Text>
+            </TouchableOpacity>
+          )}
+          
+          {/* Sync Badge Trigger */}
+          <TouchableOpacity 
+            onPress={onNavigateToSyncMonitor}
+            style={styles.syncHeaderTrigger}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.syncCloudIcon}>{isOnline ? "☁️" : "📶"}</Text>
+            {pendingCount > 0 && (
+              <View style={[
+                styles.syncBadgeCircle,
+                { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" }
+              ]}>
+                <Text style={styles.syncBadgeText}>{pendingCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-        )}
+        </View>
         <Text style={styles.title}>Mesa Veterinaria</Text>
       </View>
 
@@ -818,6 +872,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
+    justifyContent: "space-between",
   },
   backButton: {
     paddingVertical: 8,
@@ -1075,5 +1130,33 @@ const styles = StyleSheet.create({
   submitContainer: {
     gap: 4,
     marginBottom: 30,
+  },
+  syncHeaderTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E293B",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#334155",
+    marginLeft: 8,
+  },
+  syncCloudIcon: {
+    fontSize: 18,
+  },
+  syncBadgeCircle: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    marginLeft: 6,
+  },
+  syncBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
   },
 });

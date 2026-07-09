@@ -6,10 +6,34 @@ import ApiService from "./ApiService";
 class SyncService {
   private isSyncing = false;
   private isConnected = true;
-  private onStatusChangeCallback: ((connected: boolean) => void) | null = null;
-  private onQueueChangeCallback: (() => void) | null = null;
+  private statusListeners = new Set<(connected: boolean) => void>();
+  private queueListeners = new Set<() => void>();
   private lastAttemptTimes = new Map<number, number>();
   private retryTimeout: any = null;
+
+  private get onStatusChangeCallback() {
+    return (connected: boolean) => {
+      this.statusListeners.forEach((listener) => {
+        try {
+          listener(connected);
+        } catch (e) {
+          console.error("[SyncService] Status listener error:", e);
+        }
+      });
+    };
+  }
+
+  private get onQueueChangeCallback() {
+    return () => {
+      this.queueListeners.forEach((listener) => {
+        try {
+          listener();
+        } catch (e) {
+          console.error("[SyncService] Queue listener error:", e);
+        }
+      });
+    };
+  }
 
   private getBackoffDelay(attempts: number): number {
     // Delay = 2^attempts * 1000 ms, capped at 60s
@@ -45,17 +69,23 @@ class SyncService {
   /**
    * Set callback to update UI when network state changes
    */
-  registerStatusListener(callback: (connected: boolean) => void) {
-    this.onStatusChangeCallback = callback;
+  registerStatusListener(callback: (connected: boolean) => void): () => void {
+    this.statusListeners.add(callback);
     // Initial call
     callback(this.isConnected);
+    return () => {
+      this.statusListeners.delete(callback);
+    };
   }
 
   /**
    * Set callback to refresh UI when queue changes
    */
-  registerQueueListener(callback: () => void) {
-    this.onQueueChangeCallback = callback;
+  registerQueueListener(callback: () => void): () => void {
+    this.queueListeners.add(callback);
+    return () => {
+      this.queueListeners.delete(callback);
+    };
   }
 
   /**
@@ -349,6 +379,45 @@ class SyncService {
    */
   async forceSync(): Promise<void> {
     await this.syncPendingItems();
+  }
+
+  /**
+   * Reset attempts and error message for a specific queue item and trigger sync
+   */
+  async resetItemAndSync(id: number): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        "UPDATE sync_queue SET attempts = 0, error_message = NULL WHERE id = ?;",
+        [id],
+      );
+      this.lastAttemptTimes.delete(id);
+      if (this.onQueueChangeCallback) {
+        this.onQueueChangeCallback();
+      }
+      // Force sync immediately
+      await this.syncPendingItems();
+    } catch (e) {
+      console.error("[SyncService] Error resetting item:", e);
+      throw e;
+    }
+  }
+
+  /**
+   * Discards a specific queue item
+   */
+  async discardItem(id: number): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync("DELETE FROM sync_queue WHERE id = ?;", [id]);
+      this.lastAttemptTimes.delete(id);
+      if (this.onQueueChangeCallback) {
+        this.onQueueChangeCallback();
+      }
+    } catch (e) {
+      console.error("[SyncService] Error discarding item:", e);
+      throw e;
+    }
   }
 
   /**
