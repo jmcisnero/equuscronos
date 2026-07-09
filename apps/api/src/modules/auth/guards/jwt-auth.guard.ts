@@ -56,16 +56,6 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
 
     const isActivated = await super.canActivate(context);
     if (isActivated) {
-      const user = request.user;
-      if (user) {
-        const isMobileRole = ["USER", "TIMEKEEPER", "VET"].includes(user.role);
-        const isWebAdminEndpoint = path.includes("/admin/") || path.includes("admin/");
-        if (isMobileRole && isWebAdminEndpoint) {
-          throw new ForbiddenException(
-            "Acceso denegado: Los roles móviles no tienen permitido el acceso a la consola de administración web."
-          );
-        }
-      }
       return true;
     }
     return false;

@@ -53,7 +53,7 @@ export class RidersController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Eliminar jinete" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.ridersService.remove(id);

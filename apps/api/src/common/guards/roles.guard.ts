@@ -24,16 +24,6 @@ export class RolesGuard implements CanActivate {
     const userRole =
       request.headers["x-role"] || (request.user && request.user.role);
 
-    if (userRole) {
-      const isMobileRole = ["USER", "TIMEKEEPER", "VET"].includes(userRole);
-      const isWebAdminEndpoint = path.includes("/admin/") || path.includes("admin/");
-      if (isMobileRole && isWebAdminEndpoint) {
-        throw new ForbiddenException(
-          "Acceso denegado: Los roles móviles no tienen permitido el acceso a la consola de administración web."
-        );
-      }
-    }
-
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }

@@ -7,8 +7,11 @@ import {
 } from "@/types/competition-type";
 import { CompetitionTypeService } from "@/services/api/competition-type.service";
 import { useCompetitionRulesForm } from "@/hooks/useCompetitionRulesForm";
+import { useAuthStore } from "@/store/auth.store";
 
 export function CompetitionTypesPage() {
+  const user = useAuthStore((state) => state.user);
+  const isJudge = user?.role === "JUDGE";
   const [competitionTypes, setCompetitionTypes] = useState<CompetitionType[]>(
     [],
   );
@@ -157,25 +160,27 @@ export function CompetitionTypesPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center px-5 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green whitespace-nowrap self-stretch sm:self-auto"
-        >
-          <svg
-            className="w-5 h-5 mr-2 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {!isJudge && (
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-equus-green whitespace-nowrap self-stretch sm:self-auto"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <span>Nueva Modalidad</span>
-        </button>
+            <svg
+              className="w-5 h-5 mr-2 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span>Nueva Modalidad</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH BAR */}
@@ -401,47 +406,49 @@ export function CompetitionTypesPage() {
                       : ""}
                   </span>
 
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => handleOpenEditModal(type)}
-                      className="p-2 text-slate-400 hover:text-equus-green hover:bg-slate-100 rounded-lg transition-all"
-                      title="Editar Modalidad"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  {!isJudge && (
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleOpenEditModal(type)}
+                        className="p-2 text-slate-400 hover:text-equus-green hover:bg-slate-100 rounded-lg transition-all"
+                        title="Editar Modalidad"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                    </button>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
 
-                    <button
-                      onClick={() => handleDelete(type.id, type.name)}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      title="Eliminar Modalidad"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={() => handleDelete(type.id, type.name)}
+                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        title="Eliminar Modalidad"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

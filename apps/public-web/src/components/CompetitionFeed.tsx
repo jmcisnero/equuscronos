@@ -65,12 +65,15 @@ export default function CompetitionFeed() {
   // Formateador local de fechas en formato uruguayo
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.substring(0, 10).split("-").map(Number);
+      const d = new Date(Date.UTC(year, month - 1, day));
       return d.toLocaleDateString("es-UY", {
         weekday: "short",
         day: "numeric",
         month: "short",
         year: "numeric",
+        timeZone: "UTC",
       });
     } catch {
       return dateStr;

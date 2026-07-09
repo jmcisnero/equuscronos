@@ -15,7 +15,7 @@ DROP TYPE IF EXISTS user_role, owner_type, comp_status, clinical_status, motrici
 -- ==========================================================
 -- 1. TIPOS ENUMERADOS (Gobernanza de Datos)
 -- ==========================================================
-CREATE TYPE user_role AS ENUM ('ADMIN', 'JUDGE', 'VET', 'SPECTATOR', 'CLUB_ADMIN');
+CREATE TYPE user_role AS ENUM ('ADMIN', 'JUDGE', 'VET', 'SPECTATOR', 'CLUB_ADMIN', 'TIMEKEEPER', 'USER');
 CREATE TYPE owner_type AS ENUM ('PERSON', 'STUD', 'HARAS');
 CREATE TYPE comp_status AS ENUM ('PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'OFFICIAL', 'CANCELLED');
 CREATE TYPE clinical_status AS ENUM ('NORMAL', 'DEHYDRATED', 'OBSERVED', 'FAILED');

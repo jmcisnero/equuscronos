@@ -22,11 +22,6 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     this.dataSource.subscribers.push(this);
   }
 
-  // Escucha cambios en TODAS las entidades del sistema
-  listenTo() {
-    return "all";
-  }
-
   // Intercepta creaciones
   async afterInsert(event: InsertEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;

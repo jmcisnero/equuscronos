@@ -25,8 +25,8 @@ export class AuditService {
 
     const where: any = {};
 
-    // RLS Enforcement: CLUB_ADMIN can only see their own club's audit logs.
-    if (currentUser.role === UserRole.CLUB_ADMIN) {
+    // RLS Enforcement: Non-ADMIN users (CLUB_ADMIN, JUDGE) can only see their own club's audit logs.
+    if (currentUser.role !== UserRole.ADMIN) {
       where.tenant = { id: currentUser.tenantId };
     }
 

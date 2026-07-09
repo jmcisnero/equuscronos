@@ -59,7 +59,7 @@ export class HorsesController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Eliminar caballo" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.horsesService.remove(id);

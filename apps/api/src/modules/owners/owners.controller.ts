@@ -56,7 +56,7 @@ export class OwnersController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Eliminar propietario" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.ownersService.remove(id);

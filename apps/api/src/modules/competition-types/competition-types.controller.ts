@@ -18,7 +18,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("6. Reglas y Modalidades (Comp. Types)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE)
 @Controller("admin/competition-types")
 export class CompetitionTypesController {
   constructor(
@@ -26,7 +26,7 @@ export class CompetitionTypesController {
   ) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Crear plantilla de reglas" })
   create(@Body() createCompetitionTypeDto: CreateCompetitionTypeDto) {
     return this.competitionTypesService.create(createCompetitionTypeDto);
@@ -45,7 +45,7 @@ export class CompetitionTypesController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Actualizar plantilla" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -55,7 +55,7 @@ export class CompetitionTypesController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
   @ApiOperation({ summary: "Eliminar plantilla" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.competitionTypesService.remove(id);

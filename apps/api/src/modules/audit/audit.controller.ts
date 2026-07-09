@@ -6,7 +6,7 @@ import { UserRole } from "@equuscronos/shared";
 
 @ApiTags("Auditoría (Audit)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+@Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE)
 @Controller("admin/audit-logs")
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

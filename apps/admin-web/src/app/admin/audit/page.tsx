@@ -11,12 +11,13 @@ import { UserRole } from "@equuscronos/shared";
 
 export default function AuditPage() {
   const currentUser = useAuthStore((state) => state.user);
+  const isJudge = currentUser?.role === UserRole.JUDGE;
   const router = useRouter();
 
   // Redirect if not authorized
   useEffect(() => {
     if (currentUser) {
-      const allowedRoles = [UserRole.ADMIN, UserRole.CLUB_ADMIN];
+      const allowedRoles = [UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE];
       if (!allowedRoles.includes(currentUser.role as any)) {
         router.push("/");
       }
@@ -260,13 +261,41 @@ export default function AuditPage() {
   return (
     <div className="space-y-6">
       {/* HEADER SECTION */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-          Auditoría de Sistema
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Supervise operaciones transaccionales, auditoría de eventos de bases de datos y control de integridad multi-inquilino.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+            Auditoría de Sistema
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Supervise operaciones transaccionales, auditoría de eventos de bases de datos y control de integridad multi-inquilino.
+          </p>
+        </div>
+
+        {/* Botones de Infraestructura Operativa */}
+        {!isJudge && (
+          <div className="flex items-center space-x-3 self-stretch sm:self-auto">
+            <button
+              disabled={currentUser.role !== UserRole.ADMIN}
+              onClick={() => alert("Función de exportación de base de datos completa iniciada.")}
+              className="inline-flex items-center justify-center px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              title={currentUser.role !== UserRole.ADMIN ? "No disponible en modo consulta" : "Exportar base de datos completa"}
+            >
+              Exportar Base de Datos Completa
+            </button>
+            <button
+              disabled={currentUser.role !== UserRole.ADMIN}
+              onClick={() => {
+                if (confirm("¿Está seguro de que desea vaciar la bitácora completa de auditoría? Esta acción es irreversible.")) {
+                  alert("Procedimiento de limpieza de logs ejecutado.");
+                }
+              }}
+              className="inline-flex items-center justify-center px-4 py-2 bg-rose-50 hover:bg-rose-100 disabled:bg-rose-50/50 disabled:text-rose-400 disabled:border-rose-100/50 disabled:cursor-not-allowed border border-rose-200 text-rose-700 font-bold text-xs rounded-xl shadow-sm transition-all"
+              title={currentUser.role !== UserRole.ADMIN ? "No disponible en modo consulta" : "Vaciar logs de auditoría"}
+            >
+              Vaciar Logs
+            </button>
+          </div>
+        )}
       </div>
 
       {/* SEARCH AND FILTERS PANEL */}
@@ -274,7 +303,7 @@ export default function AuditPage() {
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           Filtros de Búsqueda Interactiva
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 ${currentUser.role === UserRole.ADMIN ? "md:grid-cols-5" : "md:grid-cols-4"} gap-4`}>
           {/* Action Filter */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -339,6 +368,23 @@ export default function AuditPage() {
             </select>
           </div>
 
+          {/* Filtros Inter-Clubes (Only visible to Admin, completely hidden for JUDGE) */}
+          {currentUser.role === UserRole.ADMIN && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Filtros Inter-Clubes
+              </label>
+              <select
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm bg-white"
+                defaultValue=""
+                onChange={() => alert("Filtrado inter-clubes activo.")}
+              >
+                <option value="">Todos los clubes</option>
+                <option value="consolidated">Filtro consolidado (Global)</option>
+              </select>
+            </div>
+          )}
+
           {/* Page size limit Filter */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -359,6 +405,28 @@ export default function AuditPage() {
           </div>
         </div>
       </div>
+
+      {/* BANNER DE AISLAMIENTO RLS PARA EL JUEZ */}
+      {isJudge && (
+        <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-4 py-3.5 rounded-2xl flex items-center space-x-2.5 text-xs font-semibold shadow-sm animate-fade-in">
+          <svg
+            className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+            />
+          </svg>
+          <span>
+            Filtro de Seguridad Activo: Visualizando exclusivamente la bitácora transaccional de su Club (Aislamiento RLS)
+          </span>
+        </div>
+      )}
 
       {/* DENSE DATA TABLE AND DETAILED JSON VISOR LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
