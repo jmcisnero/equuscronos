@@ -839,6 +839,16 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
               eligibility.nextStage,
               eligibility.scheduledDepartureTime,
             );
+          } else {
+            // Si ya existe la largada en la base de datos para la siguiente etapa, pero por algún motivo
+            // el estado de la inscripción sigue como RESTING, corregimos el estado y la etapa actual.
+            await manager.update(CompetitionEntry, fullEntry.id, {
+              status: ParticipantStatus.IN_RACE,
+              currentStage: { id: eligibility.nextStage.id },
+            });
+            console.log(
+              `[Auto Start] CORRECCIÓN DE ESTADO: Dorsal ${fullEntry.bibNumber} ya tiene START en etapa ${eligibility.nextStage.stageNumber}, cambiando status a IN_RACE.`,
+            );
           }
         });
       }

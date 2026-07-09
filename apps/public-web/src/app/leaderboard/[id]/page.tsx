@@ -15,21 +15,33 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     riderName: "Lucía Gómez",
     horseName: "Rayo Veloz",
     status: "RESTING",
-    currentStage: 1,
-    startTime: "2026-03-15T07:00:00Z",
-    arrivalTime: "2026-03-15T08:29:40Z",
-    lastArrivalTime: "2026-03-15T08:29:40Z",
-    nextVetControlTime: "2026-03-15T08:49:40Z",
-    totalRaceTimeMs: 5380000,
+    currentStage: 2,
+    startTime: "2026-03-15T09:29:40Z",
+    arrivalTime: "2026-03-15T10:45:00Z",
+    lastArrivalTime: "2026-03-15T10:45:00Z",
+    nextVetControlTime: "2026-03-15T11:05:00Z",
+    totalRaceTimeMs: 9890000,
     gapToLeaderMs: 0,
-    averageSpeed: 26.765,
+    averageSpeed: 25.480,
     heartRate: 62,
-    nextStageDepartureTime: "2026-03-15T09:29:40Z",
+    nextStageDepartureTime: "2026-03-15T11:45:00Z",
     representedTenant: {
       id: "tenant-1",
       name: "Sociedad Hípica de Melo",
       location: "Melo, Cerro Largo",
     },
+    stages: [
+      {
+        stageNumber: 1,
+        distanceKm: 40,
+        startTime: "2026-03-15T07:00:00Z",
+        arrivalTime: "2026-03-15T08:29:40Z",
+        vetInTime: "2026-03-15T08:35:10Z",
+        heartRate: 58,
+        netTimeMs: 5380000,
+        averageSpeed: 26.765,
+      }
+    ]
   },
   {
     rank: 2,
@@ -37,16 +49,28 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     riderName: "Mateo Silva",
     horseName: "Tormenta Criolla",
     status: "RESTING",
-    currentStage: 1,
-    startTime: "2026-03-15T07:00:00Z",
-    arrivalTime: "2026-03-15T08:30:15Z",
-    lastArrivalTime: "2026-03-15T08:30:15Z",
-    nextVetControlTime: "2026-03-15T08:50:15Z",
-    totalRaceTimeMs: 5415000,
-    gapToLeaderMs: 35000,
-    averageSpeed: 26.592,
+    currentStage: 2,
+    startTime: "2026-03-15T09:30:15Z",
+    arrivalTime: "2026-03-15T10:46:15Z",
+    lastArrivalTime: "2026-03-15T10:46:15Z",
+    nextVetControlTime: "2026-03-15T11:06:15Z",
+    totalRaceTimeMs: 9975000,
+    gapToLeaderMs: 85000,
+    averageSpeed: 25.263,
     heartRate: 56,
-    nextStageDepartureTime: "2026-03-15T09:30:15Z",
+    nextStageDepartureTime: "2026-03-15T11:46:15Z",
+    stages: [
+      {
+        stageNumber: 1,
+        distanceKm: 40,
+        startTime: "2026-03-15T07:00:00Z",
+        arrivalTime: "2026-03-15T08:30:15Z",
+        vetInTime: "2026-03-15T08:38:20Z",
+        heartRate: 56,
+        netTimeMs: 5415000,
+        averageSpeed: 26.592,
+      }
+    ]
   },
   {
     rank: 3,
@@ -54,11 +78,24 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     riderName: "Daniela Pereira",
     horseName: "Cazador Criollo",
     status: "IN_RACE",
-    currentStage: 1,
+    currentStage: 2,
+    startTime: "2026-03-15T09:44:20Z",
     totalRaceTimeMs: 5650000,
     gapToLeaderMs: 270000,
     averageSpeed: 25.487,
     heartRate: 60,
+    stages: [
+      {
+        stageNumber: 1,
+        distanceKm: 40,
+        startTime: "2026-03-15T07:00:00Z",
+        arrivalTime: "2026-03-15T08:34:10Z",
+        vetInTime: "2026-03-15T08:44:20Z",
+        heartRate: 60,
+        netTimeMs: 5650000,
+        averageSpeed: 25.487,
+      }
+    ]
   },
   {
     rank: 4,
@@ -66,11 +103,24 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     riderName: "Agustín Rodríguez",
     horseName: "Pampero Centauro",
     status: "IN_RACE",
-    currentStage: 1,
+    currentStage: 2,
+    startTime: "2026-03-15T09:48:15Z",
     totalRaceTimeMs: 5820000,
     gapToLeaderMs: 440000,
     averageSpeed: 24.742,
     heartRate: 58,
+    stages: [
+      {
+        stageNumber: 1,
+        distanceKm: 40,
+        startTime: "2026-03-15T07:00:00Z",
+        arrivalTime: "2026-03-15T08:37:00Z",
+        vetInTime: "2026-03-15T08:48:15Z",
+        heartRate: 58,
+        netTimeMs: 5820000,
+        averageSpeed: 24.742,
+      }
+    ]
   },
   {
     rank: 5,
@@ -78,11 +128,24 @@ const INITIAL_SIMULATED_DATA: LeaderboardEntry[] = [
     riderName: "Sofía Martínez",
     horseName: "Centella Blanca",
     status: "DQ",
-    currentStage: 1,
+    currentStage: 2,
+    startTime: "2026-03-15T08:52:10Z",
     totalRaceTimeMs: 5990000,
     gapToLeaderMs: 610000,
     averageSpeed: 24.04,
     heartRate: 68,
+    stages: [
+      {
+        stageNumber: 1,
+        distanceKm: 40,
+        startTime: "2026-03-15T07:00:00Z",
+        arrivalTime: "2026-03-15T08:39:50Z",
+        vetInTime: "2026-03-15T08:52:10Z",
+        heartRate: 68,
+        netTimeMs: 5990000,
+        averageSpeed: 24.04,
+      }
+    ]
   },
 ];
 

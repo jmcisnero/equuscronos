@@ -3,10 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
 import { LeaderboardEntryDto } from "./dto/leaderboard-response.dto";
+import { Stage } from "../competitions/entities/stage.entity";
 import {
   TimeRecordType,
   ParticipantStatus,
   CompetitionStatus,
+  MotricityStatus,
 } from "@equuscronos/shared";
 
 @Injectable()
@@ -19,6 +21,11 @@ export class LeaderboardService {
   async getLiveLeaderboard(
     competitionId: string,
   ): Promise<LeaderboardEntryDto[]> {
+    // Encontrar la cantidad total de etapas de esta competencia para determinar el estado FINISHED
+    const totalStagesCount = await this.entryRepository.manager.count(Stage, {
+      where: { competition: { id: competitionId } },
+    });
+
     const entries = await this.entryRepository
       .createQueryBuilder("entry")
       .innerJoinAndSelect("entry.rider", "rider")
@@ -35,10 +42,78 @@ export class LeaderboardService {
     // 2. Procesamiento Matemático por Competidor
     const leaderboard: LeaderboardEntryDto[] = entries.map((entry) => {
       const stats = this.calculateCompetitorStats(entry.timingRecords);
-      const latestHeartRate = this.extractLatestHeartRate(entry.timingRecords);
+      const activeRecords = (entry.timingRecords || []).filter((r) => !r.isVoid);
+
+      // Determinar la etapa actual calculada dinámicamente según sus registros de tiempos
+      let calculatedCurrentStage = entry.currentStage?.stageNumber || 1;
+      if (activeRecords.length > 0) {
+        const stageNums = activeRecords.map((r) => r.stage?.stageNumber || 1);
+        const maxStageNum = Math.max(...stageNums);
+        if (maxStageNum > calculatedCurrentStage) {
+          calculatedCurrentStage = maxStageNum;
+        }
+      }
+
+      // Determinar estado dinámicamente si no está descalificado o retirado
+      const finalStatuses = [
+        ParticipantStatus.DQ,
+        ParticipantStatus.DNF,
+        ParticipantStatus.WD,
+      ];
+      let competitorStatus = entry.status;
+      if (!finalStatuses.includes(competitorStatus)) {
+        if (activeRecords.length > 0) {
+          const latestStageRecords = activeRecords.filter(
+            (r) => (r.stage?.stageNumber || 1) === calculatedCurrentStage,
+          );
+
+          const hasStart = latestStageRecords.some(
+            (r) => r.recordType === TimeRecordType.START,
+          );
+          const hasArrival = latestStageRecords.some(
+            (r) => r.recordType === TimeRecordType.ARRIVAL,
+          );
+          const hasVetIn = latestStageRecords.some(
+            (r) => r.recordType === TimeRecordType.VET_IN,
+          );
+
+          if (hasStart && !hasArrival) {
+            competitorStatus = ParticipantStatus.IN_RACE;
+          } else if (hasArrival && !hasVetIn) {
+            competitorStatus = ParticipantStatus.VET_CHECK;
+          } else if (hasVetIn) {
+            const vetInRecord = latestStageRecords
+              .filter((r) => r.recordType === TimeRecordType.VET_IN)
+              .sort(
+                (a, b) =>
+                  new Date(b.recordedAt).getTime() -
+                  new Date(a.recordedAt).getTime(),
+              )[0];
+
+            if (vetInRecord && vetInRecord.vetInspection) {
+              const vi = vetInRecord.vetInspection;
+              if (vi.isRecheckRequired) {
+                competitorStatus = ParticipantStatus.VET_CHECK;
+              } else if (vi.motricity === MotricityStatus.NOT_APTO) {
+                competitorStatus = ParticipantStatus.DQ;
+              } else {
+                if (calculatedCurrentStage >= totalStagesCount) {
+                  competitorStatus = ParticipantStatus.FINISHED;
+                } else {
+                  competitorStatus = ParticipantStatus.RESTING;
+                }
+              }
+            } else {
+              competitorStatus = ParticipantStatus.VET_CHECK;
+            }
+          }
+        }
+      }
+
+      const latestHeartRate = this.extractLatestHeartRate(entry.timingRecords, calculatedCurrentStage);
 
       // Extraemos la última hora de llegada registrada
-      const lastArrival = entry.timingRecords
+      const lastArrival = activeRecords
         .filter((r) => r.recordType === TimeRecordType.ARRIVAL)
         .sort(
           (a, b) =>
@@ -47,16 +122,13 @@ export class LeaderboardService {
       const lastArrivalTime = lastArrival
         ? new Date(lastArrival.recordedAt)
         : null;
-      const nextVetControlTime = this.calculateTargetVetTime(
-        entry.timingRecords,
-      );
 
       // Extraemos la hora de próxima largada calculada previamente.
       // Solo la enviamos si existe y si el caballo no ha largado la etapa siguiente aún.
       let nextStageDepartureTime = null;
       if (lastArrival && lastArrival.scheduledDepartureTime) {
         // Verificamos si ya hay un START posterior a esta llegada
-        const hasStartedNextStage = entry.timingRecords.some(
+        const hasStartedNextStage = activeRecords.some(
           (r) =>
             r.recordType === TimeRecordType.START &&
             new Date(r.recordedAt).getTime() >
@@ -71,14 +143,9 @@ export class LeaderboardService {
       let startTime = null;
       let arrivalTime = null;
       let vetInTime = null;
-      const activeRecords = (entry.timingRecords || []).filter(
-        (r) => !r.isVoid,
-      );
       if (activeRecords.length > 0) {
-        const stageNums = activeRecords.map((r) => r.stage?.stageNumber || 1);
-        const maxStageNum = Math.max(...stageNums);
         const latestStageRecords = activeRecords.filter(
-          (r) => (r.stage?.stageNumber || 1) === maxStageNum,
+          (r) => (r.stage?.stageNumber || 1) === calculatedCurrentStage,
         );
 
         const startRecord = latestStageRecords
@@ -118,14 +185,13 @@ export class LeaderboardService {
       // Fallback a la hora de largada de la competencia para la Etapa 1 si no hay registro individual de START
       if (
         !startTime &&
-        entry.status !== ParticipantStatus.WD &&
+        competitorStatus !== ParticipantStatus.WD &&
         entry.competition &&
         (entry.competition.status === CompetitionStatus.ACTIVE ||
           entry.competition.status === CompetitionStatus.COMPLETED ||
           entry.competition.status === CompetitionStatus.OFFICIAL)
       ) {
-        const stageNum = entry.currentStage?.stageNumber || 1;
-        if (stageNum === 1) {
+        if (calculatedCurrentStage === 1) {
           const compDateStr =
             typeof entry.competition.competitionDate === "string"
               ? entry.competition.competitionDate.substring(0, 10)
@@ -136,12 +202,89 @@ export class LeaderboardService {
         }
       }
 
+      // El límite de presentación veterinaria se calcula solo si hay llegada registrada en la etapa actual
+      const nextVetControlTime = arrivalTime
+        ? new Date(new Date(arrivalTime).getTime() + 20 * 60 * 1000)
+        : null;
+
+      // Calcular detalle de etapas (historial)
+      const activeRecordsForStages = (entry.timingRecords || []).filter((r) => !r.isVoid);
+      const stagesMap = new Map<number, {
+        stageNumber: number;
+        distanceKm: number;
+        startTime?: Date;
+        arrivalTime?: Date;
+        vetInTime?: Date;
+        heartRate?: number;
+      }>();
+
+      for (const rec of activeRecordsForStages) {
+        if (!rec.stage) continue;
+        const sNum = rec.stage.stageNumber;
+        if (!stagesMap.has(sNum)) {
+          stagesMap.set(sNum, {
+            stageNumber: sNum,
+            distanceKm: Number(rec.stage.distanceKm),
+          });
+        }
+        const stageObj = stagesMap.get(sNum)!;
+        if (rec.recordType === TimeRecordType.START) {
+          stageObj.startTime = new Date(rec.recordedAt);
+        } else if (rec.recordType === TimeRecordType.ARRIVAL) {
+          stageObj.arrivalTime = new Date(rec.recordedAt);
+        } else if (rec.recordType === TimeRecordType.VET_IN) {
+          stageObj.vetInTime = new Date(rec.recordedAt);
+          if (rec.vetInspection) {
+            stageObj.heartRate = rec.vetInspection.heartRate;
+          }
+        }
+      }
+
+      if (startTime) {
+        if (!stagesMap.has(1)) {
+          stagesMap.set(1, {
+            stageNumber: 1,
+            distanceKm: entry.currentStage?.stageNumber === 1 ? Number(entry.currentStage.distanceKm) : 40,
+            startTime: startTime,
+          });
+        } else {
+          const stage1 = stagesMap.get(1)!;
+          if (!stage1.startTime) {
+            stage1.startTime = startTime;
+          }
+        }
+      }
+
+      const stageHistory = Array.from(stagesMap.values())
+        .sort((a, b) => a.stageNumber - b.stageNumber)
+        .map((stageObj) => {
+          let netTimeMs = undefined;
+          let averageSpeed = undefined;
+          if (stageObj.startTime && stageObj.arrivalTime) {
+            netTimeMs = stageObj.arrivalTime.getTime() - stageObj.startTime.getTime();
+            if (netTimeMs > 0 && stageObj.distanceKm > 0) {
+              const hours = netTimeMs / 3600000;
+              averageSpeed = parseFloat((stageObj.distanceKm / hours).toFixed(3));
+            }
+          }
+          return {
+            stageNumber: stageObj.stageNumber,
+            distanceKm: stageObj.distanceKm,
+            startTime: stageObj.startTime,
+            arrivalTime: stageObj.arrivalTime,
+            vetInTime: stageObj.vetInTime,
+            heartRate: stageObj.heartRate,
+            netTimeMs,
+            averageSpeed,
+          };
+        });
+
       return {
         bibNumber: entry.bibNumber,
         riderName: entry.rider.name,
         horseName: entry.horse.name,
-        status: entry.status,
-        currentStage: entry.currentStage?.stageNumber || 1,
+        status: competitorStatus,
+        currentStage: calculatedCurrentStage,
         lastArrivalTime: lastArrivalTime,
         nextVetControlTime: nextVetControlTime,
         totalRaceTimeMs: stats.totalTimeMs,
@@ -162,6 +305,7 @@ export class LeaderboardService {
               jerseyImageUrl: entry.representedTenant.jerseyImageUrl,
             }
           : null,
+        stages: stageHistory,
       };
     });
 
@@ -197,6 +341,23 @@ export class LeaderboardService {
       entry.rank = isActive ? nextRank++ : null;
       entry.gapToLeaderMs =
         entry.totalRaceTimeMs > 0 ? entry.totalRaceTimeMs - leaderTime : 0;
+    });
+
+    // 5. Ajustar campos de visualización para etapas activas no finalizadas
+    const finalStatuses = [
+      ParticipantStatus.DQ,
+      ParticipantStatus.DNF,
+      ParticipantStatus.WD,
+    ];
+    leaderboard.forEach((entry) => {
+      if (
+        !finalStatuses.includes(entry.status) &&
+        (entry.completedStages || 0) < entry.currentStage
+      ) {
+        entry.totalRaceTimeMs = null;
+        entry.averageSpeed = null;
+        entry.gapToLeaderMs = null;
+      }
     });
 
     return leaderboard;
@@ -251,9 +412,12 @@ export class LeaderboardService {
   }
 
   /**
-   * Busca el último registro VET_IN válido y extrae el pulso de la clínica.
+   * Busca el último registro VET_IN válido de la etapa actual y extrae el pulso de la clínica.
    */
-  private extractLatestHeartRate(records: any[]): number | null {
+  private extractLatestHeartRate(
+    records: any[],
+    currentStageNumber: number,
+  ): number | null {
     if (!records) return null;
 
     // Ordenar de más reciente a más antiguo
@@ -262,34 +426,17 @@ export class LeaderboardService {
         new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
 
-    // Buscar el VET_IN más reciente que tenga una inspección veterinaria asociada
-    const latestVetRecord = sortedRecords.find(
-      (r) => r.recordType === TimeRecordType.VET_IN && r.vetInspection != null,
+    // Buscar el VET_IN de la etapa actual (currentStageNumber) que tenga una inspección veterinaria asociada y no esté anulado
+    const currentStageVetRecord = sortedRecords.find(
+      (r) =>
+        !r.isVoid &&
+        r.recordType === TimeRecordType.VET_IN &&
+        (r.stage?.stageNumber || 1) === currentStageNumber &&
+        r.vetInspection != null,
     );
 
-    return latestVetRecord ? latestVetRecord.vetInspection.heartRate : null;
+    return currentStageVetRecord ? currentStageVetRecord.vetInspection.heartRate : null;
   }
 
-  /**
-   * Calcula la hora límite de presentación en el Vet-Gate (Art. FEU).
-   * Por defecto, el reglamento suele exigir 20 minutos tras la llegada.
-   */
-  private calculateTargetVetTime(records: any[]): Date | null {
-    if (!records || records.length === 0) return null;
 
-    const lastArrival = records
-      .filter((r) => r.recordType === TimeRecordType.ARRIVAL)
-      .sort(
-        (a, b) =>
-          new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
-      )[0];
-
-    if (!lastArrival) return null;
-
-    // Tiempo reglamentario: 20 minutos (esto idealmente viene de la Stage, pero asumimos 20)
-    const targetVetTime = new Date(lastArrival.recordedAt);
-    targetVetTime.setMinutes(targetVetTime.getMinutes() + 20);
-
-    return targetVetTime;
-  }
 }

@@ -102,6 +102,9 @@ export default function LeaderboardTable({
   const { leaderboard, error, isLoading, isValidating } =
     useLiveLeaderboard(competitionId);
 
+  // Control de estado reactivo para la fila expandida (Acordeón estricto)
+  const [expandedRowId, setExpandedRowId] = React.useState<number | null>(null);
+
   // Informar al layout root sobre errores en la llamada a la API
   React.useEffect(() => {
     if (onErrorChange) {
@@ -311,16 +314,36 @@ export default function LeaderboardTable({
                     ? "bg-orange-100 text-orange-950 border-orange-300"
                     : "bg-slate-50 text-slate-700 border-slate-200";
 
+            const previousStages = (entry.stages || []).filter(
+              (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED"
+            );
+
             return (
               <div
                 key={entry.bibNumber}
-                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all ${
+                onClick={() => setExpandedRowId(expandedRowId === entry.bibNumber ? null : entry.bibNumber)}
+                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${
                   entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
-                }`}
+                } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
               >
                 {/* Cabecera de la Tarjeta del Binomio */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
+                    <svg
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
+                        expandedRowId === entry.bibNumber ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
                     {entry.rank ? (
                       <span
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankBg}`}
@@ -461,6 +484,116 @@ export default function LeaderboardTable({
                     </div>
                   )}
                 </div>
+
+                {/* Historial de Etapas Anteriores (Bitácora Móvil) */}
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    expandedRowId === entry.bibNumber
+                      ? "max-h-[800px] opacity-100 pt-4 border-t border-slate-100"
+                      : "max-h-0 opacity-0 pointer-events-none"
+                  }`}
+                  onClick={(e) => e.stopPropagation()} // Evita cerrar el acordeón al hacer clic dentro
+                >
+                  <h5 className="font-extrabold text-slate-800 text-xs mb-3 uppercase tracking-wider flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-1.5 text-[#AD8F6C]"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Historial de Etapas Anteriores
+                  </h5>
+                  {previousStages.length > 0 ? (
+                    <div className="space-y-3">
+                      {previousStages.map((stage) => (
+                        <div
+                          key={stage.stageNumber}
+                          className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 space-y-3"
+                        >
+                          <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                            <span className="font-extrabold text-slate-800 text-sm">
+                              Etapa {stage.stageNumber} ({stage.distanceKm} km)
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              🩺 Vet OK
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Largada
+                              </span>
+                              <span className="font-mono font-bold text-slate-700">
+                                {formatHHMMSS(stage.startTime)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Llegada
+                              </span>
+                              <span className="font-mono font-bold text-slate-700">
+                                {formatHHMMSS(stage.arrivalTime)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Tiempo Neto
+                              </span>
+                              <span className="font-mono font-bold text-slate-900">
+                                {formatTime(stage.netTimeMs || 0)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Velocidad Prom.
+                              </span>
+                              <span className="font-bold text-slate-800">
+                                {stage.averageSpeed
+                                  ? `${stage.averageSpeed.toFixed(2)} km/h`
+                                  : "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Toma de Pulso
+                              </span>
+                              <span className="font-mono font-bold text-slate-700">
+                                {formatHHMMSS(stage.vetInTime)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                                Pulso
+                              </span>
+                              <span
+                                className={`font-mono font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                                  stage.heartRate && stage.heartRate > 64
+                                    ? "bg-rose-100 text-rose-800"
+                                    : "bg-slate-100 text-slate-800"
+                                }`}
+                              >
+                                {stage.heartRate
+                                  ? `${stage.heartRate} ppm`
+                                  : "—"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-slate-400 text-xs font-semibold">
+                      No hay etapas anteriores registradas.
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })
@@ -505,47 +638,27 @@ export default function LeaderboardTable({
                           ? "bg-orange-100 text-orange-950 border-orange-300"
                           : "bg-slate-50 text-slate-700 border-slate-200";
 
+                  const previousStages = (entry.stages || []).filter(
+                    (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED"
+                  );
+
                   return (
-                    <tr
-                      key={entry.bibNumber}
-                      className={`hover:bg-slate-50/50 transition-colors ${
-                        entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
-                      }`}
-                    >
-                      {/* PUESTO */}
-                      <td className="py-4.5 px-2 text-center font-bold">
-                        {entry.rank ? (
-                          <span
-                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
-                          >
-                            {entry.rank}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 font-mono text-sm">
-                            --
-                          </span>
-                        )}
-                      </td>
-
-                      {/* DORSAL */}
-                      <td className="py-4.5 px-3 text-center">
-                        <div className="flex flex-col items-center space-y-1.5">
-                          <ClubJersey representedTenant={entry.representedTenant} />
-                          <span className="inline-block bg-slate-900 text-white font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg">
-                            #{entry.bibNumber}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* BINOMIO */}
-                      <td className="py-4.5 px-3">
-                        <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-900 text-sm">
-                            {entry.riderName}
-                          </span>
-                          <span className="text-xs text-slate-500 font-bold flex items-center mt-0.5 whitespace-nowrap">
+                    <React.Fragment key={entry.bibNumber}>
+                      <tr
+                        onClick={() => setExpandedRowId(expandedRowId === entry.bibNumber ? null : entry.bibNumber)}
+                        className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${
+                          expandedRowId === entry.bibNumber ? "bg-slate-50/70" : ""
+                        } ${
+                          entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
+                        }`}
+                      >
+                        {/* PUESTO */}
+                        <td className="py-4.5 px-2 text-center font-bold">
+                          <div className="flex items-center justify-center space-x-1.5">
                             <svg
-                              className="h-3 w-3 mr-1 text-[#AD8F6C]"
+                              className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${
+                                expandedRowId === entry.bibNumber ? "rotate-180" : ""
+                              }`}
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke="currentColor"
@@ -554,86 +667,257 @@ export default function LeaderboardTable({
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2.5}
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                d="M19 9l-7 7-7-7"
                               />
                             </svg>
-                            {entry.horseName}
-                          </span>
-                          {entry.startTime && (
-                            <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                              <span className="inline-flex items-center text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                                Salida: {formatHHMMSS(entry.startTime)}
+                            {entry.rank ? (
+                              <span
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
+                              >
+                                {entry.rank}
                               </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* ETAPA */}
-                      <td className="py-4.5 px-2 text-center font-bold text-slate-800">
-                        E{entry.currentStage}
-                      </td>
-
-                      {/* LLEGADA */}
-                      <td className="py-4.5 px-3 font-mono font-bold text-emerald-600 whitespace-nowrap">
-                        {formatHHMMSS(entry.arrivalTime)}
-                      </td>
-
-                      {/* TIEMPO NETO */}
-                      <td className="py-4.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        {formatTime(entry.totalRaceTimeMs)}
-                      </td>
-
-                      {/* DIFERENCIA */}
-                      <td className="py-4.5 px-3 font-mono text-xs text-slate-700 whitespace-nowrap">
-                        {formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs)}
-                      </td>
-
-                      {/* VELOCIDAD PROMEDIO */}
-                      <td className="py-4.5 px-3 font-bold text-slate-800 whitespace-nowrap">
-                        {entry.averageSpeed
-                          ? `${entry.averageSpeed.toFixed(2)} km/h`
-                          : "--"}
-                      </td>
-
-                      {/* TOMA DE PULSO */}
-                      <td className="py-4.5 px-3">
-                        <div className="flex flex-col whitespace-nowrap">
-                          <span className="font-mono font-bold text-slate-950 text-sm whitespace-nowrap">
-                            {formatHHMMSS(entry.vetInTime)}
-                          </span>
-                          {entry.nextVetControlTime && (
-                            <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                              <span className="inline-flex items-center text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                                Límite: {formatHHMMSS(entry.nextVetControlTime)}
+                            ) : (
+                              <span className="text-slate-400 font-mono text-sm">
+                                --
                               </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* PULSO */}
-                      <td className="py-4.5 px-2 text-center">
-                        {entry.heartRate ? (
-                          <span
-                            className={`inline-block font-mono font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${
-                              entry.heartRate > 64
-                                ? "bg-rose-100 text-rose-900 border border-rose-200"
-                                : "bg-slate-100 text-slate-900 border border-slate-200"
+                        {/* DORSAL */}
+                        <td className="py-4.5 px-3 text-center">
+                          <div className="flex flex-col items-center space-y-1.5">
+                            <ClubJersey representedTenant={entry.representedTenant} />
+                            <span className="inline-block bg-slate-900 text-white font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg">
+                              #{entry.bibNumber}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* BINOMIO */}
+                        <td className="py-4.5 px-3">
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-slate-900 text-sm">
+                              {entry.riderName}
+                            </span>
+                            <span className="text-xs text-slate-500 font-bold flex items-center mt-0.5 whitespace-nowrap">
+                              <svg
+                                className="h-3 w-3 mr-1 text-[#AD8F6C]"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2.5}
+                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                />
+                              </svg>
+                              {entry.horseName}
+                            </span>
+                            {entry.startTime && (
+                              <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
+                                <span className="inline-flex items-center text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                  Salida: {formatHHMMSS(entry.startTime)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* ETAPA */}
+                        <td className="py-4.5 px-2 text-center font-bold text-slate-800">
+                          E{entry.currentStage}
+                        </td>
+
+                        {/* LLEGADA */}
+                        <td className="py-4.5 px-3 font-mono font-bold text-emerald-600 whitespace-nowrap">
+                          {formatHHMMSS(entry.arrivalTime)}
+                        </td>
+
+                        {/* TIEMPO NETO */}
+                        <td className="py-4.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {formatTime(entry.totalRaceTimeMs)}
+                        </td>
+
+                        {/* DIFERENCIA */}
+                        <td className="py-4.5 px-3 font-mono text-xs text-slate-700 whitespace-nowrap">
+                          {formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs)}
+                        </td>
+
+                        {/* VELOCIDAD PROMEDIO */}
+                        <td className="py-4.5 px-3 font-bold text-slate-800 whitespace-nowrap">
+                          {entry.averageSpeed
+                            ? `${entry.averageSpeed.toFixed(2)} km/h`
+                            : "--"}
+                        </td>
+
+                        {/* TOMA DE PULSO */}
+                        <td className="py-4.5 px-3">
+                          <div className="flex flex-col whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-950 text-sm whitespace-nowrap">
+                              {formatHHMMSS(entry.vetInTime)}
+                            </span>
+                            {entry.nextVetControlTime && (
+                              <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
+                                <span className="inline-flex items-center text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                  Límite: {formatHHMMSS(entry.nextVetControlTime)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* PULSO */}
+                        <td className="py-4.5 px-2 text-center">
+                          {entry.heartRate ? (
+                            <span
+                              className={`inline-block font-mono font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${
+                                entry.heartRate > 64
+                                  ? "bg-rose-100 text-rose-900 border border-rose-200"
+                                  : "bg-slate-100 text-slate-900 border border-slate-200"
+                              }`}
+                            >
+                              {entry.heartRate} ppm
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">--</span>
+                          )}
+                        </td>
+
+                        {/* ESTADO */}
+                        <td className="py-4.5 px-3 text-center">
+                          {renderStatusBadge(entry.status)}
+                        </td>
+                      </tr>
+
+                      {/* Fila Secundaria del Acordeón (Detalle de Fases Pasadas) */}
+                      <tr key={`expanded-${(entry as any).id || entry.bibNumber}`} className="bg-slate-50/30">
+                        <td colSpan={11} className="p-0 border-none">
+                          <div
+                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                              expandedRowId === entry.bibNumber
+                                ? "max-h-[500px] opacity-100 border-b border-slate-100"
+                                : "max-h-0 opacity-0 pointer-events-none"
                             }`}
                           >
-                            {entry.heartRate} ppm
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">--</span>
-                        )}
-                      </td>
+                            <div className="p-6 bg-slate-50/60 shadow-inner">
+                              <h5 className="font-extrabold text-slate-800 text-xs mb-3 uppercase tracking-wider flex items-center">
+                                <svg
+                                  className="w-4 h-4 mr-1.5 text-[#AD8F6C]"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                Historial de Etapas Anteriores
+                              </h5>
+                              {previousStages.length > 0 ? (
+                                <table className="w-full text-left border-collapse table-fixed">
+                                  <colgroup>
+                                    <col className="w-12" />
+                                    <col className="w-16" />
+                                    <col />
+                                    <col className="w-14" />
+                                    <col />
+                                    <col />
+                                    <col />
+                                    <col />
+                                    <col />
+                                    <col className="w-16" />
+                                    <col />
+                                  </colgroup>
+                                  <tbody className="divide-y divide-slate-200/50 text-xs text-slate-600 font-medium">
+                                    {previousStages.map((stage) => (
+                                      <tr
+                                        key={stage.stageNumber}
+                                        className="hover:bg-slate-100/30 transition-colors"
+                                      >
+                                        {/* Pos. */}
+                                        <td className="py-3 px-2 text-center text-slate-350">—</td>
 
-                      {/* ESTADO */}
-                      <td className="py-4.5 px-3 text-center">
-                        {renderStatusBadge(entry.status)}
-                      </td>
-                    </tr>
+                                        {/* Dorsal */}
+                                        <td className="py-3 px-3 text-center text-slate-350">—</td>
+
+                                        {/* Binomio / Nombre Etapa */}
+                                        <td className="py-3 px-3 font-extrabold text-slate-800">
+                                          Etapa {stage.stageNumber} ({stage.distanceKm} km)
+                                        </td>
+
+                                        {/* Etapa */}
+                                        <td className="py-3 px-2 text-center font-bold text-slate-500">
+                                          E{stage.stageNumber}
+                                        </td>
+
+                                        {/* Llegada */}
+                                        <td className="py-3 px-3 font-mono text-slate-500">
+                                          {formatHHMMSS(stage.arrivalTime)}
+                                        </td>
+
+                                        {/* Tiempo Neto */}
+                                        <td className="py-3 px-3 font-mono font-bold text-slate-700">
+                                          {formatTime(stage.netTimeMs || 0)}
+                                        </td>
+
+                                        {/* Diferencia */}
+                                        <td className="py-3 px-3 font-mono text-slate-350">—</td>
+
+                                        {/* Velocidad Prom. */}
+                                        <td className="py-3 px-3 font-bold text-slate-600">
+                                          {stage.averageSpeed
+                                            ? `${stage.averageSpeed.toFixed(2)} km/h`
+                                            : "—"}
+                                        </td>
+
+                                        {/* Toma de Pulso */}
+                                        <td className="py-3 px-3 font-mono text-slate-500">
+                                          {formatHHMMSS(stage.vetInTime)}
+                                        </td>
+
+                                        {/* Pulso */}
+                                        <td className="py-3 px-2 text-center">
+                                          {stage.heartRate ? (
+                                            <span
+                                              className={`inline-block font-mono font-extrabold text-[11px] px-2 py-0.5 rounded ${
+                                                stage.heartRate > 64
+                                                  ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                                  : "bg-slate-50 text-slate-600 border border-slate-100"
+                                              }`}
+                                            >
+                                              {stage.heartRate} ppm
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-350">—</span>
+                                          )}
+                                        </td>
+
+                                        {/* Estado */}
+                                        <td className="py-3 px-3 text-center">
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            🩺 Vet OK
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div className="text-center py-4 text-slate-400 text-xs font-semibold">
+                                  No hay etapas anteriores registradas.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   );
                 })
               ) : (

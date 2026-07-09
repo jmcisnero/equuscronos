@@ -33,6 +33,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     async function loadStoredAuth() {
       try {
+        const storedApiUrl = await SecureStore.getItemAsync("api_url");
+        if (storedApiUrl) {
+          ApiService.setBaseUrl(storedApiUrl);
+        }
         const storedToken = await SecureStore.getItemAsync("auth_token");
         const storedUser = await SecureStore.getItemAsync("auth_user");
         if (storedToken && storedUser) {

@@ -17,6 +17,7 @@ import { initDatabase, getDatabase } from "./src/database/db";
 import { LocalCompetitionEntry } from "./src/database/schema";
 import SyncService from "./src/services/SyncService";
 import ApiService from "./src/services/ApiService";
+import * as SecureStore from "expo-secure-store";
 import { CompetitorCard } from "./src/components/CompetitorCard";
 import { TimingScreen } from "./src/screens/TimingScreen";
 import { VetGateScreen } from "./src/screens/VetGateScreen";
@@ -187,6 +188,13 @@ function MainApp() {
         // Bootstrapping local sqlite schema
         await initDatabase();
         setDbReady(true);
+        
+        // Restore persisted API URL
+        const storedApiUrl = await SecureStore.getItemAsync("api_url");
+        if (storedApiUrl) {
+          ApiService.setBaseUrl(storedApiUrl);
+          setApiUrl(storedApiUrl);
+        }
       } catch (error) {
         Alert.alert(
           "Falla Crítica",

@@ -21,6 +21,18 @@ class ApiService {
       },
     });
 
+    // Cargar URL guardada de forma asíncrona en inicialización
+    SecureStore.getItemAsync("api_url")
+      .then((storedUrl) => {
+        if (storedUrl) {
+          this.currentBaseUrl = storedUrl;
+          console.log(`[ApiService] URL de API inicializada desde SecureStore: ${storedUrl}`);
+        }
+      })
+      .catch((err) => {
+        console.warn("[ApiService] Error cargando api_url en inicialización:", err);
+      });
+
     // Interceptor de peticiones para inyectar dinámicamente el token JWT desde el almacenamiento seguro
     this.client.interceptors.request.use(
       async (config) => {
@@ -48,6 +60,9 @@ class ApiService {
 
   setBaseUrl(url: string) {
     this.currentBaseUrl = url;
+    SecureStore.setItemAsync("api_url", url).catch((err) => {
+      console.warn("[ApiService] Error al guardar api_url en SecureStore:", err);
+    });
   }
 
   private async validateRole(allowedRoles: UserRole[]) {

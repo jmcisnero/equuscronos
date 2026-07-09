@@ -40,19 +40,19 @@ export class LeaderboardEntryDto {
   })
   nextVetControlTime?: Date;
 
-  @ApiProperty({ description: "Tiempo total neto de carrera (Milisegundos)" })
-  totalRaceTimeMs: number;
+  @ApiPropertyOptional({ description: "Tiempo total neto de carrera (Milisegundos) o null si está en etapa activa" })
+  totalRaceTimeMs: number | null;
 
-  @ApiProperty({
-    description: "Diferencia de tiempo con el líder (Milisegundos)",
+  @ApiPropertyOptional({
+    description: "Diferencia de tiempo con el líder (Milisegundos) o null si está en etapa activa",
   })
-  gapToLeaderMs: number;
+  gapToLeaderMs: number | null;
 
-  @ApiProperty({
-    description: "Velocidad promedio del competidor (km/h) con 3 decimales",
+  @ApiPropertyOptional({
+    description: "Velocidad promedio del competidor (km/h) con 3 decimales o null si está en etapa activa",
     example: 32.734,
   })
-  averageSpeed: number;
+  averageSpeed: number | null;
 
   @ApiPropertyOptional({
     description: "Última frecuencia cardíaca registrada en clínica (ppm)",
@@ -100,4 +100,10 @@ export class LeaderboardEntryDto {
     location?: string;
     jerseyImageUrl?: string;
   };
+
+  @ApiPropertyOptional({
+    description: "Detalle de las etapas recorridas por el competidor",
+    type: "array",
+  })
+  stages?: any[];
 }

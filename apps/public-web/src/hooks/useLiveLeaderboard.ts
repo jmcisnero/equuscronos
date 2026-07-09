@@ -31,6 +31,16 @@ export interface LeaderboardEntry {
     location?: string;
     jerseyImageUrl?: string;
   } | null;
+  stages?: {
+    stageNumber: number;
+    distanceKm: number;
+    startTime?: string;
+    arrivalTime?: string;
+    vetInTime?: string;
+    heartRate?: number;
+    netTimeMs?: number;
+    averageSpeed?: number;
+  }[];
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
