@@ -694,9 +694,7 @@ function MainApp() {
                   ? "Largada"
                   : stationRecordType === "ARRIVAL"
                     ? "Arribos"
-                    : stationRecordType === "VET_IN"
-                      ? "Vet In"
-                      : "Vet Out"}
+                    : "Vet In"}
                 : Registrar (Stream)
               </Text>
             </TouchableOpacity>
@@ -714,7 +712,7 @@ function MainApp() {
                     keyof typeof TimeRecordType
                   >
                 )
-                  .filter((key) => TimeRecordType[key] !== TimeRecordType.START)
+                  .filter((key) => TimeRecordType[key] !== TimeRecordType.START && TimeRecordType[key] !== TimeRecordType.VET_OUT)
                   .map((key) => {
                     const val = TimeRecordType[key];
                     const isActive = stationRecordType === val;
@@ -735,9 +733,7 @@ function MainApp() {
                         >
                           {val === "ARRIVAL"
                             ? "🏁 Arribos"
-                            : val === "VET_IN"
-                              ? "🩺 Vet In"
-                              : "🩺 Vet Out"}
+                            : "🩺 Vet In"}
                         </Text>
                       </TouchableOpacity>
                     );

@@ -82,7 +82,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
 
   // Clinical parameters states
   const [heartRate, setHeartRate] = useState<string>("");
-  const [temperature, setTemperature] = useState<string>("38.2");
+  const [temperature, setTemperature] = useState<string | null>(null);
   const [motricity, setMotricity] = useState<MotricityStatus>(
     MotricityStatus.APTO,
   );
@@ -116,7 +116,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const HEART_RATE_LIMIT = 65;
 
   const parsedHr = parseInt(heartRate, 10);
-  const parsedTemp = parseFloat(temperature);
+  const parsedTemp = null;
 
   // Dynamic visual indicators of FEU regulatory threshold
   const isHeartRateWarning = !isNaN(parsedHr) && parsedHr > HEART_RATE_LIMIT;
@@ -235,7 +235,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
 
         // Clear inputs for editing
         setHeartRate("");
-        setTemperature("38.2");
+        setTemperature(null);
         setMotricity(MotricityStatus.APTO);
         setMetabolic(ClinicalStatus.NORMAL);
         setNotes("");
@@ -250,7 +250,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         setVetInRecord(last);
         setAttempt(last.attempt_number || 1);
         setHeartRate(String(last.heart_rate || ""));
-        setTemperature(String(last.temperature || ""));
+        setTemperature(last.temperature ? String(last.temperature) : null);
         setMotricity(last.motricity || MotricityStatus.APTO);
         setMetabolic(last.metabolic || ClinicalStatus.NORMAL);
         setNotes(last.notes || "");
@@ -278,14 +278,14 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       const first = inspections.find((ins) => ins.attempt_number === 1);
       if (first) {
         setHeartRate(String(first.heart_rate || ""));
-        setTemperature(String(first.temperature || ""));
+        setTemperature(first.temperature ? String(first.temperature) : null);
         setMotricity(first.motricity || MotricityStatus.APTO);
         setMetabolic(first.metabolic || ClinicalStatus.NORMAL);
         setNotes(first.notes || "");
         setIsReadOnly(true);
       } else {
         setHeartRate("");
-        setTemperature("38.2");
+        setTemperature(null);
         setMotricity(MotricityStatus.APTO);
         setMetabolic(ClinicalStatus.NORMAL);
         setNotes("");
@@ -296,14 +296,14 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       const second = inspections.find((ins) => ins.attempt_number === 2);
       if (second) {
         setHeartRate(String(second.heart_rate || ""));
-        setTemperature(String(second.temperature || ""));
+        setTemperature(second.temperature ? String(second.temperature) : null);
         setMotricity(second.motricity || MotricityStatus.APTO);
         setMetabolic(second.metabolic || ClinicalStatus.NORMAL);
         setNotes(second.notes || "");
         setIsReadOnly(true);
       } else {
         setHeartRate("");
-        setTemperature("38.2");
+        setTemperature(null);
         setMotricity(MotricityStatus.APTO);
         setMetabolic(ClinicalStatus.NORMAL);
         setNotes("");
@@ -408,7 +408,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           tenantId,
           vetInRecord.timing_record_id,
           parsedHr,
-          isNaN(parsedTemp) ? null : parsedTemp,
+          null,
           motricity,
           metabolic,
           attempt,
@@ -446,7 +446,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           tenant_id: tenantId,
           timing_record_id: vetInRecord.timing_record_id,
           heart_rate: parsedHr,
-          temperature: isNaN(parsedTemp) ? null : parsedTemp,
+          temperature: null,
           motricity: motricity,
           metabolic: metabolic,
           attempt_number: attempt,
@@ -496,7 +496,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
               setBibSearch("");
               setMatchedEntry(null);
               setHeartRate("");
-              setTemperature("38.2");
+              setTemperature(null);
               setMotricity(MotricityStatus.APTO);
               setMetabolic(ClinicalStatus.NORMAL);
               setNotes("");
@@ -681,19 +681,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
               />
             </View>
 
-            {/* Temperature */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Temperatura (°C)</Text>
-              <TextInput
-                style={styles.numericInput}
-                placeholder="Ej: 38.2"
-                keyboardType="numeric"
-                value={temperature}
-                onChangeText={setTemperature}
-                maxLength={4}
-                editable={!isReadOnly}
-              />
-            </View>
+
 
             {/* Attempt Number Selector */}
             <View style={styles.inputGroup}>

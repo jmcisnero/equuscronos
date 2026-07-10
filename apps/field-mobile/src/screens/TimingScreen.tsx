@@ -688,9 +688,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
                 ? "LARGADAS"
                 : recordType === TimeRecordType.ARRIVAL
                   ? "ARRIBOS"
-                  : recordType === TimeRecordType.VET_IN
-                    ? "VET IN"
-                    : "VET OUT"}
+                  : "VET IN"}
             </Text>
             <Text style={styles.subtitle}>Puesto Activo</Text>
           </View>
