@@ -21,12 +21,14 @@ export class TenantInterceptor implements NestInterceptor {
       ? ""
       : (request.user?.role === "ADMIN" ? "" : request.user?.tenantId || request.headers["x-tenant-id"] || "");
     const userId = request.user?.id || "";
+    const ipAddress = (request.headers["x-forwarded-for"] as string) || request.ip || request.connection?.remoteAddress || "";
+    const userAgent = request.headers["user-agent"] || "";
     const method = request.method;
     const start = Date.now();
 
     // Ejecutamos el flujo de la solicitud dentro del contexto del AsyncLocalStorage
     return new Observable((subscriber) => {
-      tenantStorage.run({ tenantId, userId }, () => {
+      tenantStorage.run({ tenantId, userId, ipAddress, userAgent }, () => {
         next.handle().pipe(
           tap({
             next: () => {

@@ -234,7 +234,7 @@ export default function UserDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Fecha Alta Cuenta
               </span>
-              <span className="text-sm font-bold text-slate-800 font-mono">
+              <span className="text-sm font-bold text-slate-800 font-sans tabular-nums">
                 {user.createdAt
                   ? new Date(user.createdAt).toLocaleDateString("es-UY")
                   : "-"}

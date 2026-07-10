@@ -33,6 +33,7 @@ export interface Competition {
   id: string;
   name: string;
   competitionDate: string; // ISO Date String
+  startTime: string;
   location: string;
   isFederated: boolean;
   maxHeartRate: number;
@@ -69,6 +70,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     id: "c2000000-0000-0000-0000-000000000001",
     name: "71° Raid Hípico Batalla de Tupambaé",
     competitionDate: "2026-06-14T07:00:00Z",
+    startTime: "07:00:00",
     location: "Tupambaé, Cerro Largo",
     isFederated: true,
     maxHeartRate: 60,
@@ -88,6 +90,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     id: "c2000000-0000-0000-0000-000000000002",
     name: "Raid Éxodo del Pueblo Oriental",
     competitionDate: "2026-06-28T08:00:00Z",
+    startTime: "08:00:00",
     location: "Cardona, Soriano",
     isFederated: true,
     maxHeartRate: 64,
@@ -107,6 +110,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     id: "c2000000-0000-0000-0000-000000000003",
     name: "Raid Federal de San Ramón",
     competitionDate: "2026-05-17T07:30:00Z",
+    startTime: "07:30:00",
     location: "San Ramón, Canelones",
     isFederated: true,
     maxHeartRate: 60,
@@ -126,6 +130,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     id: "c2000000-0000-0000-0000-000000000004",
     name: "Raid Hípico Grito de Asencio",
     competitionDate: "2026-04-12T08:00:00Z",
+    startTime: "08:00:00",
     location: "Mercedes, Soriano",
     isFederated: false,
     maxHeartRate: 65,

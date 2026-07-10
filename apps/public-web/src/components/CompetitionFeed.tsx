@@ -13,12 +13,11 @@ export default function CompetitionFeed() {
   const { competitions, error, isLoading, isValidating } = useCompetitions();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModality, setSelectedModality] = useState<string>("ALL");
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // Activación proactiva del fallback ante caída de API o modo demostración habilitado
+  // Activación proactiva del fallback ante caída de API o si no hay datos y terminó de cargar
   const isUsingFallback = useMemo(() => {
-    return isDemoMode || !!error || (competitions.length === 0 && !isLoading);
-  }, [isDemoMode, error, competitions, isLoading]);
+    return !!error || (competitions.length === 0 && !isLoading);
+  }, [error, competitions, isLoading]);
 
   const activeData = useMemo(() => {
     return isUsingFallback ? MOCK_COMPETITIONS : competitions;
@@ -80,6 +79,15 @@ export default function CompetitionFeed() {
     }
   };
 
+  const formatStartTime = (timeStr?: string) => {
+    if (!timeStr) return "07:00 hs";
+    const match = timeStr.match(/^(\d{2}):(\d{2})/);
+    if (match) {
+      return `${match[1]}:${match[2]} hs`;
+    }
+    return `${timeStr} hs`;
+  };
+
   const getModalityLabel = (modality?: string) => {
     switch (modality) {
       case "CONTROLLED_SPEED":
@@ -126,30 +134,10 @@ export default function CompetitionFeed() {
               </p>
             </div>
           </div>
-
-          {/* Toggle de Modo Demo con Amplia Zona de Contacto táctil (>44px) */}
-          <div className="flex items-center space-x-3 self-end md:self-auto min-h-[44px]">
-            <span className="text-xs text-slate-700 font-extrabold">
-              Modo Simulado (Demo):
-            </span>
-            <button
-              onClick={() => setIsDemoMode(!isDemoMode)}
-              aria-label="Alternar modo simulado"
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none shadow-sm cursor-pointer ${
-                isUsingFallback ? "bg-equus-green" : "bg-gray-200"
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
-                  isUsingFallback ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </div>
         </div>
 
         {/* CONTROLES ADAPTATIVOS CON HITBOX MIN DE 44PX (h-11 / py-3) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Input de Búsqueda con Altura Táctil de 44px */}
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -195,34 +183,6 @@ export default function CompetitionFeed() {
                     : "Endurance"}
               </button>
             ))}
-          </div>
-
-          {/* Estado de Sincronización de API */}
-          <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 h-11 text-xs">
-            <span className="text-slate-500 font-bold">Estado Red:</span>
-            <div className="flex items-center space-x-2">
-              {isLoading && !isUsingFallback ? (
-                <span className="flex items-center text-amber-600 font-extrabold space-x-1.5 animate-pulse">
-                  <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                  <span>Cargando...</span>
-                </span>
-              ) : error ? (
-                <span className="flex items-center text-rose-600 font-extrabold space-x-1.5">
-                  <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping"></span>
-                  <span>Sin Conexión</span>
-                </span>
-              ) : isDemoMode ? (
-                <span className="flex items-center text-[#AD8F6C] font-extrabold space-x-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[#A99677] animate-pulse"></span>
-                  <span>Modo Demostración</span>
-                </span>
-              ) : (
-                <span className="flex items-center text-emerald-600 font-extrabold space-x-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Actualizado</span>
-                </span>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -386,8 +346,7 @@ export default function CompetitionFeed() {
                   No hay competencias activas en este momento.
                 </p>
                 <p className="text-xs text-slate-500 mt-1.5 font-semibold">
-                  Activa el "Modo Simulado" arriba en el panel para ver la
-                  simulación del Raid Batalla de Tupambaé.
+                  Por favor, intente nuevamente más tarde o contacte al administrador.
                 </p>
               </div>
             )}
@@ -418,9 +377,27 @@ export default function CompetitionFeed() {
                         <span className="bg-amber-50 text-amber-950 text-[10px] font-black px-2.5 py-1 rounded-full border border-amber-200 block uppercase">
                           Planificado
                         </span>
-                        <span className="text-[10px] font-extrabold text-slate-600 font-mono">
-                          {formatDate(comp.competitionDate)}
-                        </span>
+                        <div className="flex flex-col items-end space-y-1">
+                          <span className="text-[10px] font-extrabold text-slate-600 font-sans tabular-nums">
+                            {formatDate(comp.competitionDate)}
+                          </span>
+                          <span className="text-[10px] font-extrabold text-slate-500 font-sans tabular-nums flex items-center">
+                            <svg
+                              className="h-3 w-3 mr-1 text-slate-400"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2.5}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            {formatStartTime(comp.startTime)}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="mt-4">
@@ -447,6 +424,27 @@ export default function CompetitionFeed() {
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-slate-100 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">
+                          Hora de Largada:
+                        </span>
+                        <span className="font-extrabold text-slate-700 flex items-center">
+                          <svg
+                            className="h-3.5 w-3.5 mr-1 text-slate-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          {formatStartTime(comp.startTime)}
+                        </span>
+                      </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400 font-bold">
                           Modalidad:
@@ -535,7 +533,7 @@ export default function CompetitionFeed() {
                           >
                             {statusLabel}
                           </span>
-                          <span className="text-[10px] font-bold text-slate-500 font-mono">
+                          <span className="text-[10px] font-bold text-slate-500 font-sans tabular-nums">
                             {formatDate(comp.competitionDate)}
                           </span>
                         </div>

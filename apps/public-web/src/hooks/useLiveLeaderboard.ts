@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import useSWR from "swr";
+import io from "socket.io-client";
 
 export interface LeaderboardEntry {
   rank: number | null;
@@ -12,7 +14,8 @@ export interface LeaderboardEntry {
     | "FINISHED"
     | "DQ"
     | "DNF"
-    | "WD";
+    | "WD"
+    | "NO_COMPLETED";
   currentStage: number;
   lastArrivalTime?: string;
   nextVetControlTime?: string;
@@ -68,15 +71,57 @@ const fetcher = async (path: string) => {
  * @param competitionId - UUID de la competencia a monitorear
  */
 export function useLiveLeaderboard(competitionId: string) {
+  const [isClosed, setIsClosed] = useState(false);
+
+  // Consultar estado inicial de la competencia para ver si ya está finalizada
+  useEffect(() => {
+    if (!competitionId) return;
+
+    fetch(`${API_BASE_URL}/admin/competitions/${competitionId}`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Failed to fetch competition");
+      })
+      .then((data) => {
+        if (data?.status === "COMPLETED" || data?.status === "OFFICIAL") {
+          setIsClosed(true);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch competition status, will rely on websocket:", err);
+      });
+  }, [competitionId]);
+
+  // Conexión WebSocket para recibir evento de cierre en tiempo real
+  useEffect(() => {
+    if (!competitionId || isClosed) return;
+
+    const socketUrl = `${API_BASE_URL}/race`;
+    console.log(`[WebSocket] Connecting to ${socketUrl} for competition: ${competitionId}`);
+    const socket = io(socketUrl, {
+      transports: ["websocket"],
+      autoConnect: true,
+    });
+
+    socket.on(`competition:${competitionId}:closed`, () => {
+      console.log(`[WebSocket] Received closure signal for competition: ${competitionId}`);
+      setIsClosed(true);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [competitionId, isClosed]);
+
   const { data, error, isLoading, mutate, isValidating } = useSWR<
     LeaderboardEntry[]
   >(
     competitionId ? `/competitions/${competitionId}/leaderboard` : null,
     fetcher,
     {
-      refreshInterval: 30000, // Polling de alta frecuencia: 30 segundos
+      refreshInterval: isClosed ? undefined : 30000, // Polling de alta frecuencia de 30 segundos (detenido si está cerrado)
       dedupingInterval: 4000, // Evita re-peticiones repetitivas en cascada rápida
-      revalidateOnFocus: true, // Auto-actualización al enfocar la pestaña
+      revalidateOnFocus: !isClosed, // Auto-actualización al enfocar la pestaña (desactivada si está cerrado)
     },
   );
 
@@ -86,5 +131,6 @@ export function useLiveLeaderboard(competitionId: string) {
     isLoading: isLoading,
     isValidating,
     mutate,
+    isClosed,
   };
 }

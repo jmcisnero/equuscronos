@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CompetitionService } from "@/services/api/competition.service";
+import LiveLeaderboardContingency from "./LiveLeaderboardContingency";
 
 export default function CompetitionDetailPage({
   params,
@@ -181,7 +182,7 @@ export default function CompetitionDetailPage({
             </div>
 
             {/* Fecha */}
-            <div className="flex items-center space-x-1.5 font-mono">
+            <div className="flex items-center space-x-1.5 font-sans tabular-nums">
               <svg
                 className="w-4 h-4 text-slate-400"
                 fill="none"
@@ -199,7 +200,7 @@ export default function CompetitionDetailPage({
             </div>
 
             {/* Hora de Largada */}
-            <div className="flex items-center space-x-1.5 font-mono">
+            <div className="flex items-center space-x-1.5 font-sans tabular-nums">
               <svg
                 className="w-4 h-4 text-slate-400"
                 fill="none"
@@ -255,7 +256,7 @@ export default function CompetitionDetailPage({
                   Vet Gates reglamentarios configurados para el evento
                 </p>
               </div>
-              <span className="text-xs font-extrabold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-mono shadow-sm">
+              <span className="text-xs font-extrabold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-sans tabular-nums shadow-sm">
                 Total: {getDistanceTotal(comp.stages)}
               </span>
             </div>
@@ -274,7 +275,7 @@ export default function CompetitionDetailPage({
                       .map((stage, idx) => (
                         <div key={stage.id} className="relative">
                           {/* Nodo del Timeline */}
-                          <span className="absolute -left-[35px] top-1 flex items-center justify-center w-6.5 h-6.5 rounded-full bg-white border-2 border-equus-green text-[10px] font-extrabold text-slate-800 font-mono shadow-sm">
+                          <span className="absolute -left-[35px] top-1 flex items-center justify-center w-6.5 h-6.5 rounded-full bg-white border-2 border-equus-green text-[10px] font-extrabold text-slate-800 font-sans tabular-nums shadow-sm">
                             {stage.stageNumber}
                           </span>
 
@@ -295,7 +296,7 @@ export default function CompetitionDetailPage({
                                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                   Distancia
                                 </span>
-                                <span className="text-sm font-extrabold text-slate-900 font-mono">
+                                <span className="text-sm font-extrabold text-slate-900 font-sans tabular-nums">
                                   {stage.distanceKm} km
                                 </span>
                               </div>
@@ -305,7 +306,7 @@ export default function CompetitionDetailPage({
                                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                   Neut.
                                 </span>
-                                <span className="text-sm font-extrabold text-slate-600 font-mono">
+                                <span className="text-sm font-extrabold text-slate-600 font-sans tabular-nums">
                                   {stage.neutralizationMinutes} min
                                 </span>
                               </div>
@@ -318,6 +319,11 @@ export default function CompetitionDetailPage({
               )}
             </div>
           </div>
+
+          <LiveLeaderboardContingency
+            competitionId={comp.id}
+            stages={comp.stages || []}
+          />
         </div>
 
         {/* Columna Derecha: Acciones Rápidas y Reglas */}
@@ -380,7 +386,7 @@ export default function CompetitionDetailPage({
                 <span className="text-slate-500 font-medium">
                   Frecuencia Cardíaca Máxima
                 </span>
-                <span className="font-extrabold text-slate-800 font-mono">
+                <span className="font-extrabold text-slate-800 font-sans tabular-nums">
                   {comp.maxHeartRate || 65} ppm
                 </span>
               </div>
@@ -388,7 +394,7 @@ export default function CompetitionDetailPage({
                 <span className="text-slate-500 font-medium">
                   Habilitación de Lastre
                 </span>
-                <span className="font-extrabold text-emerald-600 font-mono">
+                <span className="font-extrabold text-emerald-600 font-sans tabular-nums">
                   85.00 kg (Art. 20)
                 </span>
               </div>
@@ -627,7 +633,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                 Largada Oficial en
               </span>
-              <span className="text-2xl font-extrabold font-mono tracking-wider text-amber-500 animate-pulse block">
+              <span className="text-2xl font-extrabold font-sans tabular-nums tracking-wider text-amber-500 animate-pulse block">
                 {formatCountdown(secondsLeft)}
               </span>
             </div>
@@ -646,7 +652,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
               type="datetime-local"
               value={officialStartTime}
               onChange={(e) => setOfficialStartTime(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm font-sans tabular-nums text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             />
             <p className="text-[10px] text-slate-400 leading-normal">
               Ajuste la hora real si hay retrasos. Conforme al reglamento FEU,
@@ -662,11 +668,11 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
             </p>
             <p>
               La largada oficial de la primera etapa está planificada para las{" "}
-              <strong className="text-white font-mono">
+              <strong className="text-white font-sans tabular-nums">
                 {comp.startTime || "07:00:00"} UY
               </strong>{" "}
               del día{" "}
-              <strong className="text-white font-mono">{compDateStr}</strong>.
+              <strong className="text-white font-sans tabular-nums">{compDateStr}</strong>.
             </p>
             <p className="text-[10px] text-slate-500 italic mt-1">
               La validación se realiza de forma duplicada tanto en Frontend (UX)
@@ -796,7 +802,7 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
                 {missingCompetitors.map((item) => (
                   <div key={item.id} className="p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-xs font-bold font-mono">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-xs font-bold font-sans tabular-nums">
                         Dorsal #{item.bibNumber}
                       </span>
                       <span className="text-xs font-bold text-slate-800">

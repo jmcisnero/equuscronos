@@ -36,6 +36,8 @@ export class LeaderboardService {
       .leftJoinAndSelect("entry.timingRecords", "timing")
       .leftJoinAndSelect("timing.stage", "stage")
       .leftJoinAndSelect("timing.vetInspection", "vet") // <-- EXTRAEMOS EL PULSO CLÍNICO
+      .leftJoinAndSelect("entry.penalties", "penalties")
+      .leftJoinAndSelect("penalties.stage", "penaltyStage")
       .where("entry.competition_id = :competitionId", { competitionId })
       .getMany();
 
@@ -212,9 +214,16 @@ export class LeaderboardService {
       const stagesMap = new Map<number, {
         stageNumber: number;
         distanceKm: number;
+        stageId?: string;
         startTime?: Date;
+        startTimeRecordId?: string;
         arrivalTime?: Date;
+        arrivalTimeRecordId?: string;
         vetInTime?: Date;
+        vetInTimeRecordId?: string;
+        vetInspectionId?: string;
+        motricity?: string;
+        metabolic?: string;
         heartRate?: number;
       }>();
 
@@ -225,17 +234,24 @@ export class LeaderboardService {
           stagesMap.set(sNum, {
             stageNumber: sNum,
             distanceKm: Number(rec.stage.distanceKm),
+            stageId: rec.stage.id,
           });
         }
         const stageObj = stagesMap.get(sNum)!;
         if (rec.recordType === TimeRecordType.START) {
           stageObj.startTime = new Date(rec.recordedAt);
+          stageObj.startTimeRecordId = rec.id;
         } else if (rec.recordType === TimeRecordType.ARRIVAL) {
           stageObj.arrivalTime = new Date(rec.recordedAt);
+          stageObj.arrivalTimeRecordId = rec.id;
         } else if (rec.recordType === TimeRecordType.VET_IN) {
           stageObj.vetInTime = new Date(rec.recordedAt);
+          stageObj.vetInTimeRecordId = rec.id;
           if (rec.vetInspection) {
+            stageObj.vetInspectionId = rec.vetInspection.id;
             stageObj.heartRate = rec.vetInspection.heartRate;
+            stageObj.motricity = rec.vetInspection.motricity;
+            stageObj.metabolic = rec.vetInspection.metabolic;
           }
         }
       }
@@ -270,16 +286,24 @@ export class LeaderboardService {
           return {
             stageNumber: stageObj.stageNumber,
             distanceKm: stageObj.distanceKm,
+            stageId: stageObj.stageId,
             startTime: stageObj.startTime,
+            startTimeRecordId: stageObj.startTimeRecordId,
             arrivalTime: stageObj.arrivalTime,
+            arrivalTimeRecordId: stageObj.arrivalTimeRecordId,
             vetInTime: stageObj.vetInTime,
+            vetInTimeRecordId: stageObj.vetInTimeRecordId,
+            vetInspectionId: stageObj.vetInspectionId,
             heartRate: stageObj.heartRate,
+            motricity: stageObj.motricity,
+            metabolic: stageObj.metabolic,
             netTimeMs,
             averageSpeed,
           };
         });
 
       return {
+        entryId: entry.id,
         bibNumber: entry.bibNumber,
         riderName: entry.rider.name,
         horseName: entry.horse.name,
@@ -306,6 +330,13 @@ export class LeaderboardService {
             }
           : null,
         stages: stageHistory,
+        penalties: (entry.penalties || []).map((p) => ({
+          id: p.id,
+          stageNumber: p.stage?.stageNumber || 1,
+          stageId: p.stage?.id,
+          timePenaltySeconds: p.timePenaltySeconds,
+          reason: p.reason,
+        })),
       };
     });
 

@@ -23,7 +23,7 @@ CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
 
 -- Estados de la Inscripción y Tiempos (Core Logic)
-CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD');
+CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD', 'NO_COMPLETED');
 CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT', 'OLYMPIC_PRESENTATION');
 CREATE TYPE elimination_code AS ENUM (
     'GAIT',          -- Cojera/Claudicación
@@ -97,6 +97,7 @@ CREATE TABLE competition_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL UNIQUE,
     default_rules JSONB, 
+    rules_config JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -111,6 +112,7 @@ CREATE TABLE competitions (
     max_heart_rate INT DEFAULT 65,
     status comp_status DEFAULT 'PLANNED',
     start_time TIME NOT NULL DEFAULT '07:00:00',
+    control_closure_time TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

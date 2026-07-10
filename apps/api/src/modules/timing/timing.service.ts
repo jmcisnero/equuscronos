@@ -181,6 +181,55 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         // 6. Sincronización del Estado del Competidor
         await this.syncEntryState(manager, entry, dto, isLateVetIn);
 
+        // 6b. Detección de hora cero para cierre de control (meta final del primer binomio clasificado)
+        if (dto.recordType === TimeRecordType.ARRIVAL && isApproved) {
+          const stages = await manager.find(Stage, {
+            where: { competition: { id: entry.competition.id } },
+            order: { stageNumber: "ASC" },
+          });
+          const lastStage = stages[stages.length - 1];
+          if (lastStage && lastStage.id === dto.stageId) {
+            const competition = await manager.findOne(Competition, {
+              where: { id: entry.competition.id },
+              relations: ["competitionType"],
+            });
+            if (competition && !competition.controlClosureTime) {
+              const totalDistance = stages.reduce((sum, s) => sum + Number(s.distanceKm || 0), 0);
+              const rulesConfig = competition.competitionType?.rulesConfig || {};
+              const rulesList = rulesConfig.distance_tolerance_rules || [];
+              
+              let toleranceMins = 30;
+              const matchedRule = rulesList.find((r: any) => {
+                const minOk = r.min_distance === null || r.min_distance === undefined || totalDistance >= Number(r.min_distance);
+                const maxOk = r.max_distance === null || r.max_distance === undefined || totalDistance < Number(r.max_distance);
+                return minOk && maxOk;
+              });
+              
+              if (matchedRule) {
+                toleranceMins = Number(matchedRule.tolerance_minutes);
+              } else {
+                if (totalDistance < 80) {
+                  toleranceMins = 30;
+                } else if (totalDistance >= 80 && totalDistance < 100) {
+                  toleranceMins = 45;
+                } else {
+                  toleranceMins = 60;
+                }
+              }
+              
+              const winnerTimestamp = new Date(dto.recordedAt);
+              const closureTime = new Date(winnerTimestamp.getTime() + toleranceMins * 60 * 1000);
+              
+              competition.controlClosureTime = closureTime;
+              await manager.save(Competition, competition);
+              
+              console.log(
+                `[Control Closure] Winner arrived. Total distance: ${totalDistance} km. Tolerance: ${toleranceMins} mins. Control closure time set to: ${closureTime.toISOString()}`
+              );
+            }
+          }
+        }
+
         if (
           dto.recordType === TimeRecordType.VET_OUT &&
           (dto.isApproved ?? true)

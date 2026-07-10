@@ -528,7 +528,7 @@ export default function StartListPage() {
                       ? "🏆 FEDERADA FEU"
                       : "ORGANIZACIÓN SOCIAL"}
                   </span>
-                  <span className="text-[10px] font-bold bg-white/10 text-slate-200 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                  <span className="text-[10px] font-bold bg-white/10 text-slate-200 px-2 py-0.5 rounded-full uppercase tracking-wider font-sans tabular-nums">
                     {competition.status === "ACTIVE"
                       ? "Carrera en Curso"
                       : "Fase Planificación"}
@@ -586,7 +586,7 @@ export default function StartListPage() {
                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                     Etapas
                   </span>
-                  <span className="block text-xl font-black font-mono text-white mt-0.5">
+                  <span className="block text-xl font-black font-sans tabular-nums text-white mt-0.5">
                     {competition.stages?.length || 0}
                   </span>
                 </div>
@@ -595,7 +595,7 @@ export default function StartListPage() {
                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                     Distancia
                   </span>
-                  <span className="block text-xl font-black font-mono text-equus-tan-light mt-0.5">
+                  <span className="block text-xl font-black font-sans tabular-nums text-equus-tan-light mt-0.5">
                     {competition.stages
                       ?.reduce((acc, s) => acc + Number(s.distanceKm), 0)
                       .toFixed(0) || 0}
@@ -607,7 +607,7 @@ export default function StartListPage() {
                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                     Límite Vet
                   </span>
-                  <span className="block text-xl font-black font-mono text-emerald-400 mt-0.5">
+                  <span className="block text-xl font-black font-sans tabular-nums text-emerald-400 mt-0.5">
                     {competition.maxHeartRate || 65}
                   </span>
                 </div>
@@ -630,7 +630,7 @@ export default function StartListPage() {
             </p>
           </div>
 
-          <div className="text-xs bg-slate-50 font-extrabold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-100 font-mono">
+          <div className="text-xs bg-slate-50 font-extrabold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-100 font-sans tabular-nums">
             Total Inscriptos: {entries.length}
           </div>
         </div>
@@ -756,7 +756,7 @@ export default function StartListPage() {
                       className="hover:bg-slate-50/40 transition-colors"
                     >
                       {/* Dorsal */}
-                      <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-black text-slate-900 font-mono text-center">
+                      <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-black text-slate-900 font-sans tabular-nums text-center">
                         <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-slate-950 text-white shadow-sm font-extrabold">
                           {entry.bibNumber}
                         </span>
@@ -768,7 +768,7 @@ export default function StartListPage() {
                           <span className="text-sm font-bold text-slate-800">
                             {entry.rider?.name || "Jinete Desconocido"}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono font-semibold">
+                          <span className="text-[10px] text-slate-400 font-sans tabular-nums font-semibold">
                             C.I. {entry.rider?.nationalId || "-"}
                           </span>
                         </div>
@@ -802,7 +802,7 @@ export default function StartListPage() {
                       </td>
 
                       {/* Peso Marcado */}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-mono text-slate-800">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-sans tabular-nums text-slate-800">
                         {Number(entry.ballastWeight) > 0 ? (
                           <div className="flex flex-col">
                             <span className="inline-flex items-center text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50 w-fit">
@@ -825,7 +825,7 @@ export default function StartListPage() {
                       </td>
 
                       {/* Precinto / Items */}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-mono text-slate-800">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-bold font-sans tabular-nums text-slate-800">
                         {entry.sealNumber ? (
                           <div className="flex flex-col">
                             <span className="inline-flex items-center text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50 w-fit">
@@ -1010,7 +1010,7 @@ export default function StartListPage() {
                       <span className="text-sm font-bold text-slate-800">
                         {selectedRider.name}
                       </span>
-                      <span className="block text-[10px] text-slate-400 font-mono font-semibold">
+                      <span className="block text-[10px] text-slate-400 font-sans tabular-nums font-semibold">
                         C.I. {selectedRider.nationalId}
                       </span>
                     </div>
@@ -1076,7 +1076,7 @@ export default function StartListPage() {
                                 <span className="font-bold text-slate-800 block">
                                   {rider.name}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-mono">
+                                <span className="text-[10px] text-slate-400 font-sans tabular-nums">
                                   C.I. {rider.nationalId}
                                 </span>
                               </div>
@@ -1121,7 +1121,7 @@ export default function StartListPage() {
                         {selectedHorse.name}
                       </span>
                       {selectedHorse.chipId && (
-                        <span className="block text-[10px] text-slate-400 font-mono font-semibold">
+                        <span className="block text-[10px] text-slate-400 font-sans tabular-nums font-semibold">
                           Chip ID: {selectedHorse.chipId}
                         </span>
                       )}
@@ -1251,7 +1251,7 @@ export default function StartListPage() {
                   min="1"
                   placeholder="Ej: 15"
                   {...register("bibNumber", { valueAsNumber: true })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-sans tabular-nums shadow-sm bg-white"
                 />
                 {errors.bibNumber && (
                   <p className="mt-1 text-xs font-bold text-rose-500">
@@ -1279,7 +1279,7 @@ export default function StartListPage() {
                       min="0"
                       placeholder="0.00"
                       {...register("riderWeight", { valueAsNumber: true })}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-sans tabular-nums shadow-sm bg-white"
                     />
                     {errors.riderWeight && (
                       <p className="mt-1 text-xs font-bold text-rose-500">
@@ -1299,7 +1299,7 @@ export default function StartListPage() {
                       min="0"
                       placeholder="0.00"
                       {...register("tackWeight", { valueAsNumber: true })}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-sans tabular-nums shadow-sm bg-white"
                     />
                     {errors.tackWeight && (
                       <p className="mt-1 text-xs font-bold text-rose-500">
@@ -1321,7 +1321,7 @@ export default function StartListPage() {
                     <span className="block text-[10px] uppercase font-bold tracking-wider opacity-70">
                       Peso Total Calculado
                     </span>
-                    <span className="block text-2xl font-black font-mono tracking-tight">
+                    <span className="block text-2xl font-black font-sans tabular-nums tracking-tight">
                       {totalWeight.toFixed(2)} Kg
                     </span>
                   </div>
@@ -1401,7 +1401,7 @@ export default function StartListPage() {
                     type="text"
                     placeholder="Ej: PREC-001, PREC-002"
                     {...register("sealNumbers")}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-mono shadow-sm bg-white"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 font-bold font-sans tabular-nums shadow-sm bg-white"
                   />
                   {errors.sealNumbers && (
                     <p className="mt-1 text-xs font-bold text-rose-500">

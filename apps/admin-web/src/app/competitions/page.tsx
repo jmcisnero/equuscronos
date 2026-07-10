@@ -606,7 +606,7 @@ export default function CompetitionsPage() {
                           {comp.name}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-mono">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-sans tabular-nums">
                         <div>{displayDate}</div>
                         <div className="text-xs text-slate-400 font-semibold">
                           {comp.startTime
@@ -622,15 +622,15 @@ export default function CompetitionsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-700 font-mono">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-700 font-sans tabular-nums">
                         {comp.stages
                           ? `${comp.stages.length} etapas`
                           : "0 etapas"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-900 font-bold font-mono">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-900 font-bold font-sans tabular-nums">
                         {getDistanceTotal(comp.stages)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-mono">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-sans tabular-nums">
                         {comp.maxHeartRate || 65} ppm
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm">
@@ -965,7 +965,7 @@ export default function CompetitionsPage() {
                         maxHeartRate: parseInt(e.target.value, 10) || 65,
                       })
                     }
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-mono disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold font-sans tabular-nums disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
                   />
                 </div>
 
@@ -1133,7 +1133,7 @@ export default function CompetitionsPage() {
                           )}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-mono text-sm">
+                      <tbody className="divide-y divide-slate-100 font-sans tabular-nums text-sm">
                         {formData.stages.map((stage, idx) => (
                           <tr key={idx} className="hover:bg-slate-50/50">
                             <td className="px-4 py-2 font-bold text-slate-700">
@@ -1160,7 +1160,7 @@ export default function CompetitionsPage() {
                                         return { ...prev, stages: updated };
                                       });
                                     }}
-                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono font-semibold focus:outline-none focus:border-equus-green text-slate-800"
+                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-sans tabular-nums font-semibold focus:outline-none focus:border-equus-green text-slate-800"
                                   />
                                   <span className="text-xs text-slate-400">
                                     Km
@@ -1192,7 +1192,7 @@ export default function CompetitionsPage() {
                                         return { ...prev, stages: updated };
                                       });
                                     }}
-                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono text-slate-700 focus:outline-none focus:border-equus-green"
+                                    className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-sans tabular-nums text-slate-700 focus:outline-none focus:border-equus-green"
                                   />
                                   <span className="text-xs text-slate-400">
                                     min

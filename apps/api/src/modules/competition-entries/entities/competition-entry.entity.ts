@@ -16,6 +16,7 @@ import { Horse } from "../../horses/entities/horse.entity";
 import { Tenant } from "../../tenants/entities/tenant.entity";
 import { Stage } from "../../competitions/entities/stage.entity";
 import { TimingRecord } from "../../competitions/entities/timing-record.entity";
+import { Penalty } from "../../competitions/entities/penalty.entity";
 
 @Entity("competition_entries")
 @Unique(["competition", "bibNumber"])
@@ -106,6 +107,9 @@ export class CompetitionEntry {
 
   @OneToMany(() => TimingRecord, (record) => record.entry)
   timingRecords: TimingRecord[];
+
+  @OneToMany(() => Penalty, (penalty) => penalty.entry)
+  penalties: Penalty[];
 
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;

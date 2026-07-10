@@ -14,6 +14,7 @@ export interface Competition {
   isFederated: boolean;
   maxHeartRate: number;
   status: string;
+  controlClosureTime?: string | null;
   stages: Stage[];
   createdAt?: string;
   tenant?: { id: string; name: string };

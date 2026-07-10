@@ -35,8 +35,8 @@ INSERT INTO riders (id, name, national_id, feu_id, is_feu_active, medical_card_e
 -- ==========================================================
 -- 2. CONFIGURACIÓN DE LA COMPETENCIA
 -- ==========================================================
-INSERT INTO competition_types (id, name, default_rules) VALUES 
-('c1000000-0000-0000-0000-000000000001', 'Raid FEU 60km', '{"max_heart_rate": 64, "min_weight_kg": 85}');
+INSERT INTO competition_types (id, name, default_rules, rules_config) VALUES 
+('c1000000-0000-0000-0000-000000000001', 'Raid FEU 60km', '{"max_heart_rate": 64, "min_weight_kg": 85}', '{"distance_tolerance_rules": [{"min_distance": 0, "max_distance": 80, "tolerance_minutes": 30}, {"min_distance": 80, "max_distance": 100, "tolerance_minutes": 45}, {"min_distance": 100, "max_distance": null, "tolerance_minutes": 60}]}');
 
 INSERT INTO competitions (id, tenant_id, competition_type_id, name, competition_date, location, is_federated, status, start_time) VALUES 
 ('c2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Raid Batalla de Tupambaé', '2026-03-15', 'Ruta 8, Melo', TRUE, 'ACTIVE', '07:00:00');

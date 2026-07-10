@@ -202,9 +202,9 @@ export default function HorseDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Chip Oficial RFID
               </span>
-              <span className="text-sm font-bold font-mono text-slate-800">
+              <span className="text-sm font-bold font-sans tabular-nums text-slate-800">
                 {horse.chipId ? (
-                  <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-mono text-xs">
+                  <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-sans tabular-nums text-xs">
                     {horse.chipId}
                   </span>
                 ) : (
@@ -217,9 +217,9 @@ export default function HorseDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Pasaporte FEU
               </span>
-              <span className="text-sm font-bold font-mono text-slate-800">
+              <span className="text-sm font-bold font-sans tabular-nums text-slate-800">
                 {horse.feuId ? (
-                  <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-mono text-xs">
+                  <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-sans tabular-nums text-xs">
                     {horse.feuId}
                   </span>
                 ) : (
@@ -250,7 +250,7 @@ export default function HorseDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Vence Control Sanitario
               </span>
-              <span className="text-sm font-bold font-mono">
+              <span className="text-sm font-bold font-sans tabular-nums">
                 {horse.healthRecordsExpiration ? (
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded ${

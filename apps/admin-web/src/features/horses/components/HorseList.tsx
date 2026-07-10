@@ -323,7 +323,7 @@ export const HorseList: React.FC = () => {
                           <span className="text-[10px] font-extrabold text-slate-400">
                             CHIP:
                           </span>
-                          <span className="font-mono text-xs text-slate-600">
+                          <span className="font-sans tabular-nums text-xs text-slate-600">
                             {horse.chipId || "N/A"}
                           </span>
                         </div>
@@ -331,7 +331,7 @@ export const HorseList: React.FC = () => {
                           <span className="text-slate-400 font-extrabold">
                             FEU:
                           </span>
-                          <span className="font-mono text-xs text-slate-600">
+                          <span className="font-sans tabular-nums text-xs text-slate-600">
                             {horse.feuId || "N/A"}
                           </span>
                         </div>

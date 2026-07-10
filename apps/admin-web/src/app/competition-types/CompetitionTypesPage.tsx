@@ -387,7 +387,7 @@ export function CompetitionTypesPage() {
                             .map((k) => (
                               <span
                                 key={k}
-                                className="inline-flex items-center text-[10px] bg-slate-100/75 border border-slate-200/50 text-slate-600 px-2 py-0.5 rounded-md font-mono"
+                                className="inline-flex items-center text-[10px] bg-slate-100/75 border border-slate-200/50 text-slate-600 px-2 py-0.5 rounded-md font-sans tabular-nums"
                               >
                                 {k}: {String(rules[k])}
                               </span>
@@ -400,7 +400,7 @@ export function CompetitionTypesPage() {
 
                 {/* ACTION BUTTONS */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-                  <span className="text-[10px] text-slate-400 font-mono">
+                  <span className="text-[10px] text-slate-400 font-sans tabular-nums">
                     {type.createdAt
                       ? `Creado: ${type.createdAt.substring(0, 10)}`
                       : ""}
@@ -743,7 +743,7 @@ export function CompetitionTypesPage() {
 
                     <div className="relative rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                       {/* Editor Header */}
-                      <div className="bg-slate-800 text-slate-400 px-4 py-2.5 text-xs font-mono flex items-center justify-between border-b border-slate-700 select-none">
+                      <div className="bg-slate-800 text-slate-400 px-4 py-2.5 text-xs font-sans tabular-nums flex items-center justify-between border-b border-slate-700 select-none">
                         <span className="flex items-center space-x-1.5">
                           <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                           <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -757,12 +757,12 @@ export function CompetitionTypesPage() {
                         value={rulesJsonString}
                         onChange={(e) => handleJsonChange(e.target.value)}
                         rows={6}
-                        className="w-full block bg-slate-900 text-slate-100 p-4 font-mono text-xs focus:outline-none resize-y leading-relaxed"
+                        className="w-full block bg-slate-900 text-slate-100 p-4 font-sans tabular-nums text-xs focus:outline-none resize-y leading-relaxed"
                         placeholder={'{\n  "max_heart_rate": 64\n}'}
                       />
                     </div>
                     {jsonError && (
-                      <p className="mt-1 text-[11px] font-mono text-rose-500 leading-snug">
+                      <p className="mt-1 text-[11px] font-sans tabular-nums text-rose-500 leading-snug">
                         {jsonError}
                       </p>
                     )}

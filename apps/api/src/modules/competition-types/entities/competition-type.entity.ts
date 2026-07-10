@@ -17,6 +17,9 @@ export class CompetitionType {
   @Column({ name: "default_rules", type: "jsonb", nullable: true })
   defaultRules: CompetitionRules;
 
+  @Column({ name: "rules_config", type: "jsonb", nullable: true })
+  rulesConfig: any;
+
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

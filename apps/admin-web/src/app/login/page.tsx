@@ -153,7 +153,7 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               disabled={isLoading}
-              className={`w-full pl-4 pr-10 py-3 bg-slate-50/50 border border-slate-200/80 rounded-xl text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green transition-all disabled:opacity-50 ${showPassword ? "font-sans font-semibold" : "font-mono"}`}
+              className={`w-full pl-4 pr-10 py-3 bg-slate-50/50 border border-slate-200/80 rounded-xl text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green transition-all disabled:opacity-50 ${showPassword ? "font-sans font-semibold" : "font-sans tabular-nums"}`}
             />
             <button
               type="button"

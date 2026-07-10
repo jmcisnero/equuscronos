@@ -469,7 +469,7 @@ export default function CompetitionEditPage({
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-mono text-sm">
+                <tbody className="divide-y divide-slate-100 font-sans tabular-nums text-sm">
                   {formData.stages.map((stage, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50">
                       <td className="px-4 py-2 font-bold text-slate-700">
@@ -496,7 +496,7 @@ export default function CompetitionEditPage({
                                   return { ...prev, stages: updated };
                                 });
                               }}
-                              className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono font-semibold text-slate-800"
+                              className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-sans tabular-nums font-semibold text-slate-800"
                             />
                             <span className="text-xs text-slate-400">Km</span>
                           </div>
@@ -522,7 +522,7 @@ export default function CompetitionEditPage({
                                   return { ...prev, stages: updated };
                                 });
                               }}
-                              className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-mono text-slate-700"
+                              className="w-20 px-2 py-1 border border-slate-200 rounded text-sm bg-white font-sans tabular-nums text-slate-700"
                             />
                             <span className="text-xs text-slate-400">min</span>
                           </div>

@@ -18,4 +18,12 @@ export class CreateCompetitionTypeDto {
   @IsOptional()
   @IsObject()
   defaultRules?: CompetitionRules;
+
+  @ApiPropertyOptional({
+    description: "JSON con reglas de tolerancia de distancia",
+    example: { distance_tolerance_rules: [] },
+  })
+  @IsOptional()
+  @IsObject()
+  rulesConfig?: any;
 }

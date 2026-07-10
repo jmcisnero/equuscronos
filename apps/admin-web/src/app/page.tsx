@@ -300,7 +300,7 @@ export default function Home() {
                       <span className="block text-[8px] text-slate-400 font-bold uppercase tracking-wider">
                         Límite Vet Gate
                       </span>
-                      <span className="block text-lg font-black text-emerald-400 font-mono mt-0.5">
+                      <span className="block text-lg font-black text-emerald-400 font-sans tabular-nums mt-0.5">
                         {statsData.activeCompetition.maxHeartRate || 65} ppm
                       </span>
                     </div>
@@ -544,7 +544,7 @@ export default function Home() {
                                 {horse.name}
                               </span>
                               {horse.chipId ? (
-                                <span className="text-[9px] text-slate-400 font-mono font-semibold">
+                                <span className="text-[9px] text-slate-400 font-sans tabular-nums font-semibold">
                                   RFID: {horse.chipId}
                                 </span>
                               ) : (

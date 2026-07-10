@@ -150,7 +150,7 @@ export default function RiderDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Cédula de Identidad (CI)
               </span>
-              <span className="text-sm font-bold font-mono text-slate-800">
+              <span className="text-sm font-bold font-sans tabular-nums text-slate-800">
                 {rider.nationalId}
               </span>
             </div>
@@ -159,7 +159,7 @@ export default function RiderDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Nro. Licencia FEU
               </span>
-              <span className="text-sm font-bold font-mono text-slate-800">
+              <span className="text-sm font-bold font-sans tabular-nums text-slate-800">
                 {rider.feuId ? (
                   <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
                     {rider.feuId}
@@ -194,7 +194,7 @@ export default function RiderDetailPage() {
               <span className="text-sm font-semibold text-slate-500">
                 Vence Ficha Médica
               </span>
-              <span className="text-sm font-bold font-mono">
+              <span className="text-sm font-bold font-sans tabular-nums">
                 {rider.medicalCardExpiration ? (
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded ${

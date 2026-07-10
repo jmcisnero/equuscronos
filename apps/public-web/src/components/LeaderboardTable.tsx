@@ -84,8 +84,6 @@ const ClubJersey = ({
 interface LeaderboardTableProps {
   competitionId: string;
   searchQuery?: string;
-  isDemoMode?: boolean;
-  simulatedData?: LeaderboardEntry[];
   onErrorChange?: (hasError: boolean) => void;
   onValidatingChange?: (isValidating: boolean) => void;
 }
@@ -93,13 +91,11 @@ interface LeaderboardTableProps {
 export default function LeaderboardTable({
   competitionId,
   searchQuery = "",
-  isDemoMode = false,
-  simulatedData = [],
   onErrorChange,
   onValidatingChange,
 }: LeaderboardTableProps) {
   // Consumir el hook useLiveLeaderboard con polling en tiempo real cada 30 segundos
-  const { leaderboard, error, isLoading, isValidating } =
+  const { leaderboard, error, isLoading, isValidating, isClosed } =
     useLiveLeaderboard(competitionId);
 
   // Control de estado reactivo para la fila expandida (Acordeón estricto)
@@ -119,8 +115,8 @@ export default function LeaderboardTable({
     }
   }, [isValidating, onValidatingChange]);
 
-  // Decisión del set de datos: Modo Demo (simulado) vs Datos reales del SWR
-  const activeData = isDemoMode ? simulatedData : leaderboard;
+  // Datos reales del SWR
+  const activeData = leaderboard;
 
   // Filtrado reactivo multivariable (nombre jinete, caballo o número de dorsal)
   const filteredData = React.useMemo(() => {
@@ -224,6 +220,12 @@ export default function LeaderboardTable({
             ⚠️ WD
           </span>
         );
+      case "NO_COMPLETED":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-350 whitespace-nowrap">
+            ❌ NC
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 whitespace-nowrap">
@@ -236,7 +238,7 @@ export default function LeaderboardTable({
   // AUDITORÍA RESPONSIVA Y CLS:
   // Renderizamos cargadores Skeletons con diseño espejo (Dual Layout Skeleton)
   // para evitar saltos bruscos de Cumulative Layout Shift (CLS) en celulares.
-  if (isLoading && !isDemoMode) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         {/* Skeleton de Escritorio (Desktop Table Skeleton) */}
@@ -298,6 +300,33 @@ export default function LeaderboardTable({
 
   return (
     <div className="space-y-6">
+      {isClosed && (
+        <div className="bg-rose-500 text-white rounded-3xl p-5 shadow-lg border border-rose-600 flex items-start space-x-4 animate-pulse">
+          <div className="p-2 rounded-xl bg-white/20 text-white flex-shrink-0">
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-black tracking-tight leading-tight">
+              Control de Meta Cerrado (Tolerancia Expirada)
+            </h3>
+            <p className="text-rose-100 text-xs font-bold mt-1">
+              La carrera ha concluido y el tiempo límite de tolerancia ha expirado. Todos los binomios que no completaron la prueba pasaron a estado "No Completó" (NC).
+            </p>
+          </div>
+        </div>
+      )}
       {/* ========================================================================= */}
       {/* VISTA MÓVIL (MOBILE CARD VIEW)                                            */}
       {/* Evita desbordamiento y scroll horizontal incómodo en celulares de baja gama*/}
@@ -351,13 +380,13 @@ export default function LeaderboardTable({
                         {entry.rank}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center justify-center w-8 h-8 text-slate-400 font-mono text-sm">
+                      <span className="inline-flex items-center justify-center w-8 h-8 text-slate-400 font-sans tabular-nums text-sm">
                         --
                       </span>
                     )}
                     <div className="flex items-center space-x-1.5">
                       <ClubJersey representedTenant={entry.representedTenant} />
-                      <span className="bg-slate-950 text-white font-mono text-xs font-extrabold px-2 py-1 rounded-lg">
+                      <span className="bg-slate-950 text-white font-sans tabular-nums text-xs font-extrabold px-2 py-1 rounded-lg">
                         #{entry.bibNumber}
                       </span>
                     </div>
@@ -371,19 +400,6 @@ export default function LeaderboardTable({
                     {entry.riderName}
                   </h4>
                   <p className="text-xs text-slate-500 font-bold flex items-center">
-                    <svg
-                      className="h-3.5 w-3.5 mr-1 text-[#AD8F6C]"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2.5}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                      />
-                    </svg>
                     Caballo: {entry.horseName}
                   </p>
                 </div>
@@ -402,7 +418,7 @@ export default function LeaderboardTable({
                     <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                       Tiempo Neto
                     </span>
-                    <span className="font-mono font-bold text-slate-900">
+                    <span className="font-sans tabular-nums font-medium text-slate-900">
                       {formatTime(entry.totalRaceTimeMs)}
                     </span>
                   </div>
@@ -410,7 +426,7 @@ export default function LeaderboardTable({
                     <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                       Diferencia
                     </span>
-                    <span className="font-mono font-bold text-slate-900">
+                    <span className="font-sans tabular-nums font-bold text-slate-900">
                       {formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs)}
                     </span>
                   </div>
@@ -418,7 +434,7 @@ export default function LeaderboardTable({
                     <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                       Velocidad Promedio
                     </span>
-                    <span className="font-extrabold text-slate-800">
+                    <span className="text-slate-800">
                       {entry.averageSpeed
                         ? `${entry.averageSpeed.toFixed(2)} km/h`
                         : "--"}
@@ -430,7 +446,7 @@ export default function LeaderboardTable({
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                         Hora Salida
                       </span>
-                      <span className="font-mono font-bold text-blue-600">
+                      <span className="font-sans tabular-nums font-bold text-[#1C4F38]">
                         {formatHHMMSS(entry.startTime)}
                       </span>
                     </div>
@@ -440,7 +456,7 @@ export default function LeaderboardTable({
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                         Hora Llegada
                       </span>
-                      <span className="font-mono font-bold text-emerald-600">
+                      <span className="font-sans tabular-nums font-bold text-[#1C4F38]">
                         {formatHHMMSS(entry.arrivalTime)}
                       </span>
                     </div>
@@ -450,17 +466,17 @@ export default function LeaderboardTable({
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                         Toma de Pulso
                       </span>
-                      <span className="font-mono font-bold text-slate-800">
+                      <span className="font-sans tabular-nums text-slate-800">
                         {formatHHMMSS(entry.vetInTime)}
                       </span>
                     </div>
                   )}
-                  {entry.nextVetControlTime && (
+                  {entry.nextVetControlTime && !isClosed && (
                     <div>
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                         Límite Vet Gate
                       </span>
-                      <span className="font-mono font-bold text-amber-600">
+                      <span className="font-sans tabular-nums font-bold text-[#AD8F6C]">
                         {formatHHMMSS(entry.nextVetControlTime)}
                       </span>
                     </div>
@@ -473,7 +489,7 @@ export default function LeaderboardTable({
                         Pulsaciones (Límite 60/64 FEU)
                       </span>
                       <span
-                        className={`font-mono font-black px-2.5 py-1 rounded-lg text-xs ${
+                        className={`font-sans tabular-nums font-black px-2.5 py-1 rounded-lg text-xs ${
                           entry.heartRate > 64
                             ? "bg-rose-100 text-rose-900 border border-rose-200"
                             : "bg-slate-100 text-slate-900 border border-slate-200"
@@ -530,7 +546,7 @@ export default function LeaderboardTable({
                               <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                                 Largada
                               </span>
-                              <span className="font-mono font-bold text-slate-700">
+                              <span className="font-sans tabular-nums font-bold text-slate-700">
                                 {formatHHMMSS(stage.startTime)}
                               </span>
                             </div>
@@ -538,7 +554,7 @@ export default function LeaderboardTable({
                               <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                                 Llegada
                               </span>
-                              <span className="font-mono font-bold text-slate-700">
+                              <span className="font-sans tabular-nums font-bold text-slate-700">
                                 {formatHHMMSS(stage.arrivalTime)}
                               </span>
                             </div>
@@ -546,7 +562,7 @@ export default function LeaderboardTable({
                               <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                                 Tiempo Neto
                               </span>
-                              <span className="font-mono font-bold text-slate-900">
+                              <span className="font-sans tabular-nums font-bold text-slate-900">
                                 {formatTime(stage.netTimeMs || 0)}
                               </span>
                             </div>
@@ -564,7 +580,7 @@ export default function LeaderboardTable({
                               <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                                 Toma de Pulso
                               </span>
-                              <span className="font-mono font-bold text-slate-700">
+                              <span className="font-sans tabular-nums font-bold text-slate-700">
                                 {formatHHMMSS(stage.vetInTime)}
                               </span>
                             </div>
@@ -573,7 +589,7 @@ export default function LeaderboardTable({
                                 Pulso
                               </span>
                               <span
-                                className={`font-mono font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                                className={`font-sans tabular-nums font-bold px-1.5 py-0.5 rounded text-[11px] ${
                                   stage.heartRate && stage.heartRate > 64
                                     ? "bg-rose-100 text-rose-800"
                                     : "bg-slate-100 text-slate-800"
@@ -620,7 +636,7 @@ export default function LeaderboardTable({
                 <th className="py-4.5 px-3">Llegada</th>
                 <th className="py-4.5 px-3">Tiempo Neto</th>
                 <th className="py-4.5 px-3">Diferencia</th>
-                <th className="py-4.5 px-3">Velocidad Prom.</th>
+                <th className="py-4.5 px-2 text-center w-24">Vel. Prom.</th>
                 <th className="py-4.5 px-3">Toma de Pulso</th>
                 <th className="py-4.5 px-2 text-center w-16">Pulso</th>
                 <th className="py-4.5 px-3 text-center">Estado</th>
@@ -677,7 +693,7 @@ export default function LeaderboardTable({
                                 {entry.rank}
                               </span>
                             ) : (
-                              <span className="text-slate-400 font-mono text-sm">
+                              <span className="text-slate-400 font-sans tabular-nums text-sm">
                                 --
                               </span>
                             )}
@@ -688,7 +704,7 @@ export default function LeaderboardTable({
                         <td className="py-4.5 px-3 text-center">
                           <div className="flex flex-col items-center space-y-1.5">
                             <ClubJersey representedTenant={entry.representedTenant} />
-                            <span className="inline-block bg-slate-900 text-white font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg">
+                            <span className="inline-block bg-slate-900 text-white font-sans tabular-nums text-xs font-extrabold px-2.5 py-1 rounded-lg">
                               #{entry.bibNumber}
                             </span>
                           </div>
@@ -701,24 +717,11 @@ export default function LeaderboardTable({
                               {entry.riderName}
                             </span>
                             <span className="text-xs text-slate-500 font-bold flex items-center mt-0.5 whitespace-nowrap">
-                              <svg
-                                className="h-3 w-3 mr-1 text-[#AD8F6C]"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2.5}
-                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                />
-                              </svg>
                               {entry.horseName}
                             </span>
                             {entry.startTime && (
                               <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                                <span className="inline-flex items-center text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                <span className="inline-flex items-center text-[#1C4F38] bg-[#1C4F38]/10 border border-[#1C4F38]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                                   Salida: {formatHHMMSS(entry.startTime)}
                                 </span>
                               </div>
@@ -732,22 +735,22 @@ export default function LeaderboardTable({
                         </td>
 
                         {/* LLEGADA */}
-                        <td className="py-4.5 px-3 font-mono font-bold text-emerald-600 whitespace-nowrap">
+                        <td className="py-4.5 px-3 font-sans tabular-nums font-bold text-[#1C4F38] whitespace-nowrap">
                           {formatHHMMSS(entry.arrivalTime)}
                         </td>
 
                         {/* TIEMPO NETO */}
-                        <td className="py-4.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                        <td className="py-4.5 px-3 font-sans tabular-nums font-medium text-slate-900 whitespace-nowrap">
                           {formatTime(entry.totalRaceTimeMs)}
                         </td>
 
                         {/* DIFERENCIA */}
-                        <td className="py-4.5 px-3 font-mono text-xs text-slate-700 whitespace-nowrap">
+                        <td className="py-4.5 px-3 font-sans tabular-nums text-xs text-slate-700 whitespace-nowrap">
                           {formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs)}
                         </td>
 
                         {/* VELOCIDAD PROMEDIO */}
-                        <td className="py-4.5 px-3 font-bold text-slate-800 whitespace-nowrap">
+                        <td className="py-4.5 px-2 text-center text-slate-800 whitespace-nowrap">
                           {entry.averageSpeed
                             ? `${entry.averageSpeed.toFixed(2)} km/h`
                             : "--"}
@@ -756,12 +759,12 @@ export default function LeaderboardTable({
                         {/* TOMA DE PULSO */}
                         <td className="py-4.5 px-3">
                           <div className="flex flex-col whitespace-nowrap">
-                            <span className="font-mono font-bold text-slate-950 text-sm whitespace-nowrap">
+                            <span className="font-sans tabular-nums text-slate-950 text-sm whitespace-nowrap">
                               {formatHHMMSS(entry.vetInTime)}
                             </span>
-                            {entry.nextVetControlTime && (
+                            {entry.nextVetControlTime && !isClosed && (
                               <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                                <span className="inline-flex items-center text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                <span className="inline-flex items-center text-[#AD8F6C] bg-[#AD8F6C]/10 border border-[#AD8F6C]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                                   Límite: {formatHHMMSS(entry.nextVetControlTime)}
                                 </span>
                               </div>
@@ -773,7 +776,7 @@ export default function LeaderboardTable({
                         <td className="py-4.5 px-2 text-center">
                           {entry.heartRate ? (
                             <span
-                              className={`inline-block font-mono font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${
+                              className={`inline-block font-sans tabular-nums font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${
                                 entry.heartRate > 64
                                   ? "bg-rose-100 text-rose-900 border border-rose-200"
                                   : "bg-slate-100 text-slate-900 border border-slate-200"
@@ -857,27 +860,27 @@ export default function LeaderboardTable({
                                         </td>
 
                                         {/* Llegada */}
-                                        <td className="py-3 px-3 font-mono text-slate-500">
+                                        <td className="py-3 px-3 font-sans tabular-nums text-slate-500">
                                           {formatHHMMSS(stage.arrivalTime)}
                                         </td>
 
                                         {/* Tiempo Neto */}
-                                        <td className="py-3 px-3 font-mono font-bold text-slate-700">
+                                        <td className="py-3 px-3 font-sans tabular-nums font-medium text-slate-700">
                                           {formatTime(stage.netTimeMs || 0)}
                                         </td>
 
                                         {/* Diferencia */}
-                                        <td className="py-3 px-3 font-mono text-slate-350">—</td>
+                                        <td className="py-3 px-3 font-sans tabular-nums text-slate-350">—</td>
 
                                         {/* Velocidad Prom. */}
-                                        <td className="py-3 px-3 font-bold text-slate-600">
+                                        <td className="py-3 px-3 text-slate-600">
                                           {stage.averageSpeed
                                             ? `${stage.averageSpeed.toFixed(2)} km/h`
                                             : "—"}
                                         </td>
 
                                         {/* Toma de Pulso */}
-                                        <td className="py-3 px-3 font-mono text-slate-500">
+                                        <td className="py-3 px-3 font-sans tabular-nums text-slate-500">
                                           {formatHHMMSS(stage.vetInTime)}
                                         </td>
 
@@ -885,7 +888,7 @@ export default function LeaderboardTable({
                                         <td className="py-3 px-2 text-center">
                                           {stage.heartRate ? (
                                             <span
-                                              className={`inline-block font-mono font-extrabold text-[11px] px-2 py-0.5 rounded ${
+                                              className={`inline-block font-sans tabular-nums font-extrabold text-[11px] px-2 py-0.5 rounded ${
                                                 stage.heartRate > 64
                                                   ? "bg-rose-50 text-rose-700 border border-rose-100"
                                                   : "bg-slate-50 text-slate-600 border border-slate-100"

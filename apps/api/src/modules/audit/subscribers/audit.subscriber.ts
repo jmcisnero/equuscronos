@@ -31,6 +31,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     const user = await this.getCurrentUser(event);
 
+    const store = tenantStorage.getStore();
     const auditLog = event.manager.create(AuditLog, {
       tenant,
       user,
@@ -38,6 +39,8 @@ export class AuditSubscriber implements EntitySubscriberInterface {
       entityName: event.metadata.tableName,
       entityId: this.extractEntityId(event.entity),
       newData: event.entity,
+      ipAddress: store?.ipAddress || null,
+      userAgent: store?.userAgent || null,
     });
     await event.manager.save(AuditLog, auditLog);
   }
@@ -51,6 +54,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     const user = await this.getCurrentUser(event);
 
+    const store = tenantStorage.getStore();
     const auditLog = event.manager.create(AuditLog, {
       tenant,
       user,
@@ -61,6 +65,8 @@ export class AuditSubscriber implements EntitySubscriberInterface {
         this.extractEntityId(event.databaseEntity),
       oldData: event.databaseEntity, // Estado anterior
       newData: event.entity, // Estado nuevo
+      ipAddress: store?.ipAddress || null,
+      userAgent: store?.userAgent || null,
     });
     await event.manager.save(AuditLog, auditLog);
   }
@@ -74,6 +80,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     const user = await this.getCurrentUser(event);
 
+    const store = tenantStorage.getStore();
     const auditLog = event.manager.create(AuditLog, {
       tenant,
       user,
@@ -81,6 +88,8 @@ export class AuditSubscriber implements EntitySubscriberInterface {
       entityName: event.metadata.tableName,
       entityId: event.entityId,
       oldData: event.databaseEntity,
+      ipAddress: store?.ipAddress || null,
+      userAgent: store?.userAgent || null,
     });
     await event.manager.save(AuditLog, auditLog);
   }

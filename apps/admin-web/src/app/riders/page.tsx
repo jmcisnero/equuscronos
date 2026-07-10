@@ -371,10 +371,10 @@ export default function RidersPage() {
                           {rider.name}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-mono">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-sans tabular-nums">
                         {rider.nationalId}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold font-mono text-slate-700">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold font-sans tabular-nums text-slate-700">
                         {rider.feuId ? (
                           <span className="bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/50">
                             {rider.feuId}
@@ -571,7 +571,7 @@ export default function RidersPage() {
                       setFormData({ ...formData, nationalId: e.target.value })
                     }
                     placeholder="Ej: 3.123.456-7"
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
                   />
                 </div>
 
@@ -587,7 +587,7 @@ export default function RidersPage() {
                       setFormData({ ...formData, feuId: e.target.value })
                     }
                     placeholder="Ej: FEU-R-201"
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
                   />
                 </div>
               </div>

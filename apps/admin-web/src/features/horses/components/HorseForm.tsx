@@ -377,7 +377,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
                 value={formData.chipId || ""}
                 onChange={handleChange}
                 placeholder="Ej: 9820004..."
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
               />
             </div>
 
@@ -392,7 +392,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
                 value={formData.feuId || ""}
                 onChange={handleChange}
                 placeholder="Ej: URY-12345"
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-mono"
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
               />
             </div>
           </div>
@@ -455,7 +455,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
                   alt="Vista previa"
                   className="w-10 h-10 rounded-full object-cover border border-slate-200"
                 />
-                <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+                <span className="text-xs text-slate-400 font-sans tabular-nums truncate max-w-[200px]">
                   {formData.imageUrl}
                 </span>
               </div>

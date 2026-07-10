@@ -44,6 +44,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { ScheduleModule } from "@nestjs/schedule";
 
 // Importación de los Módulos de Dominio (Backoffice & Motor de Carrera)
 import { TenantsModule } from "./modules/tenants/tenants.module";
@@ -73,6 +74,7 @@ import { AssetsController } from "./modules/assets/assets.controller";
   imports: [
     // 1. Carga de variables de entorno (.env)
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
 
     // 2. Configuración de la conexión a PostgreSQL
     TypeOrmModule.forRoot({

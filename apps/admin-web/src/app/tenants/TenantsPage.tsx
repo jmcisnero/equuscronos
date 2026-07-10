@@ -569,7 +569,7 @@ export function TenantsPage() {
                       alt="Vista previa"
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 animate-fade-in"
                     />
-                    <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+                    <span className="text-xs text-slate-400 font-sans tabular-nums truncate max-w-[200px]">
                       {jerseyImageUrl}
                     </span>
                   </div>

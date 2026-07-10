@@ -51,6 +51,13 @@ export class Competition {
   })
   status: CompetitionStatus;
 
+  @Column({
+    name: "control_closure_time",
+    type: "timestamp with time zone",
+    nullable: true,
+  })
+  controlClosureTime: Date | null;
+
   // Relaciones inversas útiles
   @OneToMany(() => Stage, (stage) => stage.competition)
   stages: Stage[];

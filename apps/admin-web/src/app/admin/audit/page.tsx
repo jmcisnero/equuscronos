@@ -193,11 +193,11 @@ export default function AuditPage() {
                   const nVal = newVal[key];
                   return (
                     <tr key={key} className="hover:bg-slate-50/40">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-700">{key}</td>
-                      <td className="px-4 py-3 bg-rose-50/5 text-rose-700 font-mono break-all whitespace-pre-wrap">
+                      <td className="px-4 py-3 font-sans tabular-nums font-bold text-slate-700">{key}</td>
+                      <td className="px-4 py-3 bg-rose-50/5 text-rose-700 font-sans tabular-nums break-all whitespace-pre-wrap">
                         {oVal !== undefined ? (typeof oVal === "object" ? JSON.stringify(oVal, null, 2) : String(oVal)) : <span className="text-slate-300 italic">nulo</span>}
                       </td>
-                      <td className="px-4 py-3 bg-emerald-50/5 text-emerald-700 font-mono break-all whitespace-pre-wrap">
+                      <td className="px-4 py-3 bg-emerald-50/5 text-emerald-700 font-sans tabular-nums break-all whitespace-pre-wrap">
                         {nVal !== undefined ? (typeof nVal === "object" ? JSON.stringify(nVal, null, 2) : String(nVal)) : <span className="text-slate-300 italic">nulo</span>}
                       </td>
                     </tr>
@@ -216,7 +216,7 @@ export default function AuditPage() {
           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Datos Creados (Estado Inicial)
           </h4>
-          <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-auto max-h-96 shadow-inner">
+          <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-sans tabular-nums overflow-auto max-h-96 shadow-inner">
             {JSON.stringify(log.newData, null, 2)}
           </pre>
         </div>
@@ -229,7 +229,7 @@ export default function AuditPage() {
           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Datos Eliminados (Último Estado)
           </h4>
-          <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-auto max-h-96 shadow-inner">
+          <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-sans tabular-nums overflow-auto max-h-96 shadow-inner">
             {JSON.stringify(log.oldData, null, 2)}
           </pre>
         </div>
@@ -241,7 +241,7 @@ export default function AuditPage() {
         <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
           Detalle del Registro de Auditoría
         </h4>
-        <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-auto max-h-96 shadow-inner">
+        <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-sans tabular-nums overflow-auto max-h-96 shadow-inner">
           {JSON.stringify({ oldData: log.oldData, newData: log.newData }, null, 2)}
         </pre>
       </div>
@@ -534,7 +534,7 @@ export default function AuditPage() {
                             {getEntityLabel(log.entityName)}
                           </div>
                           {log.entityId && (
-                            <div className="text-[10px] text-slate-400 font-mono tracking-tighter truncate max-w-[130px]">
+                            <div className="text-[10px] text-slate-400 font-sans tabular-nums tracking-tighter truncate max-w-[130px]">
                               {log.entityId}
                             </div>
                           )}
@@ -634,7 +634,7 @@ export default function AuditPage() {
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-semibold">Log UUID:</span>
-                  <span className="font-mono text-slate-700 font-bold select-all break-all text-right pl-4">{selectedLog.id}</span>
+                  <span className="font-sans tabular-nums text-slate-700 font-bold select-all break-all text-right pl-4">{selectedLog.id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-semibold">Fecha:</span>
@@ -657,7 +657,7 @@ export default function AuditPage() {
                 {selectedLog.ipAddress && (
                   <div className="flex justify-between">
                     <span className="text-slate-400 font-semibold">IP Address:</span>
-                    <span className="font-mono font-bold text-slate-700">{selectedLog.ipAddress}</span>
+                    <span className="font-sans tabular-nums font-bold text-slate-700">{selectedLog.ipAddress}</span>
                   </div>
                 )}
                 {selectedLog.userAgent && (
