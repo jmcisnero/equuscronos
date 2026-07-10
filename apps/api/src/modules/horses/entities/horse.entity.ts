@@ -41,8 +41,8 @@ export class Horse {
   @Column({ name: "is_feu_active", type: "boolean", default: false })
   isFeuActive: boolean;
 
-  @Column({ name: "health_records_expiration", type: "date", nullable: true })
-  healthRecordsExpiration: Date;
+  @Column({ name: "health_records_expiration", type: "date", nullable: true, default: null })
+  healthRecordsExpiration: Date | null;
 
   @Column({ name: "birth_date", type: "date", nullable: true })
   birthDate: string;

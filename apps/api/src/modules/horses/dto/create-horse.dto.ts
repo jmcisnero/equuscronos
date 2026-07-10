@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsBoolean,
   IsDateString,
+  ValidateIf,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
@@ -64,6 +65,7 @@ export class CreateHorseDto {
     example: "2026-12-31",
   })
   @IsOptional()
+  @ValidateIf((o) => o.healthRecordsExpiration !== "" && o.healthRecordsExpiration !== null && o.healthRecordsExpiration !== undefined)
   @IsDateString(
     {},
     {
@@ -71,7 +73,7 @@ export class CreateHorseDto {
         "La fecha de vencimiento de sanidad ingresada no es válida. Use el formato YYYY-MM-DD.",
     },
   )
-  healthRecordsExpiration?: string;
+  healthRecordsExpiration?: string | null;
 
   @ApiPropertyOptional({
     description: "Fecha de nacimiento del caballo",

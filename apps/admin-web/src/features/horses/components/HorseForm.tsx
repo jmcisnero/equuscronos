@@ -200,7 +200,11 @@ export const HorseForm: React.FC<HorseFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(formData, selectedFile);
+      const submissionData = { ...formData };
+      if (!submissionData.healthRecordsExpiration || submissionData.healthRecordsExpiration.trim() === "") {
+        submissionData.healthRecordsExpiration = null;
+      }
+      await onSubmit(submissionData, selectedFile);
     } catch (err: any) {
       setFormError(
         err.message || "Ocurrió un error al procesar el formulario.",

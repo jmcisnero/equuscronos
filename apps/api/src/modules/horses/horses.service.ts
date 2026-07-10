@@ -22,6 +22,9 @@ export class HorsesService {
   ) {}
 
   async create(createHorseDto: CreateHorseDto): Promise<Horse> {
+    if (createHorseDto.healthRecordsExpiration === "") {
+      createHorseDto.healthRecordsExpiration = null;
+    }
     // 1. Validar Chips y Pasaportes duplicados
     if (createHorseDto.chipId) {
       const existingChip = await this.horseRepository.findOne({
@@ -82,6 +85,9 @@ export class HorsesService {
   }
 
   async update(id: string, updateHorseDto: UpdateHorseDto): Promise<Horse> {
+    if (updateHorseDto.healthRecordsExpiration === "") {
+      updateHorseDto.healthRecordsExpiration = null;
+    }
     const horse = await this.findOne(id);
 
     // Si están actualizando el dueño, validarlo de nuevo

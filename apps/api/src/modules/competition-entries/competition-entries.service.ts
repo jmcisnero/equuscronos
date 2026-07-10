@@ -84,6 +84,19 @@ export class CompetitionEntriesService {
       }
     }
 
+    // Validación de Vencimiento de Sanidad (MGAP) - Contingencia Flexibilizada
+    if (horse.healthRecordsExpiration) {
+      const raceDate = new Date(competition.competitionDate);
+      const expirationDate = new Date(horse.healthRecordsExpiration);
+      const raceTime = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate()).getTime();
+      const expTime = new Date(expirationDate.getFullYear(), expirationDate.getMonth(), expirationDate.getDate()).getTime();
+      if (expTime < raceTime) {
+        throw new BadRequestException(
+          `La habilitación sanitaria (MGAP) del caballo "${horse.name}" está vencida para la fecha de la competencia.`,
+        );
+      }
+    }
+
     let representedTenant = null;
     if (dto.representedTenantId) {
       representedTenant = await this.tenantRepo.findOne({
@@ -293,6 +306,19 @@ export class CompetitionEntriesService {
         if (diffDays < 2190) {
           throw new BadRequestException(
             "El equino no cumple con la edad mínima reglamentaria de 6 años para competir (Art. 24g)",
+          );
+        }
+      }
+
+      // Validación de Vencimiento de Sanidad (MGAP) - Contingencia Flexibilizada
+      if (newHorse.healthRecordsExpiration) {
+        const raceDate = new Date(entry.competition.competitionDate);
+        const expirationDate = new Date(newHorse.healthRecordsExpiration);
+        const raceTime = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate()).getTime();
+        const expTime = new Date(expirationDate.getFullYear(), expirationDate.getMonth(), expirationDate.getDate()).getTime();
+        if (expTime < raceTime) {
+          throw new BadRequestException(
+            `La habilitación sanitaria (MGAP) del caballo "${newHorse.name}" está vencida para la fecha de la competencia.`,
           );
         }
       }

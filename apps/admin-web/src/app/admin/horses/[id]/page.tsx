@@ -266,7 +266,7 @@ export default function HorseDetailPage() {
                     {isExpired && "(Vencido)"}
                   </span>
                 ) : (
-                  <span className="text-slate-400 italic">Sin Control</span>
+                  <span className="text-slate-500 font-medium">Sin fecha registrada (Habilitación de Contingencia)</span>
                 )}
               </span>
             </div>
