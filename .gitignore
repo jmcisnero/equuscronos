@@ -85,3 +85,8 @@ coverage/
 
 # --- Documentos tecnicos ---
 .technical_docs/
+
+# --- Android SDK & EAS ---
+.android-sdk/
+.easignore
+

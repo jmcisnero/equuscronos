@@ -2,17 +2,25 @@
 node_modules/
 **/node_modules/
 
+# Ignore Android SDK (massive folder)
+.android-sdk/
+**/.android-sdk/
+
 # Ignore build and cache directories
 .expo/
 web-build/
 dist/
 build/
 
+# Ignore Next.js cache
+.next/
+**/.next/
+
 # Ignore native builds
 android/
 ios/
 
-# Ignore log files
+# Ignore log files and outputs
 *.log
 *.txt
 *.gz
