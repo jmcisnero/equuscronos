@@ -95,7 +95,7 @@ export default function RidersPage() {
   const handleOpenEditModal = (rider: Rider) => {
     setEditingRider(rider);
     setFormData({
-      name: rider.name,
+      name: rider.name.toUpperCase(),
       nationalId: rider.nationalId,
       feuId: rider.feuId || "",
       isFeuActive: rider.isFeuActive,
@@ -549,10 +549,10 @@ export default function RidersPage() {
                   required
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, name: e.target.value.toUpperCase() })
                   }
-                  placeholder="Ej: Mateo Silva"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                  placeholder="Ej: MATEO SILVA"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm uppercase"
                 />
               </div>
 

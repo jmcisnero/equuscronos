@@ -104,7 +104,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
       }
 
       setFormData({
-        name: initialData.name,
+        name: initialData.name.toUpperCase(),
         feuId: initialData.feuId || "",
         chipId: initialData.chipId || "",
         isFeuActive: initialData.isFeuActive,
@@ -162,7 +162,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
     isCreatingOwnerRef.current = true;
     try {
       setIsLoadingOwners(true);
-      const newOwner = await OwnerService.create(nameValue.trim());
+      const newOwner = await OwnerService.create(nameValue.trim().toUpperCase());
       handleSelectOwner(newOwner);
     } catch (err: any) {
       alert("Error al registrar nuevo propietario: " + err.message);
@@ -178,7 +178,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : (name === "name" ? value.toUpperCase() : value),
     }));
   };
 
@@ -283,8 +283,8 @@ export const HorseForm: React.FC<HorseFormProps> = ({
               required
               value={formData.name}
               onChange={handleChange}
-              placeholder="Ej: Trueno"
-              className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+              placeholder="Ej: TRUENO"
+              className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm uppercase"
             />
           </div>
 

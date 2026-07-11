@@ -91,7 +91,7 @@ export default function OwnersPage() {
   const handleOpenEditModal = (owner: Owner) => {
     setEditingOwner(owner);
     setFormData({
-      name: owner.name,
+      name: owner.name.toUpperCase(),
       type: owner.type,
       contactInfo: owner.contactInfo || "",
     });
@@ -504,10 +504,10 @@ export default function OwnersPage() {
                   required
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, name: e.target.value.toUpperCase() })
                   }
-                  placeholder="Ej: Haras El Relincho o Juan Pérez"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
+                  placeholder="Ej: HARAS EL RELINCHO"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm uppercase"
                 />
               </div>
 
