@@ -21,6 +21,8 @@ class ApiService {
       },
     });
 
+    console.log(`[ApiService] STORAGE_ENDPOINT detectado: ${process.env.STORAGE_ENDPOINT || "no configurado"}`);
+
     // Cargar URL guardada de forma asíncrona en inicialización
     SecureStore.getItemAsync("api_url")
       .then((storedUrl) => {

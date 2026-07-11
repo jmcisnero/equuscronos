@@ -24,7 +24,12 @@
       },
       "env": {
         "EAS_GRADLE_CACHE": "1",
-        "EAS_USE_CACHE": "1"
+        "EAS_USE_CACHE": "1",
+        "STORAGE_ENDPOINT": "https://s3.eu-west-par.io.cloud.ovh.net",
+        "STORAGE_BUCKET_NAME": "equuscronos-assets-prod",
+        "STORAGE_REGION": "eu-west-par",
+        "STORAGE_ACCESS_KEY": "bf13cd50a5054d43828fc7d423ac86d1",
+        "STORAGE_SECRET_KEY": "3a79813b32c547e9b6c881fd0b63c10f"
       }
     }
   },

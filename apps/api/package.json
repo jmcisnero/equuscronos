@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
+    "@aws-sdk/s3-request-presigner": "^3.1085.0",
     "@equuscronos/shared": "*",
     "@nestjs/cache-manager": "^3.1.2",
     "@nestjs/common": "^10.0.0",
