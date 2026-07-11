@@ -187,6 +187,7 @@ export class CompetitionEntriesService {
         "timingRecords",
         "timingRecords.stage",
         "timingRecords.vetInspection",
+        "tenant",
       ],
       order: { bibNumber: "ASC" },
     });
@@ -202,6 +203,7 @@ export class CompetitionEntriesService {
         "horse",
         "representedTenant",
         "currentStage",
+        "tenant",
       ],
     });
     if (!entry) throw new NotFoundException("Inscripción no encontrada.");

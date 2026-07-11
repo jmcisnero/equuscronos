@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { useAuth } from "../services/AuthContext";
 import ApiService from "../services/ApiService";
@@ -47,86 +48,88 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1E14" }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
       >
-        <View style={styles.card}>
-          {/* Logo / Brand Header */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../../assets/logo_leyenda.png")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            <Text style={styles.subtitle}>
-              SISTEMA DE CRONOMETRAJE ECUESTRE
-            </Text>
-            <Text style={styles.badgeText}>FIELD APP</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.card}>
+            {/* Logo / Brand Header */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../../assets/logo_leyenda.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.subtitle}>
+                SISTEMA DE CRONOMETRAJE ECUESTRE
+              </Text>
+              <Text style={styles.badgeText}>FIELD APP</Text>
+            </View>
+
+            {/* Form */}
+            <View style={styles.form}>
+              <Text style={styles.label}>Correo Electrónico</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <Text style={styles.label}>Contraseña</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <Text style={styles.label}>Servidor API (Local o Cloud)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="https://api.equuscronos.com"
+                placeholderTextColor="#94A3B8"
+                value={apiUrl}
+                onChangeText={setApiUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                EquusCronos v1.0.0 • Offline-First Engine
+              </Text>
+            </View>
           </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            <Text style={styles.label}>Correo Electrónico</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="correo@ejemplo.com"
-              placeholderTextColor="#94A3B8"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Text style={styles.label}>Servidor API (Local o Cloud)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="https://api.equuscronos.com"
-              placeholderTextColor="#94A3B8"
-              value={apiUrl}
-              onChangeText={setApiUrl}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              EquusCronos v1.0.0 • Offline-First Engine
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

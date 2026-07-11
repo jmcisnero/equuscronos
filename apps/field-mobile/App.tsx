@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -11,6 +10,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { colors } from "./src/theme/colors";
 import { initDatabase, getDatabase } from "./src/database/db";
@@ -111,7 +111,7 @@ function MainApp() {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           entry.id,
-          entry.tenant?.id || "77777777-7777-7777-7777-777777777777",
+          entry.tenant?.id || activeCompetition.tenant?.id || activeCompetition.tenantId || "77777777-7777-7777-7777-777777777777",
           activeCompetition.id,
           entry.rider?.id || "rider-unknown",
           entry.rider?.name || "Desconocido",
@@ -137,6 +137,8 @@ function MainApp() {
               record.id,
               record.tenant?.id ||
                 entry.tenant?.id ||
+                activeCompetition.tenant?.id ||
+                activeCompetition.tenantId ||
                 "77777777-7777-7777-7777-777777777777",
               entry.id,
               record.stage?.id || record.stageId || "",
@@ -163,6 +165,8 @@ function MainApp() {
                 vet.id,
                 vet.tenant?.id ||
                   entry.tenant?.id ||
+                  activeCompetition.tenant?.id ||
+                  activeCompetition.tenantId ||
                   "77777777-7777-7777-7777-777777777777",
                 record.id,
                 vet.heartRate,
@@ -605,25 +609,27 @@ function MainApp() {
       </View>
 
       {/* API Configuration bar */}
-      <View style={styles.apiConfigBar}>
-        <Text style={styles.apiConfigLabel}>Servidor API:</Text>
-        <TextInput
-          style={[
-            styles.apiInput,
-            user.role !== UserRole.ADMIN && styles.apiInputDisabled,
-          ]}
-          value={apiUrl}
-          onChangeText={updateApiUrl}
-          placeholder="https://api.equuscronos.com"
-          placeholderTextColor="#64748B"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={user.role === UserRole.ADMIN}
-        />
-        {user.role !== UserRole.ADMIN && (
-          <Text style={styles.apiLockedBadge}>🔒 Solo ADMIN</Text>
-        )}
-      </View>
+      {user.role === UserRole.ADMIN && (
+        <View style={styles.apiConfigBar}>
+          <Text style={styles.apiConfigLabel}>Servidor API:</Text>
+          <TextInput
+            style={[
+              styles.apiInput,
+              user.role !== UserRole.ADMIN && styles.apiInputDisabled,
+            ]}
+            value={apiUrl}
+            onChangeText={updateApiUrl}
+            placeholder="https://api.equuscronos.com"
+            placeholderTextColor="#64748B"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={user.role === UserRole.ADMIN}
+          />
+          {user.role !== UserRole.ADMIN && (
+            <Text style={styles.apiLockedBadge}>🔒 Solo ADMIN</Text>
+          )}
+        </View>
+      )}
 
       {/* 2. SYNC QUEUE UTILITY (Offline-First actions queue indicator) */}
       <View style={styles.syncPanel}>

@@ -33,7 +33,7 @@ class ApiService {
         console.warn("[ApiService] Error cargando api_url en inicialización:", err);
       });
 
-    // Interceptor de peticiones para inyectar dinámicamente el token JWT desde el almacenamiento seguro
+    // Interceptor de peticiones para inyectar dinámicamente el token JWT y el Tenant ID desde el almacenamiento seguro
     this.client.interceptors.request.use(
       async (config) => {
         config.baseURL = this.currentBaseUrl;
@@ -42,9 +42,18 @@ class ApiService {
           if (token) {
             config.headers["Authorization"] = `Bearer ${token}`;
           }
+          const userJson = await SecureStore.getItemAsync("auth_user");
+          if (userJson) {
+            const user = JSON.parse(userJson);
+            if (user.tenantId) {
+              config.headers["x-tenant-id"] = user.tenantId;
+            } else if (user.role === UserRole.ADMIN) {
+              config.headers["x-tenant-id"] = "";
+            }
+          }
         } catch (error) {
           console.warn(
-            "No se pudo recuperar el token de autenticación de SecureStore:",
+            "No se pudo recuperar el token o usuario de autenticación de SecureStore:",
             error,
           );
         }

@@ -10,6 +10,7 @@ import {
   Animated,
   Keyboard,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LocalCompetitionEntry } from "../database/schema";
 import { colors } from "../theme/colors";
 import { getDatabase } from "../database/db";
@@ -650,7 +651,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     .slice(0, 5);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0B0F19" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B0F19" }}>
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
@@ -1082,7 +1083,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

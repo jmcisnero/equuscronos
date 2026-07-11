@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LocalCompetitionEntry } from "../database/schema";
 import { colors } from "../theme/colors";
 import { Button } from "../components/Button";
@@ -526,21 +527,22 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
 
   if (loading) {
     return (
-      <View
+      <SafeAreaView
         style={[
           styles.container,
-          { justifyContent: "center", alignItems: "center", flex: 1 },
+          { justifyContent: "center", alignItems: "center", flex: 1, backgroundColor: colors.equusBg },
         ]}
       >
         <ActivityIndicator size="large" color={colors.equusGreen} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   const showBackButton = onBack && user?.role !== UserRole.VET;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.equusBg }}>
+      <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -847,7 +849,8 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           </View>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

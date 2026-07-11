@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { colors } from "../theme/colors";
 import { getDatabase } from "../database/db";
 import SyncService from "../services/SyncService";
@@ -214,6 +215,29 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
     );
   };
 
+  const handleCopyReport = async (item: ProcessedQueueItem) => {
+    try {
+      const report = `[REPORTE DE ERROR - EQUUSCRONOS FIELD APP]
+ID Registro: ${item.id}
+Acción: ${translateActionType(item.action_type)} (Tabla: ${item.table_name})
+Dorsal/Binomio: ${item.bib}
+Fecha Intento: ${new Date(item.created_at).toLocaleString()}
+Intentos de Envío: ${item.attempts}
+Mensaje de Error del Servidor: ${item.error_message || "Sin mensaje de error."}
+Mensaje de Error Traducido: ${translateErrorMessage(item.error_message)}
+Payload (JSON Bruto):
+${item.payload}`;
+
+      await Clipboard.setStringAsync(report);
+      Alert.alert(
+        "Reporte Copiado",
+        "El reporte del error y su payload se han copiado al portapapeles para su envío manual."
+      );
+    } catch (err: any) {
+      Alert.alert("Error", `No se pudo copiar el reporte: ${err?.message || err}`);
+    }
+  };
+
   const renderItem = ({ item }: { item: ProcessedQueueItem }) => {
     const isFailed = item.attempts > 0;
     const isExpanded = expandedId === item.id;
@@ -281,6 +305,13 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
                 <Text style={styles.actionBtnText}>🗑️ Descartar</Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.copyBtn, { marginTop: 10 }]}
+              onPress={() => handleCopyReport(item)}
+            >
+              <Text style={styles.actionBtnText}>📋 Copiar Reporte de Error</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -588,6 +619,10 @@ const styles = StyleSheet.create({
   discardBtn: {
     backgroundColor: "#EF4444",
     borderColor: "#DC2626",
+  },
+  copyBtn: {
+    backgroundColor: "#334155",
+    borderColor: "#475569",
   },
   actionBtnText: {
     color: "#FFFFFF",
