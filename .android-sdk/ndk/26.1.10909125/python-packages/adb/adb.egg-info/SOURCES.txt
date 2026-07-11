@@ -1,0 +1,7 @@
+setup.py
+adb/__init__.py
+adb/py.typed
+adb.egg-info/PKG-INFO
+adb.egg-info/SOURCES.txt
+adb.egg-info/dependency_links.txt
+adb.egg-info/top_level.txt

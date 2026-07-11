@@ -1,8 +1,6 @@
-export enum OwnerType {
-  INDIVIDUAL = "INDIVIDUAL",
-  STABLE = "STABLE",
-  SYNDICATE = "SYNDICATE",
-}
+import { OwnerType } from "@equuscronos/shared";
+
+export { OwnerType };
 
 export interface Owner {
   id: string;

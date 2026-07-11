@@ -10,6 +10,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "ts:check": "tsc",
+    "postinstall": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\"",
     "eas-build-post-install": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\""
   },
   "dependencies": {
@@ -19,7 +20,7 @@
     "axios": "^1.6.8",
     "expo": "~51.0.28",
     "expo-build-properties": "~0.12.5",
-    "expo-clipboard": "^57.0.0",
+    "expo-clipboard": "~6.0.3",
     "expo-secure-store": "~13.0.2",
     "expo-sqlite": "~14.0.5",
     "expo-status-bar": "~1.12.1",

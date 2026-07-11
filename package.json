@@ -19,6 +19,7 @@
     "db:init": "psql -U postgres -d equuscronos -f libs/database/src/migrations/001_init_schema.sql",
     "db:seed": "node libs/database/src/seeds/run_seed.js",
     "db:status": "psql -U postgres -d equuscronos -f libs/database/src/queries/verification_queries.sql",
+    "postinstall": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\"",
     "eas-build-post-install": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\""
   },
   "devDependencies": {
