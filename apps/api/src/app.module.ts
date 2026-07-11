@@ -68,7 +68,7 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { RolesGuard } from "./modules/auth/guards/roles.guard";
 import { TenantInterceptor } from "./modules/auth/interceptors/tenant.interceptor";
-import { AssetsController } from "./modules/assets/assets.controller";
+import { AssetsModule } from "./modules/assets/assets.module";
 
 @Module({
   imports: [
@@ -111,8 +111,9 @@ import { AssetsController } from "./modules/assets/assets.controller";
     VetInspectionsModule,
     DashboardModule,
     LeaderboardModule,
+    AssetsModule,
   ],
-  controllers: [AssetsController],
+  controllers: [],
   providers: [
     {
       provide: APP_GUARD,

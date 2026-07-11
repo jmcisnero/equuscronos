@@ -49,6 +49,16 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   async afterUpdate(event: UpdateEvent<any>) {
     if (!this.shouldAudit(event.metadata.tableName)) return;
 
+    const entityId =
+      this.extractEntityId(event.entity) ||
+      this.extractEntityId(event.databaseEntity);
+
+    if (!entityId) {
+      // Si no podemos extraer el ID de la entidad (por ejemplo, en actualizaciones de nivel de consulta),
+      // no registramos la auditoría para evitar violar la restricción NOT NULL de entity_id.
+      return;
+    }
+
     const tenant = await this.getTenantForEntity(event);
     if (!tenant) return;
 
@@ -60,9 +70,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
       user,
       action: AuditAction.UPDATE,
       entityName: event.metadata.tableName,
-      entityId:
-        this.extractEntityId(event.entity) ||
-        this.extractEntityId(event.databaseEntity),
+      entityId,
       oldData: event.databaseEntity, // Estado anterior
       newData: event.entity, // Estado nuevo
       ipAddress: store?.ipAddress || null,

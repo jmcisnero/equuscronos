@@ -27,7 +27,7 @@ export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Registrar un nuevo club" })
   create(@Body() createTenantDto: CreateTenantDto) {
     return this.tenantsService.create(createTenantDto);
@@ -48,7 +48,7 @@ export class TenantsController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Modificar datos de un club" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -58,7 +58,7 @@ export class TenantsController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN, UserRole.CLUB_ADMIN)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: "Eliminar un club" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.tenantsService.remove(id);

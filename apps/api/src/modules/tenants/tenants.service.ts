@@ -8,14 +8,14 @@ import { Repository } from "typeorm";
 import { Tenant } from "./entities/tenant.entity";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
-import * as fs from "fs";
-import * as path from "path";
+import { AssetsService } from "../assets/assets.service";
 
 @Injectable()
 export class TenantsService {
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    private readonly assetsService: AssetsService,
   ) {}
 
   async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
@@ -95,16 +95,8 @@ export class TenantsService {
     if (!file || !file.buffer) {
       throw new ConflictException("No se proporcionó un archivo válido.");
     }
-    const ext = path.extname(file.originalname) || ".png";
-    const filename = `jersey_${id}_${Date.now()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "uploads", "jerseys");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, file.buffer);
-
-    tenant.jerseyImageUrl = `http://localhost:3000/uploads/jerseys/${filename}`;
+    const fileUrl = await this.assetsService.uploadFile(file, "jerseys");
+    tenant.jerseyImageUrl = fileUrl;
     return await this.tenantRepository.save(tenant);
   }
 }
