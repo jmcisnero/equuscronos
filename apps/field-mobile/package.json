@@ -10,7 +10,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "ts:check": "tsc",
-    "eas-build-post-install": "npm run build --workspace=@equuscronos/shared"
+    "eas-build-post-install": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\""
   },
   "dependencies": {
     "@equuscronos/shared": "*",
