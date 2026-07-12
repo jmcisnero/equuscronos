@@ -22,7 +22,7 @@ COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 COPY libs/shared/package*.json ./libs/shared/
 
-RUN npm ci --only=production
+RUN npm ci --only=production --ignore-scripts
 
 COPY --from=builder /usr/src/app/libs/shared/dist ./libs/shared/dist
 COPY --from=builder /usr/src/app/apps/api/dist ./apps/api/dist
