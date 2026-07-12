@@ -2,6 +2,12 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ParticipantStatus } from "@equuscronos/shared";
 
 export class LeaderboardEntryDto {
+  @ApiProperty({
+    description: "ID de la inscripción del competidor",
+    example: "a0b1c2d3-e4f5-6789-0123-456789abcdef",
+  })
+  entryId: string;
+
   @ApiPropertyOptional({
     description: "Posición actual en el ranking",
     example: 1,
@@ -100,6 +106,12 @@ export class LeaderboardEntryDto {
     location?: string;
     jerseyImageUrl?: string;
   };
+
+  @ApiPropertyOptional({
+    description: "Penalizaciones acumuladas por el competidor",
+    type: "array",
+  })
+  penalties?: any[];
 
   @ApiPropertyOptional({
     description: "Detalle de las etapas recorridas por el competidor",

@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, EntityManager } from "typeorm";
 import { VetInspection } from "./entities/vet-inspection.entity";
 import { TimingRecord } from "../competitions/entities/timing-record.entity";
 import { CreateVetInspectionDto } from "./dto/create-vet-inspection.dto";
@@ -13,10 +13,14 @@ import {
   TimeRecordType,
   ParticipantStatus,
   EliminationCode,
-  MotricityStatus,
+  GaitStatus,
+  InspectionType,
 } from "@equuscronos/shared";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
+import { Stage } from "../competitions/entities/stage.entity";
 import { TimingService } from "../timing/timing.service";
+import { LeaderboardService } from "../leaderboard/leaderboard.service";
+import { RealTimeGateway } from "../timing/real-time.gateway";
 
 @Injectable()
 export class VetInspectionsService {
@@ -27,231 +31,256 @@ export class VetInspectionsService {
     private readonly timingRepo: Repository<TimingRecord>,
     private readonly dataSource: DataSource,
     private readonly timingService: TimingService,
+    private readonly leaderboardService: LeaderboardService,
+    private readonly realTimeGateway: RealTimeGateway,
   ) {}
 
   async create(dto: CreateVetInspectionDto): Promise<VetInspection> {
-    // 1. Cargar el registro de tiempo VET_IN con sus relaciones requeridas
-    const timingRecord = await this.timingRepo.findOne({
-      where: { id: dto.timingRecordId },
-      relations: [
-        "entry",
-        "entry.competition",
-        "entry.competition.tenant",
-        "stage",
-      ],
-    });
-
-    if (
-      !timingRecord ||
-      timingRecord.recordType !== TimeRecordType.VET_IN ||
-      timingRecord.isVoid
-    ) {
-      throw new ForbiddenException(
-        "Acción rechazada: No cuenta con un hito VET_IN activo en la etapa actual.",
-      );
+    const bibNum = parseInt(dto.riderDorsal, 10);
+    if (isNaN(bibNum)) {
+      throw new BadRequestException("El dorsal del jinete debe ser un número válido.");
     }
 
-    const entry = timingRecord.entry;
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      // 1. Búsqueda con Bloqueo Pesimista del binomio
+      const entryToLock = await manager.findOne(CompetitionEntry, {
+        where: {
+          competition: { id: dto.competitionId },
+          bibNumber: bibNum,
+        },
+      });
 
-    // 2. Validaciones de Seguridad: Bloquear si ya está DQ, DNF o WD (Retornar 403 Forbidden)
-    const invalidStatuses = [
-      ParticipantStatus.DQ,
-      ParticipantStatus.DNF,
-      ParticipantStatus.WD,
-    ];
-    if (invalidStatuses.includes(entry.status)) {
-      throw new ForbiddenException(
-        `Acción rechazada: El binomio con dorsal ${entry.bibNumber} está fuera de competencia (${entry.status}).`,
-      );
-    }
+      if (!entryToLock) {
+        throw new NotFoundException(
+          `Binomio con dorsal ${dto.riderDorsal} no encontrado en la competencia activa.`,
+        );
+      }
 
-    const maxHeartRate = entry.competition.maxHeartRate || 65;
-
-    // 3. Buscar el registro ARRIVAL correspondiente para esta etapa y binomio
-    const arrivalRecord = await this.timingRepo.findOne({
-      where: {
-        entry: { id: entry.id },
-        stage: { id: timingRecord.stage.id },
-        recordType: TimeRecordType.ARRIVAL,
-        isVoid: false,
-      },
-    });
-
-    if (!arrivalRecord) {
-      throw new BadRequestException(
-        "No se encontró un registro de llegada (ARRIVAL) para este binomio en la etapa actual.",
-      );
-    }
-
-    // 4. Calcular diferencia de tiempo de recuperación (minuto 20)
-    const diffMs =
-      timingRecord.recordedAt.getTime() - arrivalRecord.recordedAt.getTime();
-    const diffMinutes = diffMs / (1000 * 60);
-
-    return await this.dataSource.transaction(async (manager) => {
-      // Bloquear la inscripción por persistencia atómica y consistente
       const lockedEntry = await manager.findOne(CompetitionEntry, {
-        where: { id: entry.id },
+        where: { id: entryToLock.id },
         lock: { mode: "pessimistic_write" },
       });
 
-      if (!lockedEntry) {
+      const entry = await manager.findOne(CompetitionEntry, {
+        where: { id: lockedEntry.id },
+        relations: [
+          "competition",
+          "competition.tenant",
+          "horse",
+          "rider",
+          "tenant",
+          "currentStage",
+        ],
+      });
+
+      if (!entry) {
         throw new NotFoundException("Inscripción no encontrada.");
       }
 
-      if (invalidStatuses.includes(lockedEntry.status)) {
+      // 2. Seguridad: Bloquear si ya está eliminado o fuera de carrera
+      const invalidStatuses = [
+        ParticipantStatus.DQ,
+        ParticipantStatus.DNF,
+        ParticipantStatus.WD,
+        ParticipantStatus.ELIMINATED_TR,
+        ParticipantStatus.ELIMINATED_PP,
+        ParticipantStatus.ELIMINATED_GAIT,
+      ];
+      if (invalidStatuses.includes(entry.status)) {
         throw new ForbiddenException(
-          `Acción rechazada: El binomio con dorsal ${lockedEntry.bibNumber} está fuera de competencia (${lockedEntry.status}).`,
+          `Acción rechazada: El binomio con dorsal ${entry.bibNumber} está fuera de competencia (${entry.status}).`,
         );
       }
 
-      // Validar barrera del minuto 20
-      if (diffMs > 20 * 60 * 1000) {
-        // Excedió el límite de 20 minutos -> Descalificación por tiempo de recuperación excedido.
-        await manager.update(CompetitionEntry, entry.id, {
-          status: ParticipantStatus.DQ,
-        });
+      // 3. Buscar etapa y neutralización correspondiente
+      const stage = await manager.findOne(Stage, {
+        where: {
+          competition: { id: dto.competitionId },
+          stageNumber: dto.vetGateNumber,
+        },
+      });
 
-        await manager.update(TimingRecord, timingRecord.id, {
-          isApproved: false,
-          eliminationType: EliminationCode.TIME,
-          eliminationReason: `Fuera de tiempo de recuperación: ${Math.round(diffMinutes)} minutos (Límite: 20 min).`,
-        });
-
-        const newInspection = manager.create(VetInspection, {
-          tenant: entry.competition.tenant,
-          timingRecord,
-          heartRate: dto.heartRate,
-          temperature: dto.temperature,
-          motricity: dto.motricity,
-          metabolic: dto.metabolic,
-          attemptNumber: 1,
-          isRecheckRequired: false,
-          notes: dto.notes
-            ? `${dto.notes} | Fuera de tiempo de recuperación.`
-            : "Fuera de tiempo de recuperación.",
-        });
-
-        const savedInspection = await manager.save(newInspection);
-        console.log(
-          `[Recovery Engine] Binomio ${entry.bibNumber} descalificado automáticamente: Fuera de tiempo de recuperación.`,
+      if (!stage) {
+        throw new NotFoundException(
+          `No se encontró la etapa número ${dto.vetGateNumber} en esta competencia.`,
         );
-        return savedInspection;
       }
 
-      // Buscar inspecciones previas de VET_IN en la misma etapa
+      // 4. Calcular diferencia de tiempo de recuperación (Tolerancia)
+      const arrivalTime = new Date(dto.arrivalTime);
+      const vetInTime = new Date(dto.vetInTime);
+      const diffMs = vetInTime.getTime() - arrivalTime.getTime();
+
+      if (isNaN(diffMs) || diffMs < 0) {
+        throw new BadRequestException(
+          "Las fechas de llegada o ingreso al área veterinaria son inválidas.",
+        );
+      }
+
+      const recoveryMinutes = diffMs / (1000 * 60);
+      const isRecoveryTimeExceeded = diffMs > 20 * 60 * 1000;
+
+      // 5. Garantizar registros de tiempos (TimingRecords) de contingencia
+      let arrivalRecord = await manager.findOne(TimingRecord, {
+        where: {
+          entry: { id: entry.id },
+          stage: { id: stage.id },
+          recordType: TimeRecordType.ARRIVAL,
+          isVoid: false,
+        },
+      });
+
+      if (!arrivalRecord) {
+        arrivalRecord = manager.create(TimingRecord, {
+          tenant: entry.tenant,
+          entry,
+          stage,
+          recordType: TimeRecordType.ARRIVAL,
+          recordedAt: arrivalTime,
+          isApproved: true,
+        });
+        arrivalRecord = await manager.save(TimingRecord, arrivalRecord);
+      }
+
+      let vetInRecord = await manager.findOne(TimingRecord, {
+        where: {
+          entry: { id: entry.id },
+          stage: { id: stage.id },
+          recordType: TimeRecordType.VET_IN,
+          isVoid: false,
+        },
+      });
+
+      if (!vetInRecord) {
+        vetInRecord = manager.create(TimingRecord, {
+          tenant: entry.tenant,
+          entry,
+          stage,
+          recordType: TimeRecordType.VET_IN,
+          recordedAt: vetInTime,
+          isApproved: true,
+        });
+        vetInRecord = await manager.save(TimingRecord, vetInRecord);
+      }
+
+      // Buscar inspecciones previas de la misma etapa
       const previousInspections = await manager.find(VetInspection, {
         where: {
-          timingRecord: {
-            entry: { id: entry.id },
-            stage: { id: timingRecord.stage.id },
-            recordType: TimeRecordType.VET_IN,
-            isVoid: false,
-          },
+          competition: { id: dto.competitionId },
+          vetGateNumber: dto.vetGateNumber,
+          riderDorsal: dto.riderDorsal,
         },
-        relations: ["timingRecord"],
       });
 
-      let attemptNumber = 1;
-      let isRecheckRequired = false;
-      let shouldDisqualify = false;
-      let reason = "";
-      let eliminationCode: EliminationCode = null;
       let targetStatus = ParticipantStatus.RESTING;
+      let shouldDisqualify = false;
+      let eliminationCode: EliminationCode = null;
+      let reason = "";
+      let isFinalDecision = true;
 
-      if (previousInspections.length > 0) {
-        // Validar si ya aprobó previamente
-        const approvedInspection = previousInspections.find(
-          (ins) =>
-            ins.heartRate <= maxHeartRate &&
-            ins.motricity === MotricityStatus.APTO,
-        );
-        if (approvedInspection) {
-          throw new BadRequestException(
-            "El binomio ya aprobó la inspección veterinaria en esta etapa.",
-          );
-        }
-
-        if (previousInspections.length >= 2) {
-          throw new BadRequestException(
-            "Ya se registraron 2 intentos de inspección veterinaria para este binomio en esta etapa.",
-          );
-        }
-
-        attemptNumber = 2;
-      }
-
-      // Evaluar criterios fisiológicos de trote y pulso
-      if (dto.motricity === MotricityStatus.NOT_APTO) {
+      // Evaluar Reglas FEU:
+      if (isRecoveryTimeExceeded) {
+        // Regla 1: Tiempo de recuperación excedido (20 min) -> ELIMINATED_TR
+        targetStatus = ParticipantStatus.ELIMINATED_TR;
         shouldDisqualify = true;
-        reason =
-          attemptNumber === 1
-            ? "Claudicación / Cojera detectada en primer intento."
-            : "Claudicación / Cojera detectada en segundo intento.";
+        eliminationCode = EliminationCode.TIME;
+        reason = `Fuera de tiempo de recuperación: ${Math.round(recoveryMinutes)} minutos (Límite: 20 min).`;
+      } else if (dto.gaitStatus === GaitStatus.LAMENESS_ELIMINATED) {
+        // Regla 2: Cojera -> ELIMINATED_GAIT
+        targetStatus = ParticipantStatus.ELIMINATED_GAIT;
+        shouldDisqualify = true;
         eliminationCode = EliminationCode.GAIT;
-        targetStatus = ParticipantStatus.DQ;
-      } else if (dto.heartRate > maxHeartRate) {
-        if (attemptNumber === 1) {
-          // Intento 1 fallido por pulso -> Habilitar Intento 2
-          isRecheckRequired = true;
-          targetStatus = ParticipantStatus.VET_CHECK;
-          reason = `Requiere rechequeo: Pulso excedido (${dto.heartRate} ppm).`;
-        } else {
-          // Intento 2 fallido por pulso -> DQ metabólica
+        reason = "Claudicación / Cojera detectada.";
+      } else if (dto.heartRate > 65) {
+        // Regla 3: Pulso alto (> 65 ppm)
+        // Si ya tiene un intento previo o el tipo de inspección es RE_INSPECTION_REQUESTED,
+        // o si simplemente expira el tiempo. Pero en la mesa de control de contingencia,
+        // si ya tiene registros previos fallidos, descalificar.
+        const hadPriorPulseFailures = previousInspections.some(
+          (ins) => ins.heartRate > 65 && ins.isFinalDecision === false,
+        );
+
+        if (hadPriorPulseFailures || dto.inspectionType === InspectionType.RE_INSPECTION_REQUESTED) {
+          // Ya es el segundo intento fallido -> ELIMINATED_PP
+          targetStatus = ParticipantStatus.ELIMINATED_PP;
           shouldDisqualify = true;
-          reason = `Falla metabólica: Pulso excedido en Intento 2 (${dto.heartRate} ppm). Límite: ${maxHeartRate} ppm.`;
           eliminationCode = EliminationCode.METABOLIC;
-          targetStatus = ParticipantStatus.DQ;
+          reason = `Falla metabólica: Pulso excedido en rechequeo (${dto.heartRate} ppm).`;
+        } else {
+          // Primer intento fallido -> Aún tiene tiempo de recuperarse (VET_CHECK)
+          targetStatus = ParticipantStatus.VET_CHECK;
+          isFinalDecision = false;
+          reason = `Requiere re-inspección: Pulso alto (${dto.heartRate} ppm).`;
         }
       }
 
-      // Actualizar estado en CompetitionEntry de forma atómica
-      await manager.update(CompetitionEntry, entry.id, {
-        status: targetStatus,
-      });
+      // Consolidar estado final:
+      // "Al ingresar un rechequeo aprobado o una descalificación definitiva, el servicio debe actualizar automáticamente los estados de las inspecciones previas del mismo binomio en esa etapa a 'is_final_decision = false'."
+      if (isFinalDecision) {
+        await manager.update(
+          VetInspection,
+          {
+            competition: { id: dto.competitionId },
+            vetGateNumber: dto.vetGateNumber,
+            riderDorsal: dto.riderDorsal,
+          },
+          { isFinalDecision: false },
+        );
+      }
 
-      // Actualizar el TimingRecord de VET_IN asociado
-      await manager.update(TimingRecord, timingRecord.id, {
-        isApproved: !shouldDisqualify && !isRecheckRequired,
-        eliminationType: shouldDisqualify ? eliminationCode : null,
-        eliminationReason:
-          shouldDisqualify || isRecheckRequired ? reason : null,
-      });
+      // Actualizar el estado del binomio
+      entry.status = targetStatus;
+      await manager.save(CompetitionEntry, entry);
 
-      // Guardar inspección veterinaria
-      const newInspection = manager.create(VetInspection, {
-        tenant: entry.competition.tenant,
-        timingRecord,
-        heartRate: dto.heartRate,
-        temperature: dto.temperature,
-        motricity: dto.motricity,
-        metabolic: dto.metabolic,
-        attemptNumber,
-        isRecheckRequired,
-        notes: dto.notes || null,
-      });
+      // Actualizar el hito VET_IN
+      vetInRecord.isApproved = !shouldDisqualify && isFinalDecision;
+      vetInRecord.eliminationType = shouldDisqualify ? eliminationCode : null;
+      vetInRecord.eliminationReason = shouldDisqualify || !isFinalDecision ? reason : null;
+      await manager.save(TimingRecord, vetInRecord);
 
-      const savedInspection = await manager.save(newInspection);
-      console.log(
-        `[Recovery Engine] Inspección registrada (Intento ${attemptNumber}). Estado resultante: ${targetStatus}`,
-      );
-
-      // Gatillo de Salida Inmutable: Al guardar una inspección con éxito (status PASSED / APTO)
-      if (!shouldDisqualify && !isRecheckRequired) {
+      // Si aprueba con éxito, calcular neutralización para la salida
+      if (!shouldDisqualify && isFinalDecision) {
+        const neutralizationMins = stage.neutralizationMinutes || 60;
         arrivalRecord.scheduledDepartureTime = new Date(
-          arrivalRecord.recordedAt.getTime() + 60 * 60 * 1000,
+          arrivalRecord.recordedAt.getTime() + neutralizationMins * 60 * 1000,
         );
         await manager.save(TimingRecord, arrivalRecord);
 
-        // Disparar largada automática si aplica (para etapa N+1)
-        await this.timingService.triggerAutomaticStart(
-          manager,
-          lockedEntry,
-          timingRecord.stage,
-        );
+        // Disparar largada automática para etapa posterior
+        await this.timingService.triggerAutomaticStart(manager, entry, stage);
       }
+
+      // Guardar registro clínico
+      const newInspection = manager.create(VetInspection, {
+        tenant: entry.competition.tenant,
+        competition: entry.competition,
+        vetGateNumber: dto.vetGateNumber,
+        riderDorsal: dto.riderDorsal,
+        arrivalTime,
+        vetInTime,
+        heartRate: dto.heartRate,
+        gaitStatus: dto.gaitStatus,
+        inspectionType: dto.inspectionType,
+        requiresRecheck: dto.requiresRecheck,
+        isFinalDecision,
+        notes: dto.notes ? `${dto.notes} | ${reason}`.trim() : reason || null,
+      });
+
+      const savedInspection = await manager.save(newInspection);
+
+      // Transmisión reactiva vía WebSockets
+      setTimeout(() => this.broadcastUpdate(dto.competitionId), 100);
 
       return savedInspection;
     });
+  }
+
+  private async broadcastUpdate(competitionId: string): Promise<void> {
+    try {
+      const leaderboard = await this.leaderboardService.getLiveLeaderboard(competitionId);
+      this.realTimeGateway.emitLeaderboardUpdate(competitionId, leaderboard);
+    } catch (err) {
+      console.error("[VetInspectionsService] Failed to broadcast real-time update:", err);
+    }
   }
 }

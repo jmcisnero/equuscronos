@@ -17,10 +17,11 @@ import {
   TimeRecordType,
   ParticipantStatus,
   CompetitionStatus,
-  MotricityStatus,
+  GaitStatus,
   EliminationCode,
 } from "@equuscronos/shared";
 import { TimeCalculationService } from "./services/time-calculation.service";
+import { VetInspection } from "../vet-inspections/entities/vet-inspection.entity";
 
 @Injectable()
 export class TimingService implements OnModuleInit, OnModuleDestroy {
@@ -126,10 +127,21 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       // 4. Validación de Secuencia Lógica FEU (Máquina de Estados)
       const existingRecords = await manager.find(TimingRecord, {
         where: { entry: { id: entry.id }, stage: { id: dto.stageId } },
-        relations: ["vetInspection"],
+        relations: ["stage"],
       });
 
-      this.validateLogicalSequence(dto.recordType, existingRecords);
+      const currentStage = await manager.findOne(Stage, { where: { id: dto.stageId } });
+      if (!currentStage) throw new NotFoundException("Etapa no encontrada.");
+
+      const vetInspection = await manager.findOne(VetInspection, {
+        where: {
+          competition: { id: entry.competition.id },
+          vetGateNumber: currentStage.stageNumber,
+          riderDorsal: String(entry.bibNumber),
+        },
+      });
+
+      this.validateLogicalSequence(dto.recordType, existingRecords, vetInspection);
 
       // 5. Persistencia del Tiempo
       try {
@@ -261,6 +273,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
   private validateLogicalSequence(
     newRecordType: TimeRecordType,
     existingRecords: TimingRecord[],
+    vetInspection: VetInspection | null,
   ): void {
     const hasStart = existingRecords.some(
       (r) => r.recordType === TimeRecordType.START,
@@ -280,13 +293,9 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
             "Máximo de 2 intentos de inspección veterinaria (VET_IN) permitidos por etapa.",
           );
         }
-        const firstVetIn = vetInRecords[0];
-        if (
-          !firstVetIn.vetInspection ||
-          !firstVetIn.vetInspection.isRecheckRequired
-        ) {
+        if (vetInspection && vetInspection.isFinalDecision) {
           throw new BadRequestException(
-            "No se puede registrar un segundo intento de VET_IN si el primero no requiere rechequeo.",
+            "No se puede registrar un segundo intento de VET_IN si el primero ya fue aprobado o descalificado definitivamente.",
           );
         }
       } else {
@@ -303,6 +312,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // Regla 3: El orden causal (Línea de Tiempo FEU)
     if (newRecordType === TimeRecordType.VET_IN && !hasArrival) {
       throw new BadRequestException(
         "Secuencia inválida: No se puede registrar ingreso veterinario (VET_IN) sin haber cruzado la meta (ARRIVAL).",
@@ -582,16 +592,24 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         isApproved: true,
         isVoid: false,
       },
-      relations: ["vetInspection"],
+    });
+
+    const vetInspection = await manager.findOne(VetInspection, {
+      where: {
+        competition: { id: entry.competition.id },
+        vetGateNumber: currentStage.stageNumber,
+        riderDorsal: String(entry.bibNumber),
+        isFinalDecision: true,
+      },
     });
 
     if (
       !vetInRecord ||
-      !vetInRecord.vetInspection ||
-      vetInRecord.vetInspection.motricity !== MotricityStatus.APTO
+      !vetInspection ||
+      vetInspection.gaitStatus !== GaitStatus.APPROVED
     ) {
       console.log(
-        `[Auto Start] Abortado: El binomio dorsal ${entry.bibNumber} no cuenta con inspección veterinaria VET_IN Aprobada (APTO).`,
+        `[Auto Start] Abortado: El binomio dorsal ${entry.bibNumber} no cuenta con inspección veterinaria VET_IN Aprobada (APPROVED).`,
       );
       return;
     }

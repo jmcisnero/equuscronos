@@ -3,13 +3,12 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  OneToOne,
-  JoinColumn,
   ManyToOne,
+  JoinColumn,
 } from "typeorm";
-import { ClinicalStatus, MotricityStatus } from "@equuscronos/shared";
-import { TimingRecord } from "../../competitions/entities/timing-record.entity";
+import { GaitStatus, InspectionType } from "@equuscronos/shared";
 import { Tenant } from "../../tenants/entities/tenant.entity";
+import { Competition } from "../../competitions/entities/competition.entity";
 
 @Entity("vet_inspections")
 export class VetInspection {
@@ -20,47 +19,49 @@ export class VetInspection {
   @JoinColumn({ name: "tenant_id" })
   tenant: Tenant;
 
-  @OneToOne(() => TimingRecord, (record) => record.vetInspection, {
-    onDelete: "CASCADE",
-  })
-  @JoinColumn({ name: "timing_record_id" })
-  timingRecord: TimingRecord;
+  @ManyToOne(() => Competition, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "competence_id" })
+  competition: Competition;
+
+  @Column({ name: "vet_gate_number", type: "int" })
+  vetGateNumber: number;
+
+  @Column({ name: "rider_dorsal", type: "varchar", length: 50 })
+  riderDorsal: string;
+
+  @Column({ name: "arrival_time", type: "timestamp with time zone" })
+  arrivalTime: Date;
+
+  @Column({ name: "vet_in_time", type: "timestamp with time zone" })
+  vetInTime: Date;
 
   @Column({ name: "heart_rate", type: "int" })
   heartRate: number;
 
-  @Column({ type: "decimal", precision: 4, scale: 1, nullable: true })
-  temperature: number;
-
   @Column({
+    name: "gait_status",
     type: "enum",
-    enum: MotricityStatus,
-    default: MotricityStatus.APTO,
+    enum: GaitStatus,
+    default: GaitStatus.APPROVED,
   })
-  motricity: MotricityStatus;
+  gaitStatus: GaitStatus;
 
   @Column({
+    name: "inspection_type",
     type: "enum",
-    enum: ClinicalStatus,
-    default: ClinicalStatus.NORMAL,
+    enum: InspectionType,
+    default: InspectionType.STANDARD,
   })
-  metabolic: ClinicalStatus;
+  inspectionType: InspectionType;
 
-  @Column({ name: "attempt_number", type: "int", default: 1 })
-  attemptNumber: number;
+  @Column({ name: "requires_recheck", type: "boolean", default: false })
+  requiresRecheck: boolean;
 
-  @Column({ name: "is_recheck_required", type: "boolean", default: false })
-  isRecheckRequired: boolean;
-
-  @Column({
-    name: "next_check_time",
-    type: "timestamp with time zone",
-    nullable: true,
-  })
-  nextCheckTime: Date;
+  @Column({ name: "is_final_decision", type: "boolean", default: true })
+  isFinalDecision: boolean;
 
   @Column({ type: "text", nullable: true })
-  notes: string;
+  notes?: string;
 
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;

@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS audit_logs, penalties, vet_inspections, timing_records, wei
                      competition_entries, stages, competitions, competition_types, 
                      riders, horses, owners, users, tenants CASCADE;
 
-DROP TYPE IF EXISTS user_role, owner_type, comp_status, clinical_status, motricity_status, audit_action, participant_status, time_record_type, elimination_code CASCADE;
+DROP TYPE IF EXISTS user_role, owner_type, comp_status, clinical_status, motricity_status, audit_action, participant_status, time_record_type, elimination_code, gait_status_enum, inspection_type_enum CASCADE;
 
 -- ==========================================================
 -- 1. TIPOS ENUMERADOS (Gobernanza de Datos)
@@ -23,7 +23,7 @@ CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
 CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
 
 -- Estados de la Inscripción y Tiempos (Core Logic)
-CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD', 'NO_COMPLETED');
+CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD', 'NO_COMPLETED', 'ELIMINATED_TR', 'ELIMINATED_PP', 'ELIMINATED_GAIT');
 CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT', 'OLYMPIC_PRESENTATION');
 CREATE TYPE elimination_code AS ENUM (
     'GAIT',          -- Cojera/Claudicación
@@ -194,22 +194,24 @@ CREATE TABLE timing_records (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TYPE gait_status_enum AS ENUM ('APPROVED', 'LAMENESS_ELIMINATED', 'OBSERVATION');
+CREATE TYPE inspection_type_enum AS ENUM ('STANDARD', 'RE_INSPECTION_MANDATORY', 'RE_INSPECTION_REQUESTED');
+
 -- Detalle Clínico Veterinario 
--- Se vincula 1:1 o M:1 a un timing_record de tipo 'VET_IN'
 CREATE TABLE vet_inspections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
-    timing_record_id UUID NOT NULL REFERENCES timing_records(id) ON DELETE CASCADE,
-
-	heart_rate INT NOT NULL, 
-    temperature DECIMAL(4,1),
-    motricity motricity_status DEFAULT 'APTO',
-    metabolic clinical_status DEFAULT 'NORMAL',
-    attempt_number INT DEFAULT 1, 
-    is_recheck_required BOOLEAN DEFAULT FALSE,
-    next_check_time TIMESTAMP WITH TIME ZONE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    competence_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+    vet_gate_number INT NOT NULL,
+    rider_dorsal VARCHAR(50) NOT NULL,
+    arrival_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    vet_in_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    heart_rate INT NOT NULL,
+    gait_status gait_status_enum NOT NULL DEFAULT 'APPROVED',
+    inspection_type inspection_type_enum NOT NULL DEFAULT 'STANDARD',
+    requires_recheck BOOLEAN NOT NULL DEFAULT FALSE,
+    is_final_decision BOOLEAN NOT NULL DEFAULT TRUE,
     notes TEXT,
-    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -247,7 +249,7 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_timing_entry ON timing_records(entry_id, recorded_at);
 CREATE INDEX idx_timing_stage ON timing_records(stage_id);
 CREATE INDEX idx_entry_competition ON competition_entries(competition_id, status);
-CREATE INDEX idx_vet_timing ON vet_inspections(timing_record_id);
+CREATE INDEX idx_vet_competence_dorsal ON vet_inspections(competence_id, rider_dorsal);
 CREATE INDEX idx_weight_controls_entry ON weight_controls(entry_id);
 
 -- Consultas rápidas de Autenticación y Búsqueda

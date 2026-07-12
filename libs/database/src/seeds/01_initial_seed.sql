@@ -70,7 +70,7 @@ INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, reco
 ('a4000000-0000-0000-0000-000000000202', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000001', 'ARRIVAL', '2026-03-15 08:29:40-03', TRUE),
 ('a4000000-0000-0000-0000-000000000203', 'a1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000001', 'VET_IN', '2026-03-15 08:49:40-03', TRUE); -- Llegada + 20 min reglamentarios
 
--- Inspecciones Clínicas (El Veterinario toma el pulso a los 20 min exactos de la llegada)
-INSERT INTO vet_inspections (id, tenant_id, timing_record_id, heart_rate, temperature, motricity, metabolic, attempt_number, is_recheck_required, notes) VALUES 
-('a5000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000103', 56, 38.5, 'APTO', 'NORMAL', 1, FALSE, 'Excelente recuperación.'),
-('a5000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000203', 62, 39.0, 'APTO', 'OBSERVED', 1, TRUE, 'Se solicita re-inspección a las 09:10 antes de largar.');
+-- Inspecciones Clínicas
+INSERT INTO vet_inspections (id, tenant_id, competence_id, vet_gate_number, rider_dorsal, arrival_time, vet_in_time, heart_rate, gait_status, inspection_type, requires_recheck, is_final_decision, notes) VALUES 
+('a5000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 1, '101', '2026-03-15 08:30:15-03', '2026-03-15 08:50:15-03', 56, 'APPROVED', 'STANDARD', FALSE, TRUE, 'Excelente recuperación.'),
+('a5000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 1, '102', '2026-03-15 08:29:40-03', '2026-03-15 08:49:40-03', 62, 'APPROVED', 'STANDARD', FALSE, TRUE, 'Se solicita re-inspección a las 09:10 antes de largar.');

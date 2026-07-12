@@ -91,20 +91,17 @@ async function main() {
     console.log('\nB. Checking TimingRecord -> VetInspection relationships:');
     const vetRelationRes = await client.query(`
       SELECT 
-        ce.bib_number,
-        r.name as rider_name,
-        tr.record_type,
-        tr.recorded_at,
+        vi.rider_dorsal,
+        vi.vet_gate_number,
+        vi.arrival_time,
+        vi.vet_in_time,
         vi.heart_rate,
-        vi.temperature,
-        vi.motricity,
-        vi.metabolic,
+        vi.gait_status,
+        vi.inspection_type,
+        vi.is_final_decision,
         vi.notes
-      FROM timing_records tr
-      JOIN competition_entries ce ON tr.entry_id = ce.id
-      JOIN riders r ON ce.rider_id = r.id
-      JOIN vet_inspections vi ON vi.timing_record_id = tr.id
-      ORDER BY ce.bib_number, tr.recorded_at;
+      FROM vet_inspections vi
+      ORDER BY vi.rider_dorsal, vi.created_at;
     `);
     
     console.table(vetRelationRes.rows);

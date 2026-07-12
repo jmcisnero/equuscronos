@@ -3,44 +3,57 @@ import {
   IsInt,
   IsOptional,
   IsEnum,
-  IsNumber,
+  IsBoolean,
   IsString,
+  IsNotEmpty,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ClinicalStatus, MotricityStatus } from "@equuscronos/shared";
+import { GaitStatus, InspectionType } from "@equuscronos/shared";
 
 export class CreateVetInspectionDto {
-  @ApiProperty({ description: "UUID del registro de tiempo (VET_IN) asociado" })
+  @ApiProperty({ description: "UUID de la competencia" })
   @IsUUID()
-  timingRecordId: string;
+  competitionId: string;
 
-  @ApiProperty({
-    description: "Pulsaciones por minuto registradas",
-    example: 64,
-  })
+  @ApiProperty({ description: "Número de etapa / Vet Gate", example: 1 })
+  @IsInt()
+  vetGateNumber: number;
+
+  @ApiProperty({ description: "Número de chaleco del binomio", example: "101" })
+  @IsNotEmpty()
+  riderDorsal: string;
+
+  @ApiProperty({ description: "Hora de llegada registrada en el Puesto 1" })
+  @IsNotEmpty()
+  arrivalTime: string;
+
+  @ApiProperty({ description: "Hora de ingreso al área veterinaria registrada en el Puesto 2" })
+  @IsNotEmpty()
+  vetInTime: string;
+
+  @ApiProperty({ description: "Pulsaciones por minuto registradas", example: 64 })
   @IsInt()
   heartRate: number;
 
-  @ApiPropertyOptional({ description: "Temperatura corporal", example: 38.5 })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 1 })
-  temperature?: number;
+  @ApiProperty({
+    description: "Estado de la marcha (trote)",
+    enum: GaitStatus,
+  })
+  @IsEnum(GaitStatus)
+  gaitStatus: GaitStatus;
 
   @ApiProperty({
-    description: "Estado en la prueba de trote",
-    enum: MotricityStatus,
+    description: "Tipo de inspección veterinaria",
+    enum: InspectionType,
   })
-  @IsEnum(MotricityStatus)
-  motricity: MotricityStatus;
+  @IsEnum(InspectionType)
+  inspectionType: InspectionType;
 
-  @ApiProperty({
-    description: "Estado metabólico general",
-    enum: ClinicalStatus,
-  })
-  @IsEnum(ClinicalStatus)
-  metabolic: ClinicalStatus;
+  @ApiProperty({ description: "Indica si requiere rechequeo obligatorio antes de la largada", default: false })
+  @IsBoolean()
+  requiresRecheck: boolean;
 
-  @ApiPropertyOptional({ description: "Observaciones del Médico Veterinario" })
+  @ApiPropertyOptional({ description: "Observaciones del Veterinario" })
   @IsOptional()
   @IsString()
   notes?: string;

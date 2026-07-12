@@ -8,7 +8,7 @@ import { Penalty } from "../competitions/entities/penalty.entity";
 import { TimeCalculationService } from "./services/time-calculation.service";
 import { LeaderboardService } from "../leaderboard/leaderboard.service";
 import { RealTimeGateway } from "./real-time.gateway";
-import { TimeRecordType, ParticipantStatus, MotricityStatus, ClinicalStatus } from "@equuscronos/shared";
+import { TimeRecordType, ParticipantStatus, GaitStatus } from "@equuscronos/shared";
 
 @Injectable()
 export class AdminContingencyService {
@@ -25,7 +25,7 @@ export class AdminContingencyService {
   async recalculateAndValidateEntry(manager: EntityManager, entryId: string): Promise<void> {
     const entry = await manager.findOne(CompetitionEntry, {
       where: { id: entryId },
-      relations: ["competition", "timingRecords", "timingRecords.stage", "timingRecords.vetInspection"],
+      relations: ["competition", "timingRecords", "timingRecords.stage"],
     });
 
     if (!entry) return;
@@ -54,13 +54,22 @@ export class AdminContingencyService {
     let isDisqualified = false;
 
     for (const record of activeRecords) {
-      if (record.recordType === TimeRecordType.VET_IN && record.vetInspection) {
-        const vi = record.vetInspection;
-        if (vi.heartRate > maxHeartRate) {
-          isDisqualified = true;
-        }
-        if (vi.motricity === MotricityStatus.NOT_APTO) {
-          isDisqualified = true;
+      if (record.recordType === TimeRecordType.VET_IN) {
+        const vi = await manager.findOne(VetInspection, {
+          where: {
+            competition: { id: entry.competition.id },
+            vetGateNumber: record.stage.stageNumber,
+            riderDorsal: String(entry.bibNumber),
+            isFinalDecision: true,
+          },
+        });
+        if (vi) {
+          if (vi.heartRate > maxHeartRate) {
+            isDisqualified = true;
+          }
+          if (vi.gaitStatus === GaitStatus.LAMENESS_ELIMINATED) {
+            isDisqualified = true;
+          }
         }
       }
     }
@@ -180,29 +189,34 @@ export class AdminContingencyService {
   async updateVetInspection(
     id: string,
     heartRate: number,
-    motricity: MotricityStatus,
-    metabolic?: ClinicalStatus,
+    gaitStatus: GaitStatus,
     notes?: string,
   ): Promise<VetInspection> {
     return await this.dataSource.transaction(async (manager: EntityManager) => {
       const inspection = await manager.findOne(VetInspection, {
         where: { id },
-        relations: ["timingRecord", "timingRecord.entry", "timingRecord.entry.competition"],
+        relations: ["competition"],
       });
       if (!inspection) {
         throw new NotFoundException(`Inspección veterinaria ${id} no encontrada.`);
       }
 
       inspection.heartRate = heartRate;
-      inspection.motricity = motricity;
-      if (metabolic) inspection.metabolic = metabolic;
+      inspection.gaitStatus = gaitStatus;
       if (notes !== undefined) inspection.notes = notes;
 
       const savedInspection = await manager.save(VetInspection, inspection);
 
-      if (inspection.timingRecord?.entry) {
-        await this.recalculateAndValidateEntry(manager, inspection.timingRecord.entry.id);
-        const compId = inspection.timingRecord.entry.competition.id;
+      const entry = await manager.findOne(CompetitionEntry, {
+        where: {
+          competition: { id: inspection.competition.id },
+          bibNumber: parseInt(inspection.riderDorsal, 10),
+        },
+      });
+
+      if (entry) {
+        await this.recalculateAndValidateEntry(manager, entry.id);
+        const compId = inspection.competition.id;
         setTimeout(() => this.broadcastUpdate(compId), 100);
       }
 
@@ -214,19 +228,24 @@ export class AdminContingencyService {
     await this.dataSource.transaction(async (manager: EntityManager) => {
       const inspection = await manager.findOne(VetInspection, {
         where: { id },
-        relations: ["timingRecord", "timingRecord.entry", "timingRecord.entry.competition"],
+        relations: ["competition"],
       });
       if (!inspection) {
         throw new NotFoundException(`Inspección veterinaria ${id} no encontrada.`);
       }
 
-      const entryId = inspection.timingRecord?.entry?.id;
-      const competitionId = inspection.timingRecord?.entry?.competition?.id;
+      const entry = await manager.findOne(CompetitionEntry, {
+        where: {
+          competition: { id: inspection.competition.id },
+          bibNumber: parseInt(inspection.riderDorsal, 10),
+        },
+      });
 
+      const competitionId = inspection.competition.id;
       await manager.remove(VetInspection, inspection);
 
-      if (entryId && competitionId) {
-        await this.recalculateAndValidateEntry(manager, entryId);
+      if (entry) {
+        await this.recalculateAndValidateEntry(manager, entry.id);
         setTimeout(() => this.broadcastUpdate(competitionId), 100);
       }
     });

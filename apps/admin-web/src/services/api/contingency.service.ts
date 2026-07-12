@@ -47,14 +47,13 @@ export const ContingencyService = {
   async updateVetInspection(
     id: string,
     heartRate: number,
-    motricity: string,
-    metabolic?: string,
+    gaitStatus: string,
     notes?: string,
   ): Promise<any> {
     const response = await fetch(`${API_BASE}/contingency/vet-inspections/${id}`, {
       method: "PATCH",
       headers: getHeaders(),
-      body: JSON.stringify({ heartRate, motricity, metabolic, notes }),
+      body: JSON.stringify({ heartRate, gaitStatus, notes }),
     });
     if (!response.ok) {
       const err = await response.json();

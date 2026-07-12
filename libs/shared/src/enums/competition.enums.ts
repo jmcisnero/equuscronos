@@ -32,6 +32,9 @@ export enum ParticipantStatus {
   DNF = "DNF", // No terminó (Retiro voluntario)
   WD = "WD", // Retiro antes de iniciar
   NO_COMPLETED = "NO_COMPLETED", // No Completó / No Placed (NC)
+  ELIMINATED_TR = "ELIMINATED_TR", // Eliminado por Tiempo de Recuperación
+  ELIMINATED_PP = "ELIMINATED_PP", // Eliminado por Pulso / Parámetros
+  ELIMINATED_GAIT = "ELIMINATED_GAIT", // Eliminado por Aire Irregular
 }
 
 //Tipos de eventos cronometrados

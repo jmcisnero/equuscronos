@@ -48,8 +48,7 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
     isOpen: boolean;
     inspectionId: string;
     heartRate: number;
-    motricity: string;
-    metabolic: string;
+    gaitStatus: string;
     notes: string;
   } | null>(null);
 
@@ -175,8 +174,7 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
       await ContingencyService.updateVetInspection(
         vetModal.inspectionId,
         vetModal.heartRate,
-        vetModal.motricity,
-        vetModal.metabolic,
+        vetModal.gaitStatus,
         vetModal.notes
       );
       setVetModal(null);
@@ -501,8 +499,7 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                                                     isOpen: true,
                                                     inspectionId: st.vetInspectionId,
                                                     heartRate: st.heartRate || 56,
-                                                    motricity: st.motricity || "APTO",
-                                                    metabolic: st.metabolic || "NORMAL",
+                                                    gaitStatus: st.motricity || "APPROVED",
                                                     notes: st.notes || ""
                                                   })}
                                                   className="text-blue-500 hover:text-blue-700 p-0.5"
@@ -674,27 +671,15 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Motricidad</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado de la Marcha (Gait Status)</label>
                 <select
-                  value={vetModal.motricity}
-                  onChange={(e) => setVetModal({ ...vetModal, motricity: e.target.value })}
+                  value={vetModal.gaitStatus}
+                  onChange={(e) => setVetModal({ ...vetModal, gaitStatus: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="APTO">APTO (Habilitado)</option>
-                  <option value="NOT_APTO">NO APTO (Descalificado)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado Clínico / Metabólico</label>
-                <select
-                  value={vetModal.metabolic}
-                  onChange={(e) => setVetModal({ ...vetModal, metabolic: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="NORMAL">Normal</option>
-                  <option value="METABOLICO">Metabólico</option>
-                  <option value="LESION">Lesión / Claudicación</option>
+                  <option value="APPROVED">APPROVED (Aprobado)</option>
+                  <option value="LAMENESS_ELIMINATED">LAMENESS_ELIMINATED (Claudicación / Descalificado)</option>
+                  <option value="OBSERVATION">OBSERVATION (En Observación)</option>
                 </select>
               </div>
 

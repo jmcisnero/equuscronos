@@ -6,12 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  OneToOne,
 } from "typeorm";
 import { TimeRecordType, EliminationCode } from "@equuscronos/shared";
 import { CompetitionEntry } from "../../competition-entries/entities/competition-entry.entity";
 import { Stage } from "./stage.entity";
-import { VetInspection } from "../../vet-inspections/entities/vet-inspection.entity";
 import { Tenant } from "../../tenants/entities/tenant.entity";
 
 @Entity("timing_records")
@@ -69,8 +67,7 @@ export class TimingRecord {
   @Column({ name: "is_automatic", type: "boolean", default: false })
   isAutomatic: boolean;
 
-  @OneToOne(() => VetInspection, (vet) => vet.timingRecord)
-  vetInspection: VetInspection;
+  vetInspection?: any;
 
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;

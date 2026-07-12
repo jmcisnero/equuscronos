@@ -12,7 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
 import { AdminContingencyService } from "./admin-contingency.service";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { UserRole, MotricityStatus, ClinicalStatus } from "@equuscronos/shared";
+import { UserRole, GaitStatus } from "@equuscronos/shared";
 
 @ApiTags("10. Contingencia Administrativa (Sólo Admin)")
 @ApiBearerAuth("access-token")
@@ -58,18 +58,16 @@ export class AdminContingencyController {
   async updateVetInspection(
     @Param("id", ParseUUIDPipe) id: string,
     @Body("heartRate") heartRate: number,
-    @Body("motricity") motricity: MotricityStatus,
-    @Body("metabolic") metabolic?: ClinicalStatus,
+    @Body("gaitStatus") gaitStatus: GaitStatus,
     @Body("notes") notes?: string,
   ) {
-    if (heartRate === undefined || !motricity) {
-      throw new Error("Los campos heartRate y motricity son obligatorios.");
+    if (heartRate === undefined || !gaitStatus) {
+      throw new Error("Los campos heartRate y gaitStatus son obligatorios.");
     }
     return await this.contingencyService.updateVetInspection(
       id,
       heartRate,
-      motricity,
-      metabolic,
+      gaitStatus,
       notes,
     );
   }
