@@ -158,7 +158,8 @@ export class LeaderboardService {
         entry.status !== ParticipantStatus.DQ &&
         entry.status !== ParticipantStatus.FINISHED &&
         entry.status !== ParticipantStatus.FINISHED_PROVISIONAL &&
-        arrivalTime
+        arrivalTime &&
+        calculatedCurrentStage < totalStagesCount
       ) {
         // Encontrar la etapa correspondiente
         const currentStageObj = entry.competition.stages?.find(
