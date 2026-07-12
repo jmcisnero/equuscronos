@@ -8,6 +8,8 @@ import {
   HttpStatus,
   BadRequestException,
   Headers,
+  Request,
+  ForbiddenException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -24,7 +26,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 
 @ApiTags("9. Cronometraje (Motor de Pista - Field App)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN)
+@Roles(UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN, UserRole.CLUB_ADMIN)
 @Controller("timing")
 export class TimingController {
   constructor(private readonly timingService: TimingService) {}
@@ -33,9 +35,14 @@ export class TimingController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Registrar entrada veterinaria (VET_IN)" })
   @ApiResponse({ status: 201, description: "VET_IN registrado." })
-  async createVetIn(@Body() createTimingRecordDto: CreateTimingRecordDto) {
+  async createVetIn(
+    @Body() createTimingRecordDto: CreateTimingRecordDto,
+    @Request() req,
+  ) {
     createTimingRecordDto.recordType = TimeRecordType.VET_IN;
-    const record = await this.timingService.create(createTimingRecordDto);
+    const user = req.user;
+    const tenantId = user?.role === UserRole.ADMIN ? undefined : user?.tenantId;
+    const record = await this.timingService.create(createTimingRecordDto, tenantId);
     return {
       id: record.id,
       recordType: record.recordType,
@@ -62,13 +69,18 @@ export class TimingController {
     status: 404,
     description: "Not Found: Dorsal/Chip no encontrado en esta carrera.",
   })
-  async createRecord(@Body() createTimingRecordDto: CreateTimingRecordDto) {
+  async createRecord(
+    @Body() createTimingRecordDto: CreateTimingRecordDto,
+    @Request() req,
+  ) {
     if (createTimingRecordDto.recordType === TimeRecordType.START) {
       throw new BadRequestException(
         "El registro de inicio (START) no está permitido a través de este endpoint. Utilice la consola de administración.",
       );
     }
-    return await this.timingService.create(createTimingRecordDto);
+    const user = req.user;
+    const tenantId = user?.role === UserRole.ADMIN ? undefined : user?.tenantId;
+    return await this.timingService.create(createTimingRecordDto, tenantId);
   }
 
   @Patch(":id")

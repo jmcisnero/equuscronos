@@ -36,7 +36,10 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
    * Registra un hito de cronometraje en pista garantizando integridad ACID
    * y bloqueos contra concurrencia de antenas RFID.
    */
-  async create(dto: CreateTimingRecordDto): Promise<TimingRecord> {
+  async create(
+    dto: CreateTimingRecordDto,
+    currentUserTenantId?: string,
+  ): Promise<TimingRecord> {
     // 1. Validación de Entrada (Failsafe)
     if (!dto.bibNumber && !dto.chipId) {
       throw new BadRequestException(
@@ -83,12 +86,18 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       // Cargamos las relaciones asociadas bajo la seguridad de la transacción bloqueada
       const entry = await manager.findOne(CompetitionEntry, {
         where: { id: lockedEntry.id },
-        relations: ["competition", "horse", "rider", "tenant"],
+        relations: ["competition", "competition.tenant", "horse", "rider", "tenant"],
       });
 
       if (!entry) {
         throw new NotFoundException(
           `Binomio no encontrado en la competencia activa.`,
+        );
+      }
+
+      if (currentUserTenantId && entry.competition?.tenant?.id !== currentUserTenantId) {
+        throw new ForbiddenException(
+          "Acción denegada: La competencia pertenece a otra organización/club (Multi-Tenant Isolation).",
         );
       }
 

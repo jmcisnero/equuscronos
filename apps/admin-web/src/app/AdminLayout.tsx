@@ -34,7 +34,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     if (isMounted && user) {
-      const isMobileRole = ["USER", "TIMEKEEPER", "VET"].includes(user.role);
+      // USER and VET are strictly mobile-only. TIMEKEEPER and JUDGE are
+      // allowed access to the contingency arrivals screen on the admin web.
+      const isMobileRole = ["USER", "VET"].includes(user.role);
       if (isMobileRole) {
         logout();
         router.push("/login?error=roles_mecanismo_web_denegado");
@@ -42,6 +44,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       }
     }
   }, [isMounted, user, logout, router]);
+
 
   useEffect(() => {
     if (user?.tenantId) {
@@ -111,6 +114,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     if (path.startsWith("/tenants")) return "Clubes y Organizaciones";
     if (path.startsWith("/users")) return "Usuarios";
     if (path.startsWith("/admin/audit")) return "Auditoría de Sistema";
+    if (path.startsWith("/contingencia/arrivals"))
+      return "Puesto de Arribos · Contingencia";
     return "Consola de Administración";
   };
 
@@ -185,6 +190,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 strokeLinejoin="round"
                 d="M12 2a6 6 0 0 1 6 6v3c0 2.5-2.5 4.5-6 4.5S6 13.5 6 11V8a6 6 0 0 1 6-6Z"
               />
+            </svg>
+          ),
+        },
+        {
+          name: "Puesto Arribos ⚡",
+          href: "/contingencia/arrivals",
+          icon: (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
         },
@@ -380,13 +400,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
-        if (item.href === "/users" && user?.role === "JUDGE") {
-          return false;
+        // JUDGE and TIMEKEEPER: restrict to dashboard + contingency arrivals only
+        if (
+          user?.role === "JUDGE" ||
+          user?.role === "TIMEKEEPER"
+        ) {
+          return item.href === "/" || item.href === "/contingencia/arrivals";
         }
         return true;
       }),
     }))
     .filter((group) => group.items.length > 0);
+
 
   return (
     <div className="min-h-screen bg-equus-bg flex flex-col md:flex-row font-sans text-equus-text">

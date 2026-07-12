@@ -54,6 +54,9 @@ export class HorsesService {
       owner: owner, // Asignamos la relación validada
     });
 
+    // 4. Auto-cálculo del estado FEU basado en sanidad vigente y edad mínima (6 años)
+    newHorse.isFeuActive = this.computeFeuActive(newHorse);
+
     return await this.horseRepository.save(newHorse);
   }
 
@@ -100,6 +103,10 @@ export class HorsesService {
     }
 
     const updatedHorse = Object.assign(horse, updateHorseDto);
+
+    // Auto-recálculo del estado FEU tras cada actualización
+    updatedHorse.isFeuActive = this.computeFeuActive(updatedHorse);
+
     return await this.horseRepository.save(updatedHorse);
   }
 
@@ -116,5 +123,35 @@ export class HorsesService {
     const fileUrl = await this.assetsService.uploadFile(file, "horses");
     horse.imageUrl = fileUrl;
     return await this.horseRepository.save(horse);
+  }
+
+  /**
+   * Determina automáticamente si un equino cumple las condiciones de habilitación FEU:
+   * 1. Tiene fecha de nacimiento registrada y edad >= 6 años
+   * 2. Tiene certificado de sanidad vigente (health_records_expiration > hoy)
+   *
+   * Si el DTO envía isFeuActive explícitamente en true pero las condiciones NO se cumplen,
+   * se fuerza a false para mantener integridad reglamentaria.
+   */
+  private computeFeuActive(horse: Partial<Horse>): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Condición 1: Sanidad vigente
+    const healthExp = horse.healthRecordsExpiration
+      ? new Date(horse.healthRecordsExpiration)
+      : null;
+    const hasValidHealth = healthExp !== null && healthExp > today;
+
+    // Condición 2: Edad >= 6 años
+    const birthDate = horse.birthDate ? new Date(horse.birthDate) : null;
+    let hasMinAge = false;
+    if (birthDate) {
+      const ageMs = today.getTime() - birthDate.getTime();
+      const ageYears = ageMs / (365.25 * 24 * 60 * 60 * 1000);
+      hasMinAge = ageYears >= 6;
+    }
+
+    return hasValidHealth && hasMinAge;
   }
 }
