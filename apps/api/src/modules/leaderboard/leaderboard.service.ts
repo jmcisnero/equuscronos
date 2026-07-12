@@ -464,11 +464,12 @@ export class LeaderboardService {
       if (aIsActive && !bIsActive) return -1;
       if (!aIsActive && bIsActive) return 1;
 
-      // Mayor Etapa Alcanzada/Iniciada (currentStage)
-      const aStage = a.currentStage || 1;
-      const bStage = b.currentStage || 1;
-      if (aStage !== bStage) {
-        return bStage - aStage; // Etapa superior primero
+      // Calcular el score de progreso físico para cada uno (mayor es mejor)
+      const aProgress = this.getProgressScore(a);
+      const bProgress = this.getProgressScore(b);
+
+      if (aProgress !== bProgress) {
+        return bProgress - aProgress; // El de mayor progreso físico va primero
       }
 
       // Menor Tiempo Neto Acumulado (totalRaceTimeMs)
@@ -600,5 +601,27 @@ export class LeaderboardService {
     return currentStageVetRecord
       ? currentStageVetRecord.vetInspection.heartRate
       : null;
+  }
+
+  private getProgressScore(entry: LeaderboardEntryDto): number {
+    const starts = new Set<number>();
+    const arrivals = new Set<number>();
+    const vetIns = new Set<number>();
+
+    for (const stage of entry.stages || []) {
+      const stageNum = stage.stageNumber;
+      if (stageNum === undefined || stageNum === null) continue;
+      if (stage.startTime) {
+        starts.add(stageNum);
+      }
+      if (stage.arrivalTime) {
+        arrivals.add(stageNum);
+      }
+      if (stage.vetInTime) {
+        vetIns.add(stageNum);
+      }
+    }
+
+    return starts.size + arrivals.size + vetIns.size;
   }
 }
