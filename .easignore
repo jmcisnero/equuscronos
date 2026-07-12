@@ -6,6 +6,12 @@ node_modules/
 .android-sdk/
 **/.android-sdk/
 
+# Ignore Turborepo caches
+.turbo/
+**/.turbo/
+.cache/
+**/.cache/
+
 # Ignore build and cache directories
 .expo/
 web-build/
