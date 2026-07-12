@@ -87,7 +87,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       // Cargamos las relaciones asociadas bajo la seguridad de la transacción bloqueada
       const entry = await manager.findOne(CompetitionEntry, {
         where: { id: lockedEntry.id },
-        relations: ["competition", "competition.tenant", "horse", "rider", "tenant"],
+        relations: ["competition", "competition.tenant", "competition.stages", "horse", "rider", "tenant"],
       });
 
       if (!entry) {
@@ -124,6 +124,18 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
+      const immutableStatuses = [
+        ParticipantStatus.FINISHED_PROVISIONAL,
+        ParticipantStatus.FINISHED,
+        ParticipantStatus.NO_COMPLETED,
+      ];
+
+      if (immutableStatuses.includes(entry.status)) {
+        throw new BadRequestException(
+          `Acción rechazada: El dorsal ${entry.bibNumber} ya ha finalizado la competencia (Estado: ${entry.status}).`,
+        );
+      }
+
       // 4. Validación de Secuencia Lógica FEU (Máquina de Estados)
       const existingRecords = await manager.find(TimingRecord, {
         where: { entry: { id: entry.id }, stage: { id: dto.stageId } },
@@ -133,6 +145,11 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       const currentStage = await manager.findOne(Stage, { where: { id: dto.stageId } });
       if (!currentStage) throw new NotFoundException("Etapa no encontrada.");
 
+      const stages = entry.competition.stages || [];
+      stages.sort((a, b) => a.stageNumber - b.stageNumber);
+      const lastStageObj = stages[stages.length - 1];
+      const isLastStage = lastStageObj && lastStageObj.id === dto.stageId;
+
       const vetInspection = await manager.findOne(VetInspection, {
         where: {
           competition: { id: entry.competition.id },
@@ -141,7 +158,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      this.validateLogicalSequence(dto.recordType, existingRecords, vetInspection);
+      this.validateLogicalSequence(dto.recordType, existingRecords, vetInspection, isLastStage);
 
       // 5. Persistencia del Tiempo
       try {
@@ -152,8 +169,8 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         if (!stage) throw new NotFoundException("Etapa no encontrada.");
 
         let scheduledDepartureTime = null;
-        // Si es LLEGADA, calculamos la hora en que debe largar la siguiente etapa garantizando la neutralización (Art. 28)
-        if (dto.recordType === TimeRecordType.ARRIVAL) {
+        // Si es LLEGADA y NO es la última etapa, calculamos la hora en que debe largar la siguiente etapa
+        if (dto.recordType === TimeRecordType.ARRIVAL && !isLastStage) {
           scheduledDepartureTime =
             this.timeCalcService.calculateNextDepartureTime(
               new Date(dto.recordedAt),
@@ -180,6 +197,21 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
               eliminationType = EliminationCode.TIME;
               eliminationReason = `Fuera de tiempo de recuperación: ${Math.round(diffMinutes)} minutos (Límite: 20 min).`;
               isLateVetIn = true;
+            }
+          }
+        }
+
+        if (isLastStage && dto.recordType === TimeRecordType.ARRIVAL) {
+          // Check if competition.controlClosureTime is set and exceeded
+          const freshComp = await manager.findOne(Competition, {
+            where: { id: entry.competition.id }
+          });
+          if (freshComp && freshComp.controlClosureTime) {
+            const isLate = new Date(dto.recordedAt).getTime() > new Date(freshComp.controlClosureTime).getTime();
+            if (isLate) {
+              isApproved = false;
+              eliminationType = EliminationCode.TIME;
+              eliminationReason = `Excedió la tolerancia de control de cierre del Art. 32 (Límite: ${new Date(freshComp.controlClosureTime).toISOString()}).`;
             }
           }
         }
@@ -274,7 +306,14 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
     newRecordType: TimeRecordType,
     existingRecords: TimingRecord[],
     vetInspection: VetInspection | null,
+    isLastStage: boolean = false,
   ): void {
+    if (isLastStage && (newRecordType === TimeRecordType.VET_IN || newRecordType === TimeRecordType.VET_OUT)) {
+      throw new BadRequestException(
+        "Acción denegada: No se permiten registros veterinarios (VET_IN / VET_OUT) en la última etapa de la competencia.",
+      );
+    }
+
     const hasStart = existingRecords.some(
       (r) => r.recordType === TimeRecordType.START,
     );
@@ -338,6 +377,27 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         newStatus = ParticipantStatus.DQ;
       } else {
         newStatus = ParticipantStatus.VET_CHECK;
+      }
+    } else if (dto.recordType === TimeRecordType.ARRIVAL) {
+      const stages = entry.competition?.stages || [];
+      if (stages.length > 0) {
+        stages.sort((a, b) => a.stageNumber - b.stageNumber);
+        const lastStage = stages[stages.length - 1];
+        const isLastStage = lastStage && lastStage.id === dto.stageId;
+
+        if (isLastStage) {
+          const freshComp = await manager.findOne(Competition, {
+            where: { id: entry.competition.id }
+          });
+          const isLate = freshComp && freshComp.controlClosureTime &&
+            new Date(dto.recordedAt).getTime() > new Date(freshComp.controlClosureTime).getTime();
+
+          if (isLate) {
+            newStatus = ParticipantStatus.NO_COMPLETED;
+          } else {
+            newStatus = ParticipantStatus.FINISHED_PROVISIONAL;
+          }
+        }
       }
     }
 

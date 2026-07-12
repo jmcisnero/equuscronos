@@ -153,6 +153,8 @@ export class LeaderboardService {
         isCompetitionActive &&
         !finalStatuses.includes(entry.status) &&
         entry.status !== ParticipantStatus.DQ &&
+        entry.status !== ParticipantStatus.FINISHED &&
+        entry.status !== ParticipantStatus.FINISHED_PROVISIONAL &&
         arrivalTime
       ) {
         // Encontrar la etapa correspondiente
@@ -190,8 +192,8 @@ export class LeaderboardService {
         }
       }
 
-      // Evaluar estado dinámico si no fue descalificado por expiración
-      if (!finalStatuses.includes(competitorStatus)) {
+      // Evaluar estado dinámico si no fue descalificado por expiración y no está en estado final exitoso
+      if (!finalStatuses.includes(competitorStatus) && competitorStatus !== ParticipantStatus.FINISHED && competitorStatus !== ParticipantStatus.FINISHED_PROVISIONAL) {
         if (activeRecords.length > 0) {
           const latestStageRecords = activeRecords.filter(
             (r) => (r.stage?.stageNumber || 1) === calculatedCurrentStage,
@@ -425,6 +427,7 @@ export class LeaderboardService {
       ParticipantStatus.RESTING,
       ParticipantStatus.VET_CHECK,
       ParticipantStatus.FINISHED,
+      ParticipantStatus.FINISHED_PROVISIONAL,
     ];
 
     leaderboard.sort((a, b) => {
@@ -466,6 +469,8 @@ export class LeaderboardService {
       ParticipantStatus.ELIMINATED_TR,
       ParticipantStatus.ELIMINATED_PP,
       ParticipantStatus.ELIMINATED_GAIT,
+      ParticipantStatus.FINISHED,
+      ParticipantStatus.FINISHED_PROVISIONAL,
     ];
     leaderboard.forEach((entry) => {
       if (
