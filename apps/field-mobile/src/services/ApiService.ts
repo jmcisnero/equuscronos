@@ -188,13 +188,25 @@ class ApiService {
    */
   async syncVetInspection(inspection: LocalVetInspection): Promise<any> {
     await this.validateRole([UserRole.VET, UserRole.ADMIN]);
+
+    const timingRecordId = inspection.timing_record_id || (inspection as any).timingRecordId;
+    const rawHeartRate = inspection.heart_rate !== undefined ? inspection.heart_rate : (inspection as any).heartRate;
+    const heartRate = rawHeartRate !== undefined && rawHeartRate !== null ? parseInt(String(rawHeartRate), 10) : undefined;
+    
+    let motricity: any = inspection.motricity || (inspection as any).motricity;
+    if (!motricity && (inspection as any).gaitStatus) {
+      motricity = (inspection as any).gaitStatus === "APPROVED" ? "APTO" : "NOT_APTO";
+    }
+
+    const metabolic: any = inspection.metabolic || (inspection as any).metabolic || "NORMAL";
+    const notes = inspection.notes && inspection.notes.trim() !== "" ? inspection.notes : undefined;
+
     const payload = {
-      timingRecordId: inspection.timing_record_id,
-      heartRate: inspection.heart_rate,
-      temperature: inspection.temperature || undefined,
-      motricity: inspection.motricity,
-      metabolic: inspection.metabolic,
-      notes: inspection.notes || undefined,
+      timingRecordId,
+      heartRate,
+      motricity,
+      metabolic,
+      notes,
     };
 
     const response = await this.client.post("/vet-inspections", payload);
