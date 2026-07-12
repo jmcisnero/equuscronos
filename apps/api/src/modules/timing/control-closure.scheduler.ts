@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, LessThanOrEqual } from "typeorm";
 import { Competition } from "../competitions/entities/competition.entity";
+import { Stage } from "../competitions/entities/stage.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
 import { CompetitionStatus, ParticipantStatus } from "@equuscronos/shared";
 import { RealTimeGateway } from "./real-time.gateway";
@@ -50,20 +51,51 @@ export class ControlClosureScheduler {
           return;
         }
 
-        // Get all entries of this competition that are NOT in final states
-        // Final states: FINISHED, DQ, DNF, WD, NO_COMPLETED
+        const stages = await manager.find(Stage, {
+          where: { competition: { id: lockedComp.id } },
+          order: { stageNumber: "ASC" },
+        });
+        const lastStage = stages[stages.length - 1];
+
+        // Get all entries of this competition with their timing records
         const activeEntries = await manager.find(CompetitionEntry, {
           where: { competition: { id: lockedComp.id } },
+          relations: ["timingRecords", "timingRecords.stage"],
         });
 
-        const stuckEntries = activeEntries.filter(
-          (entry) =>
-            entry.status !== ParticipantStatus.FINISHED &&
-            entry.status !== ParticipantStatus.DQ &&
-            entry.status !== ParticipantStatus.DNF &&
-            entry.status !== ParticipantStatus.WD &&
-            entry.status !== ParticipantStatus.NO_COMPLETED,
-        );
+        const stuckEntries = activeEntries.filter((entry) => {
+          // Exclude any participant who is already in a final / finished / eliminated state
+          const isFinalState = [
+            ParticipantStatus.FINISHED,
+            ParticipantStatus.FINISHED_PROVISIONAL,
+            ParticipantStatus.DQ,
+            ParticipantStatus.DNF,
+            ParticipantStatus.WD,
+            ParticipantStatus.NO_COMPLETED,
+            ParticipantStatus.ELIMINATED_TR,
+            ParticipantStatus.ELIMINATED_PP,
+            ParticipantStatus.ELIMINATED_GAIT,
+          ].includes(entry.status);
+
+          if (isFinalState) {
+            return false;
+          }
+
+          // Exclude participants who have already completed (crossed meta) in the last stage
+          if (lastStage) {
+            const hasLastStageArrival = (entry.timingRecords || []).some(
+              (tr) =>
+                tr.stage?.id === lastStage.id &&
+                tr.recordType === "ARRIVAL" &&
+                !tr.isVoid,
+            );
+            if (hasLastStageArrival) {
+              return false;
+            }
+          }
+
+          return true;
+        });
 
         if (stuckEntries.length > 0) {
           this.logger.log(
@@ -89,3 +121,4 @@ export class ControlClosureScheduler {
     }
   }
 }
+
