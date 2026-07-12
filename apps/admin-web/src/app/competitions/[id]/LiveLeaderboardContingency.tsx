@@ -358,10 +358,12 @@ export default function LiveLeaderboardContingency({
                                     ? "bg-blue-50 text-blue-700 border-blue-100"
                                     : entry.status === "FINISHED"
                                       ? "bg-purple-50 text-purple-700 border-purple-100"
-                                      : "bg-rose-50 text-rose-700 border-rose-100"
+                                      : entry.status === "FINISHED_PROVISIONAL"
+                                        ? "bg-blue-50 text-blue-700 border-blue-100"
+                                        : "bg-rose-50 text-rose-700 border-rose-100"
                             }`}
                           >
-                            {entry.status}
+                            {entry.status === "FINISHED_PROVISIONAL" ? "PROVISIONAL" : entry.status}
                           </span>
                         </td>
                         <td className="py-4 px-4 font-sans tabular-nums font-bold text-slate-700">

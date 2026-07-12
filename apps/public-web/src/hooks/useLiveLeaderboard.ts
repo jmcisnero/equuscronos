@@ -15,7 +15,8 @@ export interface LeaderboardEntry {
     | "DQ"
     | "DNF"
     | "WD"
-    | "NO_COMPLETED";
+    | "NO_COMPLETED"
+    | "FINISHED_PROVISIONAL";
   currentStage: number;
   lastArrivalTime?: string;
   nextVetControlTime?: string;

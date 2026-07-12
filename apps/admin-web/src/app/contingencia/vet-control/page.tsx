@@ -498,7 +498,10 @@ export default function VetControlPage() {
                         ? "bg-emerald-950 text-emerald-400 border-emerald-500/25"
                         : matchedEntry.status === ParticipantStatus.VET_CHECK
                           ? "bg-amber-950 text-amber-400 border-amber-500/25"
-                          : "bg-red-950 text-red-400 border-red-500/25"
+                          : matchedEntry.status === ParticipantStatus.FINISHED ||
+                            matchedEntry.status === ParticipantStatus.FINISHED_PROVISIONAL
+                            ? "bg-blue-950 text-blue-400 border-blue-500/25"
+                            : "bg-red-950 text-red-400 border-red-500/25"
                     }`}
                   >
                     {matchedEntry.status}

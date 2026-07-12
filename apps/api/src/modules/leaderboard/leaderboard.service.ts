@@ -224,7 +224,11 @@ export class LeaderboardService {
           if (hasStart && !hasArrival) {
             competitorStatus = ParticipantStatus.IN_RACE;
           } else if (hasArrival && !hasVetIn) {
-            competitorStatus = ParticipantStatus.VET_CHECK;
+            if (calculatedCurrentStage === totalStagesCount) {
+              competitorStatus = ParticipantStatus.FINISHED_PROVISIONAL;
+            } else {
+              competitorStatus = ParticipantStatus.VET_CHECK;
+            }
           } else if (hasVetIn) {
             const vetInRecord = latestStageRecords
               .filter((r) => r.recordType === TimeRecordType.VET_IN)
@@ -302,10 +306,11 @@ export class LeaderboardService {
         }
       }
 
-      // El límite de presentación veterinaria se calcula solo si hay llegada registrada en la etapa actual
-      const nextVetControlTime = arrivalTime
-        ? new Date(new Date(arrivalTime).getTime() + 20 * 60 * 1000)
-        : null;
+      // El límite de presentación veterinaria se calcula solo si hay llegada registrada en la etapa actual (y no es la etapa final)
+      const nextVetControlTime =
+        arrivalTime && calculatedCurrentStage < totalStagesCount
+          ? new Date(new Date(arrivalTime).getTime() + 20 * 60 * 1000)
+          : null;
 
       // Calcular detalle de etapas (historial)
       const activeRecordsForStages = (entry.timingRecords || []).filter(

@@ -181,6 +181,13 @@ export default function LeaderboardTable({
             🏇 Carrera
           </span>
         );
+      case "FINISHED_PROVISIONAL":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-950 border border-blue-300 whitespace-nowrap">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-600 mr-1"></span>
+            🏁 Prov.
+          </span>
+        );
       case "VET_CHECK":
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-950 border border-amber-300 whitespace-nowrap animate-pulse">
