@@ -194,7 +194,6 @@ export class CompetitionEntriesService {
         "currentStage",
         "timingRecords",
         "timingRecords.stage",
-        "timingRecords.vetInspection",
         "tenant",
       ],
       order: { bibNumber: "ASC" },
