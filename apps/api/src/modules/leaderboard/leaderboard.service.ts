@@ -44,7 +44,7 @@ export class LeaderboardService {
         "timing.vetInspection",
         VetInspection,
         "vet",
-        "vet.competition = competition.id AND vet.vetGateNumber = stage.stageNumber AND vet.riderDorsal = CAST(entry.bibNumber AS varchar) AND vet.isFinalDecision = true"
+        "vet.competition = competition.id AND vet.vetGateNumber = stage.stageNumber AND vet.riderDorsal = CAST(entry.bibNumber AS varchar) AND vet.isFinalDecision = true",
       )
       .leftJoinAndSelect("entry.penalties", "penalties")
       .leftJoinAndSelect("penalties.stage", "penaltyStage")
@@ -58,7 +58,9 @@ export class LeaderboardService {
 
     for (const entry of entries) {
       const stats = this.calculateCompetitorStats(entry.timingRecords);
-      const activeRecords = (entry.timingRecords || []).filter((r) => !r.isVoid);
+      const activeRecords = (entry.timingRecords || []).filter(
+        (r) => !r.isVoid,
+      );
 
       // Determinar la etapa actual calculada dinámicamente según sus registros de tiempos
       let calculatedCurrentStage = entry.currentStage?.stageNumber || 1;
@@ -148,7 +150,8 @@ export class LeaderboardService {
       // ----------------------------------------------------
       // EVALUACIÓN DE EXPIRACIÓN DE NEUTRALIZACIÓN ("FANTASMAS")
       // ----------------------------------------------------
-      const isCompetitionActive = entry.competition?.status === CompetitionStatus.ACTIVE;
+      const isCompetitionActive =
+        entry.competition?.status === CompetitionStatus.ACTIVE;
       if (
         isCompetitionActive &&
         !finalStatuses.includes(entry.status) &&
@@ -159,11 +162,11 @@ export class LeaderboardService {
       ) {
         // Encontrar la etapa correspondiente
         const currentStageObj = entry.competition.stages?.find(
-          (s) => s.stageNumber === calculatedCurrentStage
+          (s) => s.stageNumber === calculatedCurrentStage,
         );
         const neutralizationMin = currentStageObj?.neutralizationMinutes || 60;
         const neutralizationTimeLimit = new Date(
-          new Date(arrivalTime).getTime() + neutralizationMin * 60 * 1000
+          new Date(arrivalTime).getTime() + neutralizationMin * 60 * 1000,
         );
 
         const now = new Date();
@@ -175,16 +178,20 @@ export class LeaderboardService {
               r.recordType === TimeRecordType.VET_IN &&
               (r.stage?.stageNumber || 1) === calculatedCurrentStage &&
               r.vetInspection &&
-              r.vetInspection.heartRate <= (entry.competition?.maxHeartRate ?? 65) &&
-              r.vetInspection.gaitStatus === GaitStatus.APPROVED
+              r.vetInspection.heartRate <=
+                (entry.competition?.maxHeartRate ?? 65) &&
+              r.vetInspection.gaitStatus === GaitStatus.APPROVED,
           );
 
           if (!hasApprovedInspection) {
             // Expirado! Mutamos a DQ en la base de datos
             console.log(
-              `[LeaderboardService] Competidor ${entry.bibNumber} superó tiempo de neutralización sin inspección aprobada. Mutando a DQ.`
+              `[LeaderboardService] Competidor ${entry.bibNumber} superó tiempo de neutralización sin inspección aprobada. Mutando a DQ.`,
             );
-            await this.entryRepository.update({ id: entry.id }, { status: ParticipantStatus.DQ });
+            await this.entryRepository.update(
+              { id: entry.id },
+              { status: ParticipantStatus.DQ },
+            );
             entry.status = ParticipantStatus.DQ;
             competitorStatus = ParticipantStatus.DQ;
             shouldBroadcastWS = true;
@@ -193,7 +200,11 @@ export class LeaderboardService {
       }
 
       // Evaluar estado dinámico si no fue descalificado por expiración y no está en estado final exitoso
-      if (!finalStatuses.includes(competitorStatus) && competitorStatus !== ParticipantStatus.FINISHED && competitorStatus !== ParticipantStatus.FINISHED_PROVISIONAL) {
+      if (
+        !finalStatuses.includes(competitorStatus) &&
+        competitorStatus !== ParticipantStatus.FINISHED &&
+        competitorStatus !== ParticipantStatus.FINISHED_PROVISIONAL
+      ) {
         if (activeRecords.length > 0) {
           const latestStageRecords = activeRecords.filter(
             (r) => (r.stage?.stageNumber || 1) === calculatedCurrentStage,
@@ -233,7 +244,9 @@ export class LeaderboardService {
                 const timeSinceArrival = arrivalTime
                   ? new Date().getTime() - new Date(arrivalTime).getTime()
                   : null;
-                const isWithinRecovery = timeSinceArrival !== null && timeSinceArrival <= 20 * 60 * 1000;
+                const isWithinRecovery =
+                  timeSinceArrival !== null &&
+                  timeSinceArrival <= 20 * 60 * 1000;
 
                 if (isWithinRecovery) {
                   competitorStatus = ParticipantStatus.VET_CHECK; // Rechequeo permitido
@@ -256,7 +269,10 @@ export class LeaderboardService {
         }
       }
 
-      const latestHeartRate = this.extractLatestHeartRate(entry.timingRecords, calculatedCurrentStage);
+      const latestHeartRate = this.extractLatestHeartRate(
+        entry.timingRecords,
+        calculatedCurrentStage,
+      );
 
       // Extraemos la última hora de llegada registrada
       const lastArrival = activeRecords
@@ -291,22 +307,27 @@ export class LeaderboardService {
         : null;
 
       // Calcular detalle de etapas (historial)
-      const activeRecordsForStages = (entry.timingRecords || []).filter((r) => !r.isVoid);
-      const stagesMap = new Map<number, {
-        stageNumber: number;
-        distanceKm: number;
-        stageId?: string;
-        startTime?: Date;
-        startTimeRecordId?: string;
-        arrivalTime?: Date;
-        arrivalTimeRecordId?: string;
-        vetInTime?: Date;
-        vetInTimeRecordId?: string;
-        vetInspectionId?: string;
-        motricity?: string;
-        metabolic?: string;
-        heartRate?: number;
-      }>();
+      const activeRecordsForStages = (entry.timingRecords || []).filter(
+        (r) => !r.isVoid,
+      );
+      const stagesMap = new Map<
+        number,
+        {
+          stageNumber: number;
+          distanceKm: number;
+          stageId?: string;
+          startTime?: Date;
+          startTimeRecordId?: string;
+          arrivalTime?: Date;
+          arrivalTimeRecordId?: string;
+          vetInTime?: Date;
+          vetInTimeRecordId?: string;
+          vetInspectionId?: string;
+          motricity?: string;
+          metabolic?: string;
+          heartRate?: number;
+        }
+      >();
 
       for (const rec of activeRecordsForStages) {
         if (!rec.stage) continue;
@@ -341,7 +362,10 @@ export class LeaderboardService {
         if (!stagesMap.has(1)) {
           stagesMap.set(1, {
             stageNumber: 1,
-            distanceKm: entry.currentStage?.stageNumber === 1 ? Number(entry.currentStage.distanceKm) : 40,
+            distanceKm:
+              entry.currentStage?.stageNumber === 1
+                ? Number(entry.currentStage.distanceKm)
+                : 40,
             startTime: startTime,
           });
         } else {
@@ -358,10 +382,13 @@ export class LeaderboardService {
           let netTimeMs = undefined;
           let averageSpeed = undefined;
           if (stageObj.startTime && stageObj.arrivalTime) {
-            netTimeMs = stageObj.arrivalTime.getTime() - stageObj.startTime.getTime();
+            netTimeMs =
+              stageObj.arrivalTime.getTime() - stageObj.startTime.getTime();
             if (netTimeMs > 0 && stageObj.distanceKm > 0) {
               const hours = netTimeMs / 3600000;
-              averageSpeed = parseFloat((stageObj.distanceKm / hours).toFixed(3));
+              averageSpeed = parseFloat(
+                (stageObj.distanceKm / hours).toFixed(3),
+              );
             }
           }
           return {
@@ -488,7 +515,10 @@ export class LeaderboardService {
       try {
         this.realTimeGateway.emitLeaderboardUpdate(competitionId, leaderboard);
       } catch (err) {
-        console.error(`[LeaderboardService] Error broadcasting leaderboard update:`, err);
+        console.error(
+          `[LeaderboardService] Error broadcasting leaderboard update:`,
+          err,
+        );
       }
     }
 
@@ -567,8 +597,8 @@ export class LeaderboardService {
         r.vetInspection != null,
     );
 
-    return currentStageVetRecord ? currentStageVetRecord.vetInspection.heartRate : null;
+    return currentStageVetRecord
+      ? currentStageVetRecord.vetInspection.heartRate
+      : null;
   }
-
-
 }

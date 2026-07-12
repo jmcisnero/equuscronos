@@ -519,7 +519,10 @@ export default function RidersPage() {
             </div>
 
             {/* Formulario */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 space-y-4 overflow-y-auto flex-1"
+            >
               {formError && (
                 <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-semibold flex items-center space-x-2">
                   <svg
@@ -549,7 +552,10 @@ export default function RidersPage() {
                   required
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value.toUpperCase() })
+                    setFormData({
+                      ...formData,
+                      name: e.target.value.toUpperCase(),
+                    })
                   }
                   placeholder="Ej: MATEO SILVA"
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm uppercase"

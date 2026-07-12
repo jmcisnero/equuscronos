@@ -38,7 +38,9 @@ export class VetInspectionsService {
   async create(dto: CreateVetInspectionDto): Promise<VetInspection> {
     const bibNum = parseInt(dto.riderDorsal, 10);
     if (isNaN(bibNum)) {
-      throw new BadRequestException("El dorsal del jinete debe ser un número válido.");
+      throw new BadRequestException(
+        "El dorsal del jinete debe ser un número válido.",
+      );
     }
 
     return await this.dataSource.transaction(async (manager: EntityManager) => {
@@ -142,14 +144,17 @@ export class VetInspectionsService {
         arrivalRecord = await manager.save(TimingRecord, arrivalRecord);
       }
 
-      let vetInRecord = await manager.findOne(TimingRecord, {
+      let vetInRecords = await manager.find(TimingRecord, {
         where: {
           entry: { id: entry.id },
           stage: { id: stage.id },
           recordType: TimeRecordType.VET_IN,
           isVoid: false,
         },
+        order: { recordedAt: "DESC" },
       });
+
+      let vetInRecord = vetInRecords[0];
 
       if (!vetInRecord) {
         vetInRecord = manager.create(TimingRecord, {
@@ -200,7 +205,10 @@ export class VetInspectionsService {
           (ins) => ins.heartRate > 65 && ins.isFinalDecision === false,
         );
 
-        if (hadPriorPulseFailures || dto.inspectionType === InspectionType.RE_INSPECTION_REQUESTED) {
+        if (
+          hadPriorPulseFailures ||
+          dto.inspectionType === InspectionType.RE_INSPECTION_REQUESTED
+        ) {
           // Ya es el segundo intento fallido -> ELIMINATED_PP
           targetStatus = ParticipantStatus.ELIMINATED_PP;
           shouldDisqualify = true;
@@ -235,19 +243,20 @@ export class VetInspectionsService {
       // Actualizar el hito VET_IN
       vetInRecord.isApproved = !shouldDisqualify && isFinalDecision;
       vetInRecord.eliminationType = shouldDisqualify ? eliminationCode : null;
-      vetInRecord.eliminationReason = shouldDisqualify || !isFinalDecision ? reason : null;
+      vetInRecord.eliminationReason =
+        shouldDisqualify || !isFinalDecision ? reason : null;
       await manager.save(TimingRecord, vetInRecord);
 
-      // Si aprueba con éxito, calcular neutralización para la salida
-      if (!shouldDisqualify && isFinalDecision) {
-        const neutralizationMins = stage.neutralizationMinutes || 60;
-        arrivalRecord.scheduledDepartureTime = new Date(
-          arrivalRecord.recordedAt.getTime() + neutralizationMins * 60 * 1000,
-        );
-        await manager.save(TimingRecord, arrivalRecord);
+      const attemptNum = previousInspections.length + 1;
+      const isRecheckRequired = !isFinalDecision || dto.requiresRecheck;
 
-        // Disparar largada automática para etapa posterior
-        await this.timingService.triggerAutomaticStart(manager, entry, stage);
+      let nextCheckDate: Date | null = null;
+      if (isRecheckRequired) {
+        if (dto.nextCheckTime) {
+          nextCheckDate = new Date(dto.nextCheckTime);
+        } else {
+          nextCheckDate = new Date(vetInTime.getTime() + 20 * 60 * 1000); // 20 minutes after vet_in
+        }
       }
 
       // Guardar registro clínico
@@ -262,11 +271,26 @@ export class VetInspectionsService {
         gaitStatus: dto.gaitStatus,
         inspectionType: dto.inspectionType,
         requiresRecheck: dto.requiresRecheck,
+        attemptNumber: attemptNum,
+        isRecheckRequired: isRecheckRequired,
+        nextCheckTime: nextCheckDate,
         isFinalDecision,
         notes: dto.notes ? `${dto.notes} | ${reason}`.trim() : reason || null,
       });
 
       const savedInspection = await manager.save(newInspection);
+
+      // Si aprueba con éxito, calcular neutralización para la salida
+      if (!shouldDisqualify && isFinalDecision && !isRecheckRequired) {
+        const neutralizationMins = stage.neutralizationMinutes || 60;
+        arrivalRecord.scheduledDepartureTime = new Date(
+          arrivalRecord.recordedAt.getTime() + neutralizationMins * 60 * 1000,
+        );
+        await manager.save(TimingRecord, arrivalRecord);
+
+        // Disparar largada automática para etapa posterior
+        await this.timingService.triggerAutomaticStart(manager, entry, stage);
+      }
 
       // Transmisión reactiva vía WebSockets
       setTimeout(() => this.broadcastUpdate(dto.competitionId), 100);
@@ -277,10 +301,14 @@ export class VetInspectionsService {
 
   private async broadcastUpdate(competitionId: string): Promise<void> {
     try {
-      const leaderboard = await this.leaderboardService.getLiveLeaderboard(competitionId);
+      const leaderboard =
+        await this.leaderboardService.getLiveLeaderboard(competitionId);
       this.realTimeGateway.emitLeaderboardUpdate(competitionId, leaderboard);
     } catch (err) {
-      console.error("[VetInspectionsService] Failed to broadcast real-time update:", err);
+      console.error(
+        "[VetInspectionsService] Failed to broadcast real-time update:",
+        err,
+      );
     }
   }
 }

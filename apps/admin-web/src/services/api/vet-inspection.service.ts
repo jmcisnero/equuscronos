@@ -1,6 +1,8 @@
 import { useAuthStore } from "@/store/auth.store";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin").replace(/\/admin$/, "");
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin"
+).replace(/\/admin$/, "");
 
 function getHeaders() {
   const token = useAuthStore.getState().accessToken;
@@ -33,7 +35,9 @@ export const VetInspectionService = {
     });
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.message || "Error al registrar la inspección veterinaria.");
+      throw new Error(
+        err.message || "Error al registrar la inspección veterinaria.",
+      );
     }
     return response.json();
   },

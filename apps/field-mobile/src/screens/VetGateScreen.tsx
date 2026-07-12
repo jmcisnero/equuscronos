@@ -39,7 +39,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   onNavigateToSyncMonitor,
 }) => {
   const { user } = useAuth();
-  
+
   // Real-time synchronization states
   const [pendingCount, setPendingCount] = useState(0);
   const [hasErrors, setHasErrors] = useState(false);
@@ -49,11 +49,11 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
     const updateCount = async () => {
       const size = await SyncService.getQueueSize();
       setPendingCount(size);
-      
+
       try {
         const db = await getDatabase();
         const failed = await db.getFirstAsync<{ count: number }>(
-          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;"
+          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;",
         );
         setHasErrors(failed ? failed.count > 0 : false);
       } catch (err) {
@@ -63,9 +63,11 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
 
     updateCount();
     const unsubscribeQueue = SyncService.registerQueueListener(updateCount);
-    const unsubscribeStatus = SyncService.registerStatusListener((connected) => {
-      setIsOnline(connected);
-    });
+    const unsubscribeStatus = SyncService.registerStatusListener(
+      (connected) => {
+        setIsOnline(connected);
+      },
+    );
 
     return () => {
       unsubscribeQueue();
@@ -93,6 +95,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const [attempt, setAttempt] = useState<number>(1);
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requiresRecheck, setRequiresRecheck] = useState(false);
 
   // States for logical sequence and read-only inspection history
   const [loading, setLoading] = useState(false);
@@ -234,6 +237,9 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           setRecheckAllowed(false);
         }
 
+        // Reset requiresRecheck toggle
+        setRequiresRecheck(false);
+
         // Clear inputs for editing
         setHeartRate("");
         setTemperature(null);
@@ -259,8 +265,10 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         const firstInspection = rows.find((r) => r.attempt_number === 1);
         if (firstInspection && firstInspection.is_recheck_required === 1) {
           setRecheckAllowed(true);
+          setRequiresRecheck(true);
         } else {
           setRecheckAllowed(false);
+          setRequiresRecheck(false);
         }
       }
     } catch (e) {
@@ -371,18 +379,31 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         eliminationType = EliminationCode.GAIT;
         eliminationReason =
           "Cojera / Claudicación detectada en mesa veterinaria.";
-      } else if (parsedHr > HEART_RATE_LIMIT) {
+      } else if (
+        parsedHr > HEART_RATE_LIMIT ||
+        (requiresRecheck && attempt === 1)
+      ) {
         if (attempt === 1) {
-          // High pulse attempt 1 -> mark for recheck
+          // High pulse attempt 1 or manual requires recheck -> mark for recheck
           targetStatus = ParticipantStatus.VET_CHECK;
           isRecheckRequired = 1;
         } else {
           // High pulse attempt 2 -> Metabolic elimination
-          targetStatus = ParticipantStatus.DQ;
-          isApproved = 0;
-          eliminationType = EliminationCode.METABOLIC;
-          eliminationReason = `Frecuencia cardíaca excedida (${parsedHr} ppm) tras el segundo intento en Vet Gate. Límite: ${HEART_RATE_LIMIT} ppm.`;
+          if (parsedHr > HEART_RATE_LIMIT) {
+            targetStatus = ParticipantStatus.DQ;
+            isApproved = 0;
+            eliminationType = EliminationCode.METABOLIC;
+            eliminationReason = `Frecuencia cardíaca excedida (${parsedHr} ppm) tras el segundo intento en Vet Gate. Límite: ${HEART_RATE_LIMIT} ppm.`;
+          }
         }
+      }
+
+      let nextCheckTimeISO: string | null = null;
+      if (isRecheckRequired === 1) {
+        const nextCheckDate = new Date(
+          presentationTime.getTime() + 20 * 60 * 1000,
+        );
+        nextCheckTimeISO = nextCheckDate.toISOString();
       }
 
       // 1. Update timing_records locally
@@ -402,8 +423,8 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       // 2. Write Detailed Clinical Metrics locally
       await db.runAsync(
         `INSERT INTO vet_inspections (
-          id, tenant_id, timing_record_id, heart_rate, temperature, motricity, metabolic, attempt_number, is_recheck_required, notes, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          id, tenant_id, timing_record_id, heart_rate, temperature, motricity, metabolic, attempt_number, is_recheck_required, next_check_time, notes, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           vetId,
           tenantId,
@@ -414,6 +435,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           metabolic,
           attempt,
           isRecheckRequired,
+          nextCheckTimeISO,
           notes || null,
           now,
         ],
@@ -426,7 +448,8 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       );
 
       console.log(
-        "[SQLite] Local database updated with vet inspection metrics.",
+        "[SQLite] Local database updated with vet inspection metrics." +
+          (isRecheckRequired ? ` Next check time: ${nextCheckTimeISO}` : ""),
       );
 
       // 4. Enqueue actions for synchronization
@@ -435,7 +458,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       // Enqueue the updated timing record status (to ensure the server timing record matches local status)
       await SyncService.enqueueAction("UPDATE_TIMING", "timing_records", {
         id: vetInRecord.timing_record_id,
-        recordedAt: vetInRecord.recorded_at, // Just reuse recorded_at, the backend will update timing record isApproved, eliminationType, eliminationReason when processing CREATE_VET_INSPECTION. But enqueuing this ensures database structure triggers.
+        recordedAt: vetInRecord.recorded_at,
       });
 
       // Enqueue vet inspection details
@@ -446,12 +469,22 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           id: vetId,
           tenant_id: tenantId,
           timing_record_id: vetInRecord.timing_record_id,
-          heart_rate: parsedHr,
-          temperature: null,
-          motricity: motricity,
-          metabolic: metabolic,
-          attempt_number: attempt,
-          is_recheck_required: isRecheckRequired,
+          competitionId: matchedEntry.competition_id,
+          vetGateNumber: matchedEntry.current_stage_id ? 1 : 1, // backend resolves this using timingRecord or stage. We pass it for completeness.
+          riderDorsal: String(matchedEntry.bib_number),
+          arrivalTime: arrivalTime
+            ? arrivalTime.toISOString()
+            : presentationTime.toISOString(),
+          vetInTime: presentationTime.toISOString(),
+          heartRate: parsedHr,
+          gaitStatus:
+            motricity === MotricityStatus.APTO
+              ? "APPROVED"
+              : "LAMENESS_ELIMINATED",
+          inspectionType:
+            attempt === 2 ? "RE_INSPECTION_MANDATORY" : "STANDARD",
+          requiresRecheck: isRecheckRequired === 1,
+          nextCheckTime: nextCheckTimeISO || undefined,
           notes: notes || "",
           created_at: now,
         },
@@ -472,7 +505,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       let statusDetails = `Caballo apto. Pasa a neutralización (Resting).`;
       if (isRecheckRequired === 1) {
         statusHeading = "Rechequeo Requerido";
-        statusDetails = `El pulso superó los ${HEART_RATE_LIMIT} ppm. Se requiere re-evaluar al caballo antes del tiempo límite.`;
+        statusDetails = `Se requiere re-evaluar al caballo antes del tiempo límite (${nextCheckTimeISO ? new Date(nextCheckTimeISO).toLocaleTimeString() : "20 min"}).`;
       } else if (targetStatus === ParticipantStatus.DQ) {
         statusHeading = "🛑 ELIMINACIÓN REGLAMENTARIA";
         statusDetails =
@@ -501,6 +534,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
               setMotricity(MotricityStatus.APTO);
               setMetabolic(ClinicalStatus.NORMAL);
               setNotes("");
+              setRequiresRecheck(false);
 
               if (onInspectionSuccess) {
                 onInspectionSuccess();
@@ -530,7 +564,12 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       <SafeAreaView
         style={[
           styles.container,
-          { justifyContent: "center", alignItems: "center", flex: 1, backgroundColor: colors.equusBg },
+          {
+            justifyContent: "center",
+            alignItems: "center",
+            flex: 1,
+            backgroundColor: colors.equusBg,
+          },
         ]}
       >
         <ActivityIndicator size="large" color={colors.equusGreen} />
@@ -543,312 +582,356 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.equusBg }}>
       <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          {showBackButton && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backText}> Volver</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Sync Badge Trigger */}
-          <TouchableOpacity 
-            onPress={onNavigateToSyncMonitor}
-            style={styles.syncHeaderTrigger}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.syncCloudIcon}>{isOnline ? "☁️" : "📶"}</Text>
-            {pendingCount > 0 && (
-              <View style={[
-                styles.syncBadgeCircle,
-                { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" }
-              ]}>
-                <Text style={styles.syncBadgeText}>{pendingCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.title}>Mesa Veterinaria</Text>
-      </View>
-
-      {/* Search Bar for Veterinarian */}
-      {(!entry || user?.role === UserRole.VET) && (
-        <View style={styles.searchCard}>
-          <Text style={styles.inputLabel}>Buscar Dorsal / Bib</Text>
-          <TextInput
-            ref={searchInputRef}
-            style={styles.searchInput}
-            placeholder="Ingrese número de dorsal (ej. 12)"
-            placeholderTextColor="#64748B"
-            keyboardType="numeric"
-            value={bibSearch}
-            onChangeText={setBibSearch}
-          />
-        </View>
-      )}
-
-      {/* Competitor Banner */}
-      {matchedEntry ? (
-        <View style={styles.competitorCard}>
-          <Text style={styles.bibLabel}>BICICLETA / BIB</Text>
-          <Text style={styles.bibNumber}>#{matchedEntry.bib_number}</Text>
-          <Text style={styles.riderName}>{matchedEntry.rider_name}</Text>
-          <Text style={styles.horseName}>🐴 {matchedEntry.horse_name}</Text>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Estado Actual:</Text>
-            <Text style={styles.statusValue}>{matchedEntry.status}</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.emptySearchCard}>
-          <Text style={styles.emptySearchText}>
-            {bibSearch
-              ? "No se encontró ningún binomio con ese dorsal."
-              : "Ingrese un número de dorsal para comenzar."}
-          </Text>
-        </View>
-      )}
-
-      {/* Block Cartel if not enabled */}
-      {matchedEntry && !isEnabled && (
-        <View style={styles.blockedBanner}>
-          <Text style={styles.blockedTitle}>⚠️ ACCIÓN BLOQUEADA</Text>
-          <Text style={styles.blockedText}>
-            {blockMessage || "Binomio no habilitado para chequeo clínico"}
-          </Text>
-        </View>
-      )}
-
-      {/* Clinical Form fields - only render if enabled */}
-      {matchedEntry && isEnabled && (
-        <>
-          {/* Read-Only Status Banner */}
-          {isReadOnly && (
-            <View style={styles.infoAlertBanner}>
-              <Text style={styles.infoAlertTitle}>
-                ℹ️ INSPECCIÓN FINALIZADA
-              </Text>
-              <Text style={styles.infoAlertText}>
-                Inspección finalizada. No se permiten rechequeos o
-                modificaciones.
-              </Text>
-            </View>
-          )}
-
-          {/* FEU Warning Alert */}
-          {!isReadOnly && isEliminationWarning && (
-            <View style={styles.dangerAlertBanner}>
-              <Text style={styles.dangerAlertTitle}>
-                🛑 ELIMINACIÓN REGLAMENTARIA FEU
-              </Text>
-              <Text style={styles.dangerAlertText}>
-                {isGaitWarning
-                  ? "La claudicación es motivo de descalificación directa."
-                  : `Pulso metabólico (${parsedHr} ppm) supera el límite en el segundo intento.`}
-              </Text>
-            </View>
-          )}
-
-          {!isReadOnly && isHeartRateWarning && attempt === 1 && (
-            <View style={styles.warningAlertBanner}>
-              <Text style={styles.warningAlertTitle}>
-                ⚠️ PULSO ELEVADO (INTENTO 1)
-              </Text>
-              <Text style={styles.warningAlertText}>
-                Pulso ({parsedHr} ppm) &gt; {HEART_RATE_LIMIT}. El binomio tiene
-                una oportunidad de rechequeo dentro del límite de tiempo.
-              </Text>
-            </View>
-          )}
-
-          {/* Parameters Entry Card */}
-          <View style={styles.inputCard}>
-            <Text style={styles.cardSectionTitle}>PARÁMETROS CLÍNICOS</Text>
-
-            {/* Heart Rate */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Frecuencia Cardíaca (ppm)</Text>
-              <TextInput
-                style={[
-                  styles.numericInput,
-                  isHeartRateWarning && styles.inputWarningBorder,
-                ]}
-                placeholder="Ej: 52"
-                keyboardType="numeric"
-                value={heartRate}
-                onChangeText={setHeartRate}
-                maxLength={3}
-                editable={!isReadOnly}
-              />
-            </View>
-
-
-
-            {/* Attempt Number Selector */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Número de Intento (FEU)</Text>
-              <View style={styles.segmentSelector}>
-                {[1, 2].map((num) => {
-                  const isDisabled = num === 2 && !recheckAllowed;
-                  return (
-                    <TouchableOpacity
-                      key={num}
-                      style={[
-                        styles.segmentBtn,
-                        attempt === num && styles.segmentBtnActive,
-                        isDisabled && { opacity: 0.4 },
-                      ]}
-                      onPress={() => {
-                        if (isDisabled) {
-                          Alert.alert(
-                            "Acción Denegada",
-                            "El Intento 2 solo se habilita si el Intento 1 requiere rechequeo (pulso superado).",
-                          );
-                          return;
-                        }
-                        handleAttemptChange(num);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          attempt === num && styles.segmentTextActive,
-                        ]}
-                      >
-                        Intento {num}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-
-          {/* Statuses Card */}
-          <View style={styles.inputCard}>
-            <Text style={styles.cardSectionTitle}>EVALUACIÓN FISIOLÓGICA</Text>
-
-            {/* Motricity (Claudicación) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Motricidad / Marcha</Text>
-              <View style={styles.segmentSelector}>
-                {(
-                  Object.keys(MotricityStatus) as Array<
-                    keyof typeof MotricityStatus
-                  >
-                ).map((key) => {
-                  const val = MotricityStatus[key];
-                  const isSelected = motricity === val;
-                  return (
-                    <TouchableOpacity
-                      key={val}
-                      style={[
-                        styles.segmentBtn,
-                        isSelected &&
-                          val === "APTO" && { backgroundColor: colors.success },
-                        isSelected &&
-                          val === "NOT_APTO" && {
-                            backgroundColor: colors.danger,
-                          },
-                      ]}
-                      onPress={() => {
-                        if (isReadOnly) return;
-                        setMotricity(val);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          isSelected && { color: colors.white },
-                        ]}
-                      >
-                        {val === "APTO" ? "🟢 APTO" : "🔴 NO APTO (Cojera)"}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Metabolic Status */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Estado Metabólico</Text>
-              <View style={styles.segmentSelector}>
-                {(
-                  Object.keys(ClinicalStatus) as Array<
-                    keyof typeof ClinicalStatus
-                  >
-                ).map((key) => {
-                  const val = ClinicalStatus[key];
-                  const isSelected = metabolic === val;
-                  return (
-                    <TouchableOpacity
-                      key={val}
-                      style={[
-                        styles.segmentBtn,
-                        isSelected &&
-                          val === "NORMAL" && {
-                            backgroundColor: colors.success,
-                          },
-                        isSelected &&
-                          val === "COMPROMISED" && {
-                            backgroundColor: colors.warning,
-                          },
-                        isSelected &&
-                          val === "CRITICAL" && {
-                            backgroundColor: colors.danger,
-                          },
-                      ]}
-                      onPress={() => {
-                        if (isReadOnly) return;
-                        setMetabolic(val);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          isSelected && { color: colors.white },
-                        ]}
-                      >
-                        {val}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Notes */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Notas de Inspección</Text>
-              <TextInput
-                style={styles.textArea}
-                placeholder="Ingrese observaciones sobre hidratación, mucosas, etc..."
-                multiline
-                numberOfLines={4}
-                value={notes}
-                onChangeText={setNotes}
-                editable={!isReadOnly}
-              />
-            </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.submitContainer}>
-            <Button
-              title="🩺 FINALIZAR INSPECCIÓN"
-              variant={isEliminationWarning ? "danger" : "primary"}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              disabled={isReadOnly || isSubmitting}
-            />
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             {showBackButton && (
-              <Button title="Cancelar" variant="outline" onPress={onBack} />
+              <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                <Text style={styles.backText}> Volver</Text>
+              </TouchableOpacity>
             )}
+
+            {/* Sync Badge Trigger */}
+            <TouchableOpacity
+              onPress={onNavigateToSyncMonitor}
+              style={styles.syncHeaderTrigger}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.syncCloudIcon}>{isOnline ? "☁️" : "📶"}</Text>
+              {pendingCount > 0 && (
+                <View
+                  style={[
+                    styles.syncBadgeCircle,
+                    { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" },
+                  ]}
+                >
+                  <Text style={styles.syncBadgeText}>{pendingCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-        </>
-      )}
+          <Text style={styles.title}>Mesa Veterinaria</Text>
+        </View>
+
+        {/* Search Bar for Veterinarian */}
+        {(!entry || user?.role === UserRole.VET) && (
+          <View style={styles.searchCard}>
+            <Text style={styles.inputLabel}>Buscar Dorsal / Bib</Text>
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Ingrese número de dorsal (ej. 12)"
+              placeholderTextColor="#64748B"
+              keyboardType="numeric"
+              value={bibSearch}
+              onChangeText={setBibSearch}
+            />
+          </View>
+        )}
+
+        {/* Competitor Banner */}
+        {matchedEntry ? (
+          <View style={styles.competitorCard}>
+            <Text style={styles.bibLabel}>BICICLETA / BIB</Text>
+            <Text style={styles.bibNumber}>#{matchedEntry.bib_number}</Text>
+            <Text style={styles.riderName}>{matchedEntry.rider_name}</Text>
+            <Text style={styles.horseName}>🐴 {matchedEntry.horse_name}</Text>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Estado Actual:</Text>
+              <Text style={styles.statusValue}>{matchedEntry.status}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.emptySearchCard}>
+            <Text style={styles.emptySearchText}>
+              {bibSearch
+                ? "No se encontró ningún binomio con ese dorsal."
+                : "Ingrese un número de dorsal para comenzar."}
+            </Text>
+          </View>
+        )}
+
+        {/* Block Cartel if not enabled */}
+        {matchedEntry && !isEnabled && (
+          <View style={styles.blockedBanner}>
+            <Text style={styles.blockedTitle}>⚠️ ACCIÓN BLOQUEADA</Text>
+            <Text style={styles.blockedText}>
+              {blockMessage || "Binomio no habilitado para chequeo clínico"}
+            </Text>
+          </View>
+        )}
+
+        {/* Clinical Form fields - only render if enabled */}
+        {matchedEntry && isEnabled && (
+          <>
+            {/* Read-Only Status Banner */}
+            {isReadOnly && (
+              <View style={styles.infoAlertBanner}>
+                <Text style={styles.infoAlertTitle}>
+                  ℹ️ INSPECCIÓN FINALIZADA
+                </Text>
+                <Text style={styles.infoAlertText}>
+                  Inspección finalizada. No se permiten rechequeos o
+                  modificaciones.
+                </Text>
+              </View>
+            )}
+
+            {/* FEU Warning Alert */}
+            {!isReadOnly && isEliminationWarning && (
+              <View style={styles.dangerAlertBanner}>
+                <Text style={styles.dangerAlertTitle}>
+                  🛑 ELIMINACIÓN REGLAMENTARIA FEU
+                </Text>
+                <Text style={styles.dangerAlertText}>
+                  {isGaitWarning
+                    ? "La claudicación es motivo de descalificación directa."
+                    : `Pulso metabólico (${parsedHr} ppm) supera el límite en el segundo intento.`}
+                </Text>
+              </View>
+            )}
+
+            {!isReadOnly && isHeartRateWarning && attempt === 1 && (
+              <View style={styles.warningAlertBanner}>
+                <Text style={styles.warningAlertTitle}>
+                  ⚠️ PULSO ELEVADO (INTENTO 1)
+                </Text>
+                <Text style={styles.warningAlertText}>
+                  Pulso ({parsedHr} ppm) &gt; {HEART_RATE_LIMIT}. El binomio
+                  tiene una oportunidad de rechequeo dentro del límite de
+                  tiempo.
+                </Text>
+              </View>
+            )}
+
+            {/* Parameters Entry Card */}
+            <View style={styles.inputCard}>
+              <Text style={styles.cardSectionTitle}>PARÁMETROS CLÍNICOS</Text>
+
+              {/* Heart Rate */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Frecuencia Cardíaca (ppm)</Text>
+                <TextInput
+                  style={[
+                    styles.numericInput,
+                    isHeartRateWarning && styles.inputWarningBorder,
+                  ]}
+                  placeholder="Ej: 52"
+                  keyboardType="numeric"
+                  value={heartRate}
+                  onChangeText={setHeartRate}
+                  maxLength={3}
+                  editable={!isReadOnly}
+                />
+              </View>
+
+              {/* Requires Recheck Toggle */}
+              {!isReadOnly && attempt === 1 && (
+                <View style={styles.toggleRow}>
+                  <Text style={styles.inputLabel}>¿Requerir Rechequeo?</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleBtn,
+                      requiresRecheck
+                        ? styles.toggleBtnActive
+                        : styles.toggleBtnInactive,
+                    ]}
+                    onPress={() => setRequiresRecheck(!requiresRecheck)}
+                  >
+                    <Text
+                      style={[
+                        styles.toggleText,
+                        {
+                          color: requiresRecheck
+                            ? colors.white
+                            : colors.equusText,
+                        },
+                      ]}
+                    >
+                      {requiresRecheck ? "SÍ" : "NO"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {isReadOnly && attempt === 1 && requiresRecheck && (
+                <View style={styles.toggleRow}>
+                  <Text style={styles.inputLabel}>¿Requerir Rechequeo?:</Text>
+                  <Text style={[styles.statusValue, { color: colors.warning }]}>
+                    SÍ
+                  </Text>
+                </View>
+              )}
+
+              {/* Attempt Number Selector */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Número de Intento (FEU)</Text>
+                <View style={styles.segmentSelector}>
+                  {[1, 2].map((num) => {
+                    const isDisabled =
+                      num === 2 && !recheckAllowed && !requiresRecheck;
+                    return (
+                      <TouchableOpacity
+                        key={num}
+                        style={[
+                          styles.segmentBtn,
+                          attempt === num && styles.segmentBtnActive,
+                          isDisabled && { opacity: 0.4 },
+                        ]}
+                        onPress={() => {
+                          if (isDisabled) {
+                            Alert.alert(
+                              "Acción Denegada",
+                              "El Intento 2 solo se habilita si el Intento 1 requiere rechequeo (pulso superado o activado manualmente).",
+                            );
+                            return;
+                          }
+                          handleAttemptChange(num);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            attempt === num && styles.segmentTextActive,
+                          ]}
+                        >
+                          Intento {num}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+
+            {/* Statuses Card */}
+            <View style={styles.inputCard}>
+              <Text style={styles.cardSectionTitle}>
+                EVALUACIÓN FISIOLÓGICA
+              </Text>
+
+              {/* Motricity (Claudicación) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Motricidad / Marcha</Text>
+                <View style={styles.segmentSelector}>
+                  {(
+                    Object.keys(MotricityStatus) as Array<
+                      keyof typeof MotricityStatus
+                    >
+                  ).map((key) => {
+                    const val = MotricityStatus[key];
+                    const isSelected = motricity === val;
+                    return (
+                      <TouchableOpacity
+                        key={val}
+                        style={[
+                          styles.segmentBtn,
+                          isSelected &&
+                            val === "APTO" && {
+                              backgroundColor: colors.success,
+                            },
+                          isSelected &&
+                            val === "NOT_APTO" && {
+                              backgroundColor: colors.danger,
+                            },
+                        ]}
+                        onPress={() => {
+                          if (isReadOnly) return;
+                          setMotricity(val);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            isSelected && { color: colors.white },
+                          ]}
+                        >
+                          {val === "APTO" ? "🟢 APTO" : "🔴 NO APTO (Cojera)"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Metabolic Status */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Estado Metabólico</Text>
+                <View style={styles.segmentSelector}>
+                  {(
+                    Object.keys(ClinicalStatus) as Array<
+                      keyof typeof ClinicalStatus
+                    >
+                  ).map((key) => {
+                    const val = ClinicalStatus[key];
+                    const isSelected = metabolic === val;
+                    return (
+                      <TouchableOpacity
+                        key={val}
+                        style={[
+                          styles.segmentBtn,
+                          isSelected &&
+                            val === "NORMAL" && {
+                              backgroundColor: colors.success,
+                            },
+                          isSelected &&
+                            val === "COMPROMISED" && {
+                              backgroundColor: colors.warning,
+                            },
+                          isSelected &&
+                            val === "CRITICAL" && {
+                              backgroundColor: colors.danger,
+                            },
+                        ]}
+                        onPress={() => {
+                          if (isReadOnly) return;
+                          setMetabolic(val);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            isSelected && { color: colors.white },
+                          ]}
+                        >
+                          {val}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Notas de Inspección</Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Ingrese observaciones sobre hidratación, mucosas, etc..."
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                  editable={!isReadOnly}
+                />
+              </View>
+            </View>
+
+            {/* Actions */}
+            <View style={styles.submitContainer}>
+              <Button
+                title="🩺 FINALIZAR INSPECCIÓN"
+                variant={isEliminationWarning ? "danger" : "primary"}
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+                disabled={isReadOnly || isSubmitting}
+              />
+              {showBackButton && (
+                <Button title="Cancelar" variant="outline" onPress={onBack} />
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1149,5 +1232,32 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "900",
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingVertical: 4,
+  },
+  toggleBtn: {
+    width: 80,
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
+  },
+  toggleBtnInactive: {
+    backgroundColor: colors.inputBg,
+    borderColor: colors.border,
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

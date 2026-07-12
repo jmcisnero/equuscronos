@@ -163,10 +163,11 @@ export default function Home() {
             ¡Hola, {isMounted && user ? user.name : "Administrador"}!
           </h2>
           <p className="mt-2 text-slate-200 text-sm md:text-base leading-relaxed font-medium">
-            Bienvenido al panel maestro de <span className="font-extrabold text-white">EquusCronos</span>. Desde aquí puedes
-            controlar la gobernanza deportiva del club, administrar binomios,
-            fiscalizar inspecciones veterinarias en Vet Gates, y asegurar el
-            cumplimiento de normativas sanitarias vigentes.
+            Bienvenido al panel maestro de{" "}
+            <span className="font-extrabold text-white">EquusCronos</span>.
+            Desde aquí puedes controlar la gobernanza deportiva del club,
+            administrar binomios, fiscalizar inspecciones veterinarias en Vet
+            Gates, y asegurar el cumplimiento de normativas sanitarias vigentes.
           </p>
         </div>
       </div>

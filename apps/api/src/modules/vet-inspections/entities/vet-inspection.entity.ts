@@ -57,6 +57,19 @@ export class VetInspection {
   @Column({ name: "requires_recheck", type: "boolean", default: false })
   requiresRecheck: boolean;
 
+  @Column({ name: "attempt_number", type: "int", default: 1 })
+  attemptNumber: number;
+
+  @Column({ name: "is_recheck_required", type: "boolean", default: false })
+  isRecheckRequired: boolean;
+
+  @Column({
+    name: "next_check_time",
+    type: "timestamp with time zone",
+    nullable: true,
+  })
+  nextCheckTime?: Date | null;
+
   @Column({ name: "is_final_decision", type: "boolean", default: true })
   isFinalDecision: boolean;
 

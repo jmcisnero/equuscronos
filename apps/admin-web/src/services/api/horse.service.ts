@@ -11,7 +11,9 @@ export const HorseService = {
     const response = await fetch(url);
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al cargar la lista de caballos");
     }
     return response.json();
@@ -21,7 +23,9 @@ export const HorseService = {
     const response = await fetch(`${API_URL}/horses/${id}`);
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al cargar los datos del caballo");
     }
     return response.json();
@@ -35,7 +39,9 @@ export const HorseService = {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al registrar el caballo");
     }
     return response.json();
@@ -49,7 +55,9 @@ export const HorseService = {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al actualizar el caballo");
     }
     return response.json();
@@ -61,7 +69,9 @@ export const HorseService = {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al dar de baja el caballo");
     }
   },
@@ -76,7 +86,9 @@ export const HorseService = {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      const message = Array.isArray(err.message)
+        ? err.message.join(", ")
+        : err.message;
       throw new Error(message || "Error al subir la foto del caballo");
     }
     return response.json();

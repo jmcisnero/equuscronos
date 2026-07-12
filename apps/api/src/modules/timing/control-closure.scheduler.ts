@@ -20,12 +20,14 @@ export class ControlClosureScheduler {
     const now = new Date();
 
     // Find all competitions that are active and whose control closure time has passed
-    const expiredCompetitions = await this.dataSource.getRepository(Competition).find({
-      where: {
-        status: CompetitionStatus.ACTIVE,
-        controlClosureTime: LessThanOrEqual(now),
-      },
-    });
+    const expiredCompetitions = await this.dataSource
+      .getRepository(Competition)
+      .find({
+        where: {
+          status: CompetitionStatus.ACTIVE,
+          controlClosureTime: LessThanOrEqual(now),
+        },
+      });
 
     if (expiredCompetitions.length === 0) {
       return;
@@ -33,7 +35,7 @@ export class ControlClosureScheduler {
 
     for (const comp of expiredCompetitions) {
       this.logger.log(
-        `[Control Closure] Competition ${comp.name} (${comp.id}) reached its control closure time: ${comp.controlClosureTime.toISOString()}`
+        `[Control Closure] Competition ${comp.name} (${comp.id}) reached its control closure time: ${comp.controlClosureTime.toISOString()}`,
       );
 
       // Perform transaction to atomically update stuck entries
@@ -60,12 +62,12 @@ export class ControlClosureScheduler {
             entry.status !== ParticipantStatus.DQ &&
             entry.status !== ParticipantStatus.DNF &&
             entry.status !== ParticipantStatus.WD &&
-            entry.status !== ParticipantStatus.NO_COMPLETED
+            entry.status !== ParticipantStatus.NO_COMPLETED,
         );
 
         if (stuckEntries.length > 0) {
           this.logger.log(
-            `[Control Closure] Updating ${stuckEntries.length} stuck competitors to NO_COMPLETED for competition ${lockedComp.name}`
+            `[Control Closure] Updating ${stuckEntries.length} stuck competitors to NO_COMPLETED for competition ${lockedComp.name}`,
           );
 
           for (const entry of stuckEntries) {
@@ -80,7 +82,9 @@ export class ControlClosureScheduler {
 
         // Emit WebSocket notification about closure
         this.realTimeGateway.emitRaceClosed(lockedComp.id);
-        this.logger.log(`[Control Closure] WebSocket notification emitted for race ${lockedComp.id}`);
+        this.logger.log(
+          `[Control Closure] WebSocket notification emitted for race ${lockedComp.id}`,
+        );
       });
     }
   }

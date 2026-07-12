@@ -162,7 +162,9 @@ export const HorseForm: React.FC<HorseFormProps> = ({
     isCreatingOwnerRef.current = true;
     try {
       setIsLoadingOwners(true);
-      const newOwner = await OwnerService.create(nameValue.trim().toUpperCase());
+      const newOwner = await OwnerService.create(
+        nameValue.trim().toUpperCase(),
+      );
       handleSelectOwner(newOwner);
     } catch (err: any) {
       alert("Error al registrar nuevo propietario: " + err.message);
@@ -178,7 +180,12 @@ export const HorseForm: React.FC<HorseFormProps> = ({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : (name === "name" ? value.toUpperCase() : value),
+      [name]:
+        type === "checkbox"
+          ? checked
+          : name === "name"
+            ? value.toUpperCase()
+            : value,
     }));
   };
 
@@ -201,7 +208,10 @@ export const HorseForm: React.FC<HorseFormProps> = ({
     setIsSubmitting(true);
     try {
       const submissionData = { ...formData };
-      if (!submissionData.healthRecordsExpiration || submissionData.healthRecordsExpiration.trim() === "") {
+      if (
+        !submissionData.healthRecordsExpiration ||
+        submissionData.healthRecordsExpiration.trim() === ""
+      ) {
         submissionData.healthRecordsExpiration = null;
       }
       await onSubmit(submissionData, selectedFile);
@@ -252,7 +262,10 @@ export const HorseForm: React.FC<HorseFormProps> = ({
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-4 overflow-y-auto flex-1"
+        >
           {formError && (
             <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-semibold flex items-center space-x-2">
               <svg

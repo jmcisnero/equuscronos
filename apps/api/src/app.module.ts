@@ -25,7 +25,8 @@ PostgresQueryRunner.prototype.query = async function (
     !query.includes("set_config") &&
     !query.includes("SET LOCAL")
   ) {
-    const needsConfig = this._lastTenantId !== tenantId || this._lastTxActive !== isTx;
+    const needsConfig =
+      this._lastTenantId !== tenantId || this._lastTxActive !== isTx;
     if (needsConfig) {
       await originalQuery.call(
         this,
@@ -90,10 +91,12 @@ import { AssetsModule } from "./modules/assets/assets.module";
     }),
 
     // Configuración de Throttler para prevenir inundación de sincronización
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minuto
-      limit: 300, // Máximo 300 peticiones por minuto por cliente
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minuto
+        limit: 300, // Máximo 300 peticiones por minuto por cliente
+      },
+    ]),
 
     // 3. Registro de Módulos (Rutas y Lógica de Negocio)
     AuthModule,

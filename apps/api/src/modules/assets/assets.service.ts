@@ -15,9 +15,16 @@ export class AssetsService {
     const bucketName = this.configService.get<string>("STORAGE_BUCKET_NAME");
     const region = this.configService.get<string>("STORAGE_REGION");
     const accessKeyId = this.configService.get<string>("STORAGE_ACCESS_KEY");
-    const secretAccessKey = this.configService.get<string>("STORAGE_SECRET_KEY");
+    const secretAccessKey =
+      this.configService.get<string>("STORAGE_SECRET_KEY");
 
-    if (!endpoint || !bucketName || !region || !accessKeyId || !secretAccessKey) {
+    if (
+      !endpoint ||
+      !bucketName ||
+      !region ||
+      !accessKeyId ||
+      !secretAccessKey
+    ) {
       console.warn(
         "WARNING: Missing storage configuration. S3 uploads will fall back to local storage. Please check STORAGE_ENDPOINT, STORAGE_BUCKET_NAME, STORAGE_REGION, STORAGE_ACCESS_KEY, and STORAGE_SECRET_KEY in production.",
       );

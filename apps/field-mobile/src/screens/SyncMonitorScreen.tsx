@@ -30,7 +30,9 @@ interface ProcessedQueueItem {
   bib: string;
 }
 
-export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) => {
+export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({
+  onBack,
+}) => {
   const [queueItems, setQueueItems] = useState<ProcessedQueueItem[]>([]);
   const [isOnline, setIsOnline] = useState(SyncService.isOnline());
   const [isSyncing, setIsSyncing] = useState(false);
@@ -54,11 +56,13 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
     }
   };
 
-  const translateErrorMessage = (errorStr: string | null | undefined): string => {
+  const translateErrorMessage = (
+    errorStr: string | null | undefined,
+  ): string => {
     if (!errorStr) return "Sin mensaje de error.";
-    
+
     const errUpper = errorStr.toUpperCase();
-    
+
     if (errUpper.includes("409") || errUpper.includes("CONFLICT")) {
       return "Código 409: Conflicto - El Dorsal o registro ya fue procesado para esta etapa en el servidor.";
     }
@@ -74,10 +78,14 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
     if (errUpper.includes("400") || errUpper.includes("BAD REQUEST")) {
       return "Código 400: Validación fallida - Los datos no cumplen con las reglas del reglamento FEU.";
     }
-    if (errUpper.includes("500") || errUpper.includes("INTERNAL") || errUpper.includes("TIMEOUT")) {
+    if (
+      errUpper.includes("500") ||
+      errUpper.includes("INTERNAL") ||
+      errUpper.includes("TIMEOUT")
+    ) {
       return "Error 500: Tiempo de espera agotado o error interno del servidor.";
     }
-    
+
     return errorStr;
   };
 
@@ -85,9 +93,9 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
     try {
       const db = await getDatabase();
       const raw = await db.getAllAsync<any>(
-        "SELECT * FROM sync_queue ORDER BY id DESC;"
+        "SELECT * FROM sync_queue ORDER BY id DESC;",
       );
-      
+
       const processed: ProcessedQueueItem[] = [];
       for (const item of raw) {
         let bib = "N/A";
@@ -96,38 +104,45 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
           if (item.action_type === "CREATE_TIMING") {
             const entry = await db.getFirstAsync<{ bib_number: number }>(
               "SELECT bib_number FROM competition_entries WHERE id = ?;",
-              [payload.entry_id]
+              [payload.entry_id],
             );
             if (entry) bib = `Dorsal ${entry.bib_number}`;
           } else if (item.action_type === "UPDATE_ENTRY_STATUS") {
             const entry = await db.getFirstAsync<{ bib_number: number }>(
               "SELECT bib_number FROM competition_entries WHERE id = ?;",
-              [payload.id]
+              [payload.id],
             );
             if (entry) bib = `Dorsal ${entry.bib_number}`;
-          } else if (item.action_type === "UPDATE_TIMING" || item.action_type === "VOID_TIMING") {
+          } else if (
+            item.action_type === "UPDATE_TIMING" ||
+            item.action_type === "VOID_TIMING"
+          ) {
             const entry = await db.getFirstAsync<{ bib_number: number }>(
               "SELECT ce.bib_number FROM timing_records tr JOIN competition_entries ce ON tr.entry_id = ce.id WHERE tr.id = ?;",
-              [payload.id]
+              [payload.id],
             );
             if (entry) bib = `Dorsal ${entry.bib_number}`;
           } else if (item.action_type === "CREATE_VET_INSPECTION") {
             const entry = await db.getFirstAsync<{ bib_number: number }>(
               "SELECT ce.bib_number FROM timing_records tr JOIN competition_entries ce ON tr.entry_id = ce.id WHERE tr.id = ?;",
-              [payload.timing_record_id]
+              [payload.timing_record_id],
             );
             if (entry) bib = `Dorsal ${entry.bib_number}`;
           }
         } catch (e) {
-          console.warn("[SyncMonitor] Error parsing payload for item:", item.id, e);
+          console.warn(
+            "[SyncMonitor] Error parsing payload for item:",
+            item.id,
+            e,
+          );
         }
-        
+
         processed.push({
           ...item,
           bib,
         });
       }
-      
+
       setQueueItems(processed);
     } catch (err) {
       console.error("[SyncMonitor] Failed to query sync queue:", err);
@@ -146,9 +161,11 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
     });
 
     // Listen to connectivity changes
-    const unsubscribeStatus = SyncService.registerStatusListener((connected) => {
-      setIsOnline(connected);
-    });
+    const unsubscribeStatus = SyncService.registerStatusListener(
+      (connected) => {
+        setIsOnline(connected);
+      },
+    );
 
     return () => {
       // Clean listeners
@@ -159,7 +176,10 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
 
   const handleForceSync = async () => {
     if (!isOnline) {
-      Alert.alert("Offline", "Se requiere conexión a Internet para sincronizar.");
+      Alert.alert(
+        "Offline",
+        "Se requiere conexión a Internet para sincronizar.",
+      );
       return;
     }
     setIsSyncing(true);
@@ -175,7 +195,10 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
 
   const handleRetry = async (id: number) => {
     if (!isOnline) {
-      Alert.alert("Offline", "Conéctese a Internet para reintentar la sincronización.");
+      Alert.alert(
+        "Offline",
+        "Conéctese a Internet para reintentar la sincronización.",
+      );
       return;
     }
     setLoading(true);
@@ -211,7 +234,7 @@ export const SyncMonitorScreen: React.FC<SyncMonitorScreenProps> = ({ onBack }) 
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -231,10 +254,13 @@ ${item.payload}`;
       await Clipboard.setStringAsync(report);
       Alert.alert(
         "Reporte Copiado",
-        "El reporte del error y su payload se han copiado al portapapeles para su envío manual."
+        "El reporte del error y su payload se han copiado al portapapeles para su envío manual.",
       );
     } catch (err: any) {
-      Alert.alert("Error", `No se pudo copiar el reporte: ${err?.message || err}`);
+      Alert.alert(
+        "Error",
+        `No se pudo copiar el reporte: ${err?.message || err}`,
+      );
     }
   };
 
@@ -262,7 +288,7 @@ ${item.payload}`;
               {new Date(item.created_at).toLocaleTimeString()} (ID: {item.id})
             </Text>
           </View>
-          
+
           <View style={styles.cardHeaderRight}>
             <View
               style={[
@@ -274,9 +300,7 @@ ${item.payload}`;
                 {isFailed ? "FALLADO" : "PENDIENTE"}
               </Text>
             </View>
-            <Text style={styles.attemptsText}>
-              Intentos: {item.attempts}
-            </Text>
+            <Text style={styles.attemptsText}>Intentos: {item.attempts}</Text>
           </View>
         </TouchableOpacity>
 
@@ -286,7 +310,7 @@ ${item.payload}`;
             <Text style={styles.errorMessage}>
               {translateErrorMessage(item.error_message)}
             </Text>
-            
+
             <Text style={styles.payloadLabel}>Carga útil (JSON):</Text>
             <Text style={styles.payloadText}>{item.payload}</Text>
 
@@ -297,7 +321,7 @@ ${item.payload}`;
               >
                 <Text style={styles.actionBtnText}>🔄 Reintentar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.actionBtn, styles.discardBtn]}
                 onPress={() => handleDiscard(item.id)}
@@ -310,7 +334,9 @@ ${item.payload}`;
               style={[styles.actionBtn, styles.copyBtn, { marginTop: 10 }]}
               onPress={() => handleCopyReport(item)}
             >
-              <Text style={styles.actionBtnText}>📋 Copiar Reporte de Error</Text>
+              <Text style={styles.actionBtnText}>
+                📋 Copiar Reporte de Error
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -321,13 +347,13 @@ ${item.payload}`;
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Text style={styles.backBtnText}>⬅️ Volver</Text>
         </TouchableOpacity>
-        
+
         <View style={{ alignItems: "flex-end" }}>
           <Text style={styles.title}>DIAGNÓSTICO</Text>
           <View style={styles.connectionIndicator}>
@@ -352,7 +378,7 @@ ${item.payload}`;
             {queueItems.length} elementos pendientes en cola local
           </Text>
         </View>
-        
+
         {queueItems.length > 0 && (
           <TouchableOpacity
             style={[styles.syncButton, !isOnline && styles.syncButtonDisabled]}
@@ -382,8 +408,12 @@ ${item.payload}`;
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>🎉 Todo sincronizado correctamente.</Text>
-              <Text style={styles.emptySubtext}>No hay registros pendientes en SQLite.</Text>
+              <Text style={styles.emptyText}>
+                🎉 Todo sincronizado correctamente.
+              </Text>
+              <Text style={styles.emptySubtext}>
+                No hay registros pendientes en SQLite.
+              </Text>
             </View>
           }
         />

@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { useLiveLeaderboard, LeaderboardEntry } from "@/hooks/useLiveLeaderboard";
+import {
+  useLiveLeaderboard,
+  LeaderboardEntry,
+} from "@/hooks/useLiveLeaderboard";
 import { useAuthStore } from "@/store/auth.store";
 import { ContingencyService } from "@/services/api/contingency.service";
 
@@ -8,7 +11,10 @@ interface Props {
   stages: any[];
 }
 
-export default function LiveLeaderboardContingency({ competitionId, stages }: Props) {
+export default function LiveLeaderboardContingency({
+  competitionId,
+  stages,
+}: Props) {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";
   const { leaderboard, isLoading, refetch } = useLiveLeaderboard(competitionId);
@@ -95,7 +101,7 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     const cleaned = input.replace(/\D/g, "");
-    
+
     let formatted = "";
     for (let i = 0; i < cleaned.length && i < 6; i++) {
       const num = cleaned[i];
@@ -128,7 +134,9 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
     try {
       const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
       if (!timeRegex.test(modalTimeStr)) {
-        throw new Error("Formato de tiempo inválido. Debe ser HH:MM:SS (ej: 14:30:00).");
+        throw new Error(
+          "Formato de tiempo inválido. Debe ser HH:MM:SS (ej: 14:30:00).",
+        );
       }
 
       const baseDate = new Date(timingModal.recordedAt);
@@ -142,18 +150,28 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
       baseDate.setSeconds(seconds);
       baseDate.setMilliseconds(0);
 
-      await ContingencyService.updateTimingRecord(timingModal.recordId, baseDate.toISOString());
+      await ContingencyService.updateTimingRecord(
+        timingModal.recordId,
+        baseDate.toISOString(),
+      );
       setTimingModal(null);
       refetch();
     } catch (err: any) {
-      setActionError(err.message || "Error al actualizar el registro de tiempo.");
+      setActionError(
+        err.message || "Error al actualizar el registro de tiempo.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteTiming = async (recordId: string) => {
-    if (!confirm("¿Está seguro de eliminar permanentemente este paso de tiempo? Esto recalculará los tiempos del binomio.")) return;
+    if (
+      !confirm(
+        "¿Está seguro de eliminar permanentemente este paso de tiempo? Esto recalculará los tiempos del binomio.",
+      )
+    )
+      return;
     setIsSubmitting(true);
     setActionError(null);
     try {
@@ -175,19 +193,26 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
         vetModal.inspectionId,
         vetModal.heartRate,
         vetModal.gaitStatus,
-        vetModal.notes
+        vetModal.notes,
       );
       setVetModal(null);
       refetch();
     } catch (err: any) {
-      setActionError(err.message || "Error al actualizar la inspección veterinaria.");
+      setActionError(
+        err.message || "Error al actualizar la inspección veterinaria.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteVet = async (inspectionId: string) => {
-    if (!confirm("¿Está seguro de eliminar permanentemente este control veterinario?")) return;
+    if (
+      !confirm(
+        "¿Está seguro de eliminar permanentemente este control veterinario?",
+      )
+    )
+      return;
     setIsSubmitting(true);
     setActionError(null);
     try {
@@ -210,16 +235,17 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
         await ContingencyService.updatePenalty(
           penaltyModal.id,
           penaltyModal.timePenaltySeconds,
-          penaltyModal.reason
+          penaltyModal.reason,
         );
       } else {
         // Create
-        if (!penaltyModal.entryId) throw new Error("ID de binomio no especificado.");
+        if (!penaltyModal.entryId)
+          throw new Error("ID de binomio no especificado.");
         await ContingencyService.createPenalty(
           penaltyModal.entryId,
           penaltyModal.stageId,
           penaltyModal.timePenaltySeconds,
-          penaltyModal.reason
+          penaltyModal.reason,
         );
       }
       setPenaltyModal(null);
@@ -258,12 +284,12 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
             <span>Resultados en Vivo y Contingencia</span>
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            {isAdmin 
-              ? "Modo Editor (ADMIN): Corrección manual de tiempos, vet checks y penalizaciones." 
+            {isAdmin
+              ? "Modo Editor (ADMIN): Corrección manual de tiempos, vet checks y penalizaciones."
               : "Modo Lectura: Estado de carrera y ranking actual."}
           </p>
         </div>
-        <button 
+        <button
           onClick={() => refetch()}
           className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm hover:bg-slate-50 transition-colors"
         >
@@ -302,7 +328,9 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                   const isExpanded = expandedEntryId === entry.entryId;
                   return (
                     <React.Fragment key={entry.entryId || index}>
-                      <tr className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? "bg-slate-50/30" : ""}`}>
+                      <tr
+                        className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? "bg-slate-50/30" : ""}`}
+                      >
                         <td className="py-4 px-4 font-extrabold text-slate-800 font-sans tabular-nums">
                           {entry.rank !== null ? `#${entry.rank}` : "-"}
                         </td>
@@ -312,17 +340,27 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="font-bold text-slate-800">{entry.riderName}</div>
-                          <div className="text-xs text-slate-400">{entry.horseName}</div>
+                          <div className="font-bold text-slate-800">
+                            {entry.riderName}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {entry.horseName}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                            entry.status === "IN_RACE" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                            entry.status === "VET_CHECK" ? "bg-amber-50 text-amber-700 border-amber-100" :
-                            entry.status === "RESTING" ? "bg-blue-50 text-blue-700 border-blue-100" :
-                            entry.status === "FINISHED" ? "bg-purple-50 text-purple-700 border-purple-100" :
-                            "bg-rose-50 text-rose-700 border-rose-100"
-                          }`}>
+                          <span
+                            className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                              entry.status === "IN_RACE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : entry.status === "VET_CHECK"
+                                  ? "bg-amber-50 text-amber-700 border-amber-100"
+                                  : entry.status === "RESTING"
+                                    ? "bg-blue-50 text-blue-700 border-blue-100"
+                                    : entry.status === "FINISHED"
+                                      ? "bg-purple-50 text-purple-700 border-purple-100"
+                                      : "bg-rose-50 text-rose-700 border-rose-100"
+                            }`}
+                          >
                             {entry.status}
                           </span>
                         </td>
@@ -330,17 +368,23 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                           E{entry.currentStage}
                         </td>
                         <td className="py-4 px-4 text-right font-sans tabular-nums font-bold text-slate-800">
-                          {entry.averageSpeed ? `${entry.averageSpeed.toFixed(2)} km/h` : "-"}
+                          {entry.averageSpeed
+                            ? `${entry.averageSpeed.toFixed(2)} km/h`
+                            : "-"}
                         </td>
                         <td className="py-4 px-4 text-right font-sans tabular-nums text-slate-800">
                           {formatTimeMs(entry.totalRaceTimeMs)}
                         </td>
                         <td className="py-4 px-4 text-right font-sans tabular-nums font-bold">
                           {entry.heartRate ? (
-                            <span className={`font-sans tabular-nums ${entry.heartRate > 65 ? "text-rose-600 animate-pulse" : "text-emerald-600"}`}>
+                            <span
+                              className={`font-sans tabular-nums ${entry.heartRate > 65 ? "text-rose-600 animate-pulse" : "text-emerald-600"}`}
+                            >
                               {entry.heartRate} ppm
                             </span>
-                          ) : "-"}
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="py-4 px-4 text-center">
                           <button
@@ -355,7 +399,10 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                       {/* Expanded Section */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={9} className="bg-slate-50/50 p-6 border-t border-b border-slate-100">
+                          <td
+                            colSpan={9}
+                            className="bg-slate-50/50 p-6 border-t border-b border-slate-100"
+                          >
                             <div className="space-y-6">
                               {/* Stage Detail Timeline */}
                               <div>
@@ -364,110 +411,158 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                   {(entry.stages || []).map((st: any) => (
-                                    <div key={st.stageNumber} className="bg-white border border-slate-150 p-4 rounded-xl shadow-sm space-y-3">
+                                    <div
+                                      key={st.stageNumber}
+                                      className="bg-white border border-slate-150 p-4 rounded-xl shadow-sm space-y-3"
+                                    >
                                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                                        <span className="font-extrabold text-slate-800 text-xs">E{st.stageNumber}</span>
-                                        <span className="text-[10px] text-slate-400 font-sans tabular-nums">{st.distanceKm} km</span>
+                                        <span className="font-extrabold text-slate-800 text-xs">
+                                          E{st.stageNumber}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-sans tabular-nums">
+                                          {st.distanceKm} km
+                                        </span>
                                       </div>
 
                                       {/* Times layout */}
                                       <div className="space-y-2 text-xs">
                                         {/* Start Time */}
                                         <div className="flex items-center justify-between">
-                                          <span className="text-slate-400">Salida (Start):</span>
+                                          <span className="text-slate-400">
+                                            Salida (Start):
+                                          </span>
                                           <div className="flex items-center space-x-1.5 font-sans tabular-nums text-slate-800 font-bold">
-                                            <span>{formatLocalTime(st.startTime)}</span>
-                                            {isAdmin && st.startTimeRecordId && (
-                                              <div className="flex items-center space-x-1">
-                                                <button
-                                                  onClick={() => setTimingModal({
-                                                    isOpen: true,
-                                                    recordId: st.startTimeRecordId,
-                                                    recordedAt: st.startTime,
-                                                    label: `Largada Etapa ${st.stageNumber}`
-                                                  })}
-                                                  className="text-blue-500 hover:text-blue-700 p-0.5"
-                                                  title="Corregir Hora"
-                                                >
-                                                  ✏️
-                                                </button>
-                                                <button
-                                                  onClick={() => handleDeleteTiming(st.startTimeRecordId)}
-                                                  className="text-rose-500 hover:text-rose-700 p-0.5"
-                                                  title="Eliminar Registro"
-                                                >
-                                                  🗑️
-                                                </button>
-                                              </div>
-                                            )}
+                                            <span>
+                                              {formatLocalTime(st.startTime)}
+                                            </span>
+                                            {isAdmin &&
+                                              st.startTimeRecordId && (
+                                                <div className="flex items-center space-x-1">
+                                                  <button
+                                                    onClick={() =>
+                                                      setTimingModal({
+                                                        isOpen: true,
+                                                        recordId:
+                                                          st.startTimeRecordId,
+                                                        recordedAt:
+                                                          st.startTime,
+                                                        label: `Largada Etapa ${st.stageNumber}`,
+                                                      })
+                                                    }
+                                                    className="text-blue-500 hover:text-blue-700 p-0.5"
+                                                    title="Corregir Hora"
+                                                  >
+                                                    ✏️
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleDeleteTiming(
+                                                        st.startTimeRecordId,
+                                                      )
+                                                    }
+                                                    className="text-rose-500 hover:text-rose-700 p-0.5"
+                                                    title="Eliminar Registro"
+                                                  >
+                                                    🗑️
+                                                  </button>
+                                                </div>
+                                              )}
                                           </div>
                                         </div>
 
                                         {/* Arrival Time */}
                                         <div className="flex items-center justify-between">
-                                          <span className="text-slate-400">Llegada (Arrival):</span>
+                                          <span className="text-slate-400">
+                                            Llegada (Arrival):
+                                          </span>
                                           <div className="flex items-center space-x-1.5 font-sans tabular-nums text-slate-800 font-bold">
-                                            <span>{formatLocalTime(st.arrivalTime)}</span>
-                                            {isAdmin && st.arrivalTimeRecordId && (
-                                              <div className="flex items-center space-x-1">
-                                                <button
-                                                  onClick={() => setTimingModal({
-                                                    isOpen: true,
-                                                    recordId: st.arrivalTimeRecordId,
-                                                    recordedAt: st.arrivalTime,
-                                                    label: `Llegada Etapa ${st.stageNumber}`
-                                                  })}
-                                                  className="text-blue-500 hover:text-blue-700 p-0.5"
-                                                  title="Corregir Hora"
-                                                >
-                                                  ✏️
-                                                </button>
-                                                <button
-                                                  onClick={() => handleDeleteTiming(st.arrivalTimeRecordId)}
-                                                  className="text-rose-500 hover:text-rose-700 p-0.5"
-                                                  title="Eliminar Registro"
-                                                >
-                                                  🗑️
-                                                </button>
-                                              </div>
-                                            )}
+                                            <span>
+                                              {formatLocalTime(st.arrivalTime)}
+                                            </span>
+                                            {isAdmin &&
+                                              st.arrivalTimeRecordId && (
+                                                <div className="flex items-center space-x-1">
+                                                  <button
+                                                    onClick={() =>
+                                                      setTimingModal({
+                                                        isOpen: true,
+                                                        recordId:
+                                                          st.arrivalTimeRecordId,
+                                                        recordedAt:
+                                                          st.arrivalTime,
+                                                        label: `Llegada Etapa ${st.stageNumber}`,
+                                                      })
+                                                    }
+                                                    className="text-blue-500 hover:text-blue-700 p-0.5"
+                                                    title="Corregir Hora"
+                                                  >
+                                                    ✏️
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleDeleteTiming(
+                                                        st.arrivalTimeRecordId,
+                                                      )
+                                                    }
+                                                    className="text-rose-500 hover:text-rose-700 p-0.5"
+                                                    title="Eliminar Registro"
+                                                  >
+                                                    🗑️
+                                                  </button>
+                                                </div>
+                                              )}
                                           </div>
                                         </div>
 
                                         {/* Vet In Time */}
                                         <div className="flex items-center justify-between">
-                                          <span className="text-slate-400">Presentación (Vet In):</span>
+                                          <span className="text-slate-400">
+                                            Presentación (Vet In):
+                                          </span>
                                           <div className="flex items-center space-x-1.5 font-sans tabular-nums text-slate-800 font-bold">
-                                            <span>{formatLocalTime(st.vetInTime)}</span>
-                                            {isAdmin && st.vetInTimeRecordId && (
-                                              <div className="flex items-center space-x-1">
-                                                <button
-                                                  onClick={() => setTimingModal({
-                                                    isOpen: true,
-                                                    recordId: st.vetInTimeRecordId,
-                                                    recordedAt: st.vetInTime,
-                                                    label: `Vet In Etapa ${st.stageNumber}`
-                                                  })}
-                                                  className="text-blue-500 hover:text-blue-700 p-0.5"
-                                                  title="Corregir Hora"
-                                                >
-                                                  ✏️
-                                                </button>
-                                                <button
-                                                  onClick={() => handleDeleteTiming(st.vetInTimeRecordId)}
-                                                  className="text-rose-500 hover:text-rose-700 p-0.5"
-                                                  title="Eliminar Registro"
-                                                >
-                                                  🗑️
-                                                </button>
-                                              </div>
-                                            )}
+                                            <span>
+                                              {formatLocalTime(st.vetInTime)}
+                                            </span>
+                                            {isAdmin &&
+                                              st.vetInTimeRecordId && (
+                                                <div className="flex items-center space-x-1">
+                                                  <button
+                                                    onClick={() =>
+                                                      setTimingModal({
+                                                        isOpen: true,
+                                                        recordId:
+                                                          st.vetInTimeRecordId,
+                                                        recordedAt:
+                                                          st.vetInTime,
+                                                        label: `Vet In Etapa ${st.stageNumber}`,
+                                                      })
+                                                    }
+                                                    className="text-blue-500 hover:text-blue-700 p-0.5"
+                                                    title="Corregir Hora"
+                                                  >
+                                                    ✏️
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleDeleteTiming(
+                                                        st.vetInTimeRecordId,
+                                                      )
+                                                    }
+                                                    className="text-rose-500 hover:text-rose-700 p-0.5"
+                                                    title="Eliminar Registro"
+                                                  >
+                                                    🗑️
+                                                  </button>
+                                                </div>
+                                              )}
                                           </div>
                                         </div>
 
                                         {/* Tiempo Neto */}
                                         <div className="flex items-center justify-between border-t border-slate-50/50 pt-1.5">
-                                          <span className="text-slate-400">Tiempo Neto:</span>
+                                          <span className="text-slate-400">
+                                            Tiempo Neto:
+                                          </span>
                                           <span className="font-sans tabular-nums text-slate-800 font-bold">
                                             {formatTimeMs(st.netTimeMs)}
                                           </span>
@@ -475,40 +570,61 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
 
                                         {/* Average Speed */}
                                         <div className="flex items-center justify-between">
-                                          <span className="text-slate-400">Vel. Promedio:</span>
+                                          <span className="text-slate-400">
+                                            Vel. Promedio:
+                                          </span>
                                           <span className="font-sans tabular-nums text-slate-800 font-bold">
-                                            {st.averageSpeed ? `${st.averageSpeed.toFixed(2)} km/h` : "-"}
+                                            {st.averageSpeed
+                                              ? `${st.averageSpeed.toFixed(2)} km/h`
+                                              : "-"}
                                           </span>
                                         </div>
 
                                         {/* Heart Rate / Clinical */}
                                         <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                                          <span className="text-slate-400 font-semibold">Vet Check:</span>
+                                          <span className="text-slate-400 font-semibold">
+                                            Vet Check:
+                                          </span>
                                           <div className="flex items-center space-x-1.5 font-sans tabular-nums font-bold">
                                             {st.heartRate ? (
-                                              <span className={`font-sans tabular-nums ${st.heartRate > 65 ? "text-rose-600" : "text-emerald-600"}`}>
-                                                {st.heartRate} ppm ({st.motricity || "APTO"})
+                                              <span
+                                                className={`font-sans tabular-nums ${st.heartRate > 65 ? "text-rose-600" : "text-emerald-600"}`}
+                                              >
+                                                {st.heartRate} ppm (
+                                                {st.motricity || "APTO"})
                                               </span>
                                             ) : (
-                                              <span className="text-slate-300">-</span>
+                                              <span className="text-slate-300">
+                                                -
+                                              </span>
                                             )}
                                             {isAdmin && st.vetInspectionId && (
                                               <div className="flex items-center space-x-1">
                                                 <button
-                                                  onClick={() => setVetModal({
-                                                    isOpen: true,
-                                                    inspectionId: st.vetInspectionId,
-                                                    heartRate: st.heartRate || 56,
-                                                    gaitStatus: st.motricity || "APPROVED",
-                                                    notes: st.notes || ""
-                                                  })}
+                                                  onClick={() =>
+                                                    setVetModal({
+                                                      isOpen: true,
+                                                      inspectionId:
+                                                        st.vetInspectionId,
+                                                      heartRate:
+                                                        st.heartRate || 56,
+                                                      gaitStatus:
+                                                        st.motricity ||
+                                                        "APPROVED",
+                                                      notes: st.notes || "",
+                                                    })
+                                                  }
                                                   className="text-blue-500 hover:text-blue-700 p-0.5"
                                                   title="Editar Clínica"
                                                 >
                                                   ✏️
                                                 </button>
                                                 <button
-                                                  onClick={() => handleDeleteVet(st.vetInspectionId)}
+                                                  onClick={() =>
+                                                    handleDeleteVet(
+                                                      st.vetInspectionId,
+                                                    )
+                                                  }
                                                   className="text-rose-500 hover:text-rose-700 p-0.5"
                                                   title="Eliminar Inspección"
                                                 >
@@ -532,13 +648,15 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                                   </h4>
                                   {isAdmin && (
                                     <button
-                                      onClick={() => setPenaltyModal({
-                                        isOpen: true,
-                                        entryId: entry.entryId,
-                                        stageId: stages[0]?.id || "",
-                                        timePenaltySeconds: 60,
-                                        reason: ""
-                                      })}
+                                      onClick={() =>
+                                        setPenaltyModal({
+                                          isOpen: true,
+                                          entryId: entry.entryId,
+                                          stageId: stages[0]?.id || "",
+                                          timePenaltySeconds: 60,
+                                          reason: "",
+                                        })
+                                      }
                                       className="text-xs font-extrabold text-emerald-600 hover:text-emerald-700"
                                     >
                                       + Agregar Penalización
@@ -546,34 +664,52 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                                   )}
                                 </div>
 
-                                {(!entry.penalties || entry.penalties.length === 0) ? (
-                                  <p className="text-xs text-slate-400 italic">No hay penalizaciones aplicadas a este binomio.</p>
+                                {!entry.penalties ||
+                                entry.penalties.length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic">
+                                    No hay penalizaciones aplicadas a este
+                                    binomio.
+                                  </p>
                                 ) : (
                                   <div className="space-y-2">
                                     {entry.penalties.map((p: any) => (
-                                      <div key={p.id} className="flex items-center justify-between bg-white border border-slate-150 p-3 rounded-lg text-xs">
+                                      <div
+                                        key={p.id}
+                                        className="flex items-center justify-between bg-white border border-slate-150 p-3 rounded-lg text-xs"
+                                      >
                                         <div>
-                                          <span className="font-bold text-slate-700">E{p.stageNumber}:</span>{" "}
-                                          <span className="text-slate-600">{p.reason}</span>
+                                          <span className="font-bold text-slate-700">
+                                            E{p.stageNumber}:
+                                          </span>{" "}
+                                          <span className="text-slate-600">
+                                            {p.reason}
+                                          </span>
                                         </div>
                                         <div className="flex items-center space-x-3">
-                                          <span className="font-sans tabular-nums font-bold text-rose-600">+{p.timePenaltySeconds} seg</span>
+                                          <span className="font-sans tabular-nums font-bold text-rose-600">
+                                            +{p.timePenaltySeconds} seg
+                                          </span>
                                           {isAdmin && (
                                             <div className="flex items-center space-x-1.5">
                                               <button
-                                                onClick={() => setPenaltyModal({
-                                                  isOpen: true,
-                                                  id: p.id,
-                                                  stageId: p.stageId,
-                                                  timePenaltySeconds: p.timePenaltySeconds,
-                                                  reason: p.reason
-                                                })}
+                                                onClick={() =>
+                                                  setPenaltyModal({
+                                                    isOpen: true,
+                                                    id: p.id,
+                                                    stageId: p.stageId,
+                                                    timePenaltySeconds:
+                                                      p.timePenaltySeconds,
+                                                    reason: p.reason,
+                                                  })
+                                                }
                                                 className="text-blue-500 hover:text-blue-700"
                                               >
                                                 ✏️
                                               </button>
                                               <button
-                                                onClick={() => handleDeletePenalty(p.id)}
+                                                onClick={() =>
+                                                  handleDeletePenalty(p.id)
+                                                }
                                                 className="text-rose-500 hover:text-rose-700"
                                               >
                                                 🗑️
@@ -605,12 +741,18 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
       {timingModal && timingModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="text-base font-extrabold text-slate-800 mb-2">Corregir Registro de Tiempo</h3>
-            <p className="text-xs text-slate-400 mb-4 uppercase font-bold tracking-wider">{timingModal.label}</p>
+            <h3 className="text-base font-extrabold text-slate-800 mb-2">
+              Corregir Registro de Tiempo
+            </h3>
+            <p className="text-xs text-slate-400 mb-4 uppercase font-bold tracking-wider">
+              {timingModal.label}
+            </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Hora (Formato HH:MM:SS)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Hora (Formato HH:MM:SS)
+                </label>
                 <input
                   type="text"
                   value={modalTimeStr}
@@ -618,7 +760,9 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
                   placeholder="HH:MM:SS"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-sans tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">Ejemplo: 14:30:00 (Rango válido: 00:00:00 a 23:59:59)</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Ejemplo: 14:30:00 (Rango válido: 00:00:00 a 23:59:59)
+                </span>
               </div>
 
               {actionError && (
@@ -654,40 +798,64 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
       {vetModal && vetModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="text-base font-extrabold text-slate-800 mb-4">Corregir Inspección Veterinaria</h3>
+            <h3 className="text-base font-extrabold text-slate-800 mb-4">
+              Corregir Inspección Veterinaria
+            </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Frecuencia Cardíaca (ppm)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Frecuencia Cardíaca (ppm)
+                </label>
                 <input
                   type="number"
                   value={vetModal.heartRate}
-                  onChange={(e) => setVetModal({ ...vetModal, heartRate: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setVetModal({
+                      ...vetModal,
+                      heartRate: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-sans tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 {vetModal.heartRate > 65 && (
-                  <span className="text-[10px] text-rose-500 font-semibold mt-1 block">⚠️ Excede el límite de 65 ppm. El competidor será descalificado automáticamente (DQ).</span>
+                  <span className="text-[10px] text-rose-500 font-semibold mt-1 block">
+                    ⚠️ Excede el límite de 65 ppm. El competidor será
+                    descalificado automáticamente (DQ).
+                  </span>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Estado de la Marcha (Gait Status)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Estado de la Marcha (Gait Status)
+                </label>
                 <select
                   value={vetModal.gaitStatus}
-                  onChange={(e) => setVetModal({ ...vetModal, gaitStatus: e.target.value })}
+                  onChange={(e) =>
+                    setVetModal({ ...vetModal, gaitStatus: e.target.value })
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="APPROVED">APPROVED (Aprobado)</option>
-                  <option value="LAMENESS_ELIMINATED">LAMENESS_ELIMINATED (Claudicación / Descalificado)</option>
-                  <option value="OBSERVATION">OBSERVATION (En Observación)</option>
+                  <option value="LAMENESS_ELIMINATED">
+                    LAMENESS_ELIMINATED (Claudicación / Descalificado)
+                  </option>
+                  <option value="OBSERVATION">
+                    OBSERVATION (En Observación)
+                  </option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notas / Observaciones</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Notas / Observaciones
+                </label>
                 <textarea
                   value={vetModal.notes}
-                  onChange={(e) => setVetModal({ ...vetModal, notes: e.target.value })}
+                  onChange={(e) =>
+                    setVetModal({ ...vetModal, notes: e.target.value })
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   rows={3}
                 />
@@ -727,41 +895,63 @@ export default function LiveLeaderboardContingency({ competitionId, stages }: Pr
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
             <h3 className="text-base font-extrabold text-slate-800 mb-4">
-              {penaltyModal.id ? "Modificar Penalización" : "Agregar Penalización de Tiempo"}
+              {penaltyModal.id
+                ? "Modificar Penalización"
+                : "Agregar Penalización de Tiempo"}
             </h3>
 
             <div className="space-y-4">
               {!penaltyModal.id && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Etapa de la Carrera</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Etapa de la Carrera
+                  </label>
                   <select
-                     value={penaltyModal.stageId}
-                     onChange={(e) => setPenaltyModal({ ...penaltyModal, stageId: e.target.value })}
-                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={penaltyModal.stageId}
+                    onChange={(e) =>
+                      setPenaltyModal({
+                        ...penaltyModal,
+                        stageId: e.target.value,
+                      })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {stages.map((st) => (
-                      <option key={st.id} value={st.id}>Etapa {st.stageNumber}</option>
+                      <option key={st.id} value={st.id}>
+                        Etapa {st.stageNumber}
+                      </option>
                     ))}
                   </select>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tiempo de Penalización (Segundos)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Tiempo de Penalización (Segundos)
+                </label>
                 <input
                   type="number"
                   value={penaltyModal.timePenaltySeconds}
-                  onChange={(e) => setPenaltyModal({ ...penaltyModal, timePenaltySeconds: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setPenaltyModal({
+                      ...penaltyModal,
+                      timePenaltySeconds: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-sans tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Motivo / Razón</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Motivo / Razón
+                </label>
                 <input
                   type="text"
                   value={penaltyModal.reason}
-                  onChange={(e) => setPenaltyModal({ ...penaltyModal, reason: e.target.value })}
+                  onChange={(e) =>
+                    setPenaltyModal({ ...penaltyModal, reason: e.target.value })
+                  }
                   placeholder="Ej. Incumplimiento del Art. 20"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />

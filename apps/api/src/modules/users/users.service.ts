@@ -26,9 +26,11 @@ export class UsersService {
   async create(createUserDto: CreateUserDto, executor?: any): Promise<User> {
     if (createUserDto.role === UserRole.ADMIN) {
       if (!executor || executor.role !== UserRole.ADMIN) {
-        console.error(`[AUDIT SECURITY ALERT] Intento de escalada de privilegios: El usuario ${executor?.email || executor?.id || "Desconocido"} (Rol: ${executor?.role || "Ninguno"}) intentó crear un SuperAdmin.`);
+        console.error(
+          `[AUDIT SECURITY ALERT] Intento de escalada de privilegios: El usuario ${executor?.email || executor?.id || "Desconocido"} (Rol: ${executor?.role || "Ninguno"}) intentó crear un SuperAdmin.`,
+        );
         throw new ForbiddenException(
-          "Operación no autorizada: Escalada de privilegios denegada"
+          "Operación no autorizada: Escalada de privilegios denegada",
         );
       }
     }

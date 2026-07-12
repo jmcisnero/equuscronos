@@ -21,18 +21,25 @@ class ApiService {
       },
     });
 
-    console.log(`[ApiService] STORAGE_ENDPOINT detectado: ${process.env.STORAGE_ENDPOINT || "no configurado"}`);
+    console.log(
+      `[ApiService] STORAGE_ENDPOINT detectado: ${process.env.STORAGE_ENDPOINT || "no configurado"}`,
+    );
 
     // Cargar URL guardada de forma asíncrona en inicialización
     SecureStore.getItemAsync("api_url")
       .then((storedUrl) => {
         if (storedUrl) {
           this.currentBaseUrl = storedUrl;
-          console.log(`[ApiService] URL de API inicializada desde SecureStore: ${storedUrl}`);
+          console.log(
+            `[ApiService] URL de API inicializada desde SecureStore: ${storedUrl}`,
+          );
         }
       })
       .catch((err) => {
-        console.warn("[ApiService] Error cargando api_url en inicialización:", err);
+        console.warn(
+          "[ApiService] Error cargando api_url en inicialización:",
+          err,
+        );
       });
 
     // Interceptor de peticiones para inyectar dinámicamente el token JWT y el Tenant ID desde el almacenamiento seguro
@@ -72,7 +79,10 @@ class ApiService {
   setBaseUrl(url: string) {
     this.currentBaseUrl = url;
     SecureStore.setItemAsync("api_url", url).catch((err) => {
-      console.warn("[ApiService] Error al guardar api_url en SecureStore:", err);
+      console.warn(
+        "[ApiService] Error al guardar api_url en SecureStore:",
+        err,
+      );
     });
   }
 

@@ -88,7 +88,10 @@ export function useLiveLeaderboard(competitionId: string) {
         }
       })
       .catch((err) => {
-        console.warn("Could not fetch competition status, will rely on websocket:", err);
+        console.warn(
+          "Could not fetch competition status, will rely on websocket:",
+          err,
+        );
       });
   }, [competitionId]);
 
@@ -97,14 +100,18 @@ export function useLiveLeaderboard(competitionId: string) {
     if (!competitionId || isClosed) return;
 
     const socketUrl = `${API_BASE_URL}/race`;
-    console.log(`[WebSocket] Connecting to ${socketUrl} for competition: ${competitionId}`);
+    console.log(
+      `[WebSocket] Connecting to ${socketUrl} for competition: ${competitionId}`,
+    );
     const socket = io(socketUrl, {
       transports: ["websocket"],
       autoConnect: true,
     });
 
     socket.on(`competition:${competitionId}:closed`, () => {
-      console.log(`[WebSocket] Received closure signal for competition: ${competitionId}`);
+      console.log(
+        `[WebSocket] Received closure signal for competition: ${competitionId}`,
+      );
       setIsClosed(true);
     });
 

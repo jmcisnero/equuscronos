@@ -20,7 +20,10 @@ export class AuditService {
     entityType?: string,
   ) {
     const pageNum = Math.max(1, parseInt(page as any, 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit as any, 10) || 10));
+    const limitNum = Math.max(
+      1,
+      Math.min(100, parseInt(limit as any, 10) || 10),
+    );
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};

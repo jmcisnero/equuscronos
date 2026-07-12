@@ -53,13 +53,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 export function useLiveLeaderboard(competitionId: string) {
   const queryClient = useQueryClient();
 
-  const { data: leaderboard = [], isLoading, error, refetch } = useQuery<LeaderboardEntry[]>({
+  const {
+    data: leaderboard = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<LeaderboardEntry[]>({
     queryKey: ["liveLeaderboard", competitionId],
     queryFn: async () => {
       const path = `/competitions/${competitionId}/leaderboard`;
       const res = await fetch(`${API_BASE_URL.replace(/\/admin$/, "")}${path}`);
       if (!res.ok) {
-        throw new Error("Error al obtener la tabla de posiciones en tiempo real.");
+        throw new Error(
+          "Error al obtener la tabla de posiciones en tiempo real.",
+        );
       }
       return res.json();
     },

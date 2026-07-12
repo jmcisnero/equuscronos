@@ -1,6 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import * as https from "https";
 
@@ -34,7 +39,9 @@ async function run() {
   console.log(`Region:   ${region}`);
 
   if (!endpoint || !bucketName || !region || !accessKeyId || !secretAccessKey) {
-    console.error("ERROR: Faltan variables de configuración de almacenamiento en el .env.");
+    console.error(
+      "ERROR: Faltan variables de configuración de almacenamiento en el .env.",
+    );
     process.exit(1);
   }
 
@@ -61,7 +68,7 @@ async function run() {
         Key: testKey,
         Body: Buffer.from(testContent),
         ContentType: "text/plain",
-      })
+      }),
     );
     console.log("   -> ¡Carga exitosa!");
 
@@ -71,30 +78,38 @@ async function run() {
       Bucket: bucketName,
       Key: testKey,
     });
-    const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 900 });
+    const presignedUrl = await getSignedUrl(s3Client, getCommand, {
+      expiresIn: 900,
+    });
     console.log(`   -> Presigned URL generada:\n      ${presignedUrl}`);
 
     // 4. Descargar el archivo usando la Presigned URL para validar permisos y SSL
     console.log("\n3. Descargando archivo a través de la Presigned URL...");
     await new Promise<void>((resolve, reject) => {
-      https.get(presignedUrl, (res) => {
-        let data = "";
-        res.on("data", (chunk) => {
-          data += chunk;
+      https
+        .get(presignedUrl, (res) => {
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            console.log(`   -> Código de respuesta HTTP: ${res.statusCode}`);
+            console.log(`   -> Contenido descargado: "${data}"`);
+            if (res.statusCode === 200 && data === testContent) {
+              console.log("   -> ¡Verificación de contenido EXITOSA!");
+              resolve();
+            } else {
+              reject(
+                new Error(
+                  `La descarga falló con código ${res.statusCode} o contenido incorrecto.`,
+                ),
+              );
+            }
+          });
+        })
+        .on("error", (err) => {
+          reject(err);
         });
-        res.on("end", () => {
-          console.log(`   -> Código de respuesta HTTP: ${res.statusCode}`);
-          console.log(`   -> Contenido descargado: "${data}"`);
-          if (res.statusCode === 200 && data === testContent) {
-            console.log("   -> ¡Verificación de contenido EXITOSA!");
-            resolve();
-          } else {
-            reject(new Error(`La descarga falló con código ${res.statusCode} o contenido incorrecto.`));
-          }
-        });
-      }).on("error", (err) => {
-        reject(err);
-      });
     });
 
     // 5. Limpieza del archivo de prueba
@@ -103,7 +118,7 @@ async function run() {
       new DeleteObjectCommand({
         Bucket: bucketName,
         Key: testKey,
-      })
+      }),
     );
     console.log("   -> Archivo de prueba eliminado.");
     console.log("\n=== DIAGNÓSTICO COMPLETADO CON ÉXITO ===");

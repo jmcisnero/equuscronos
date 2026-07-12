@@ -26,7 +26,13 @@ import { Roles } from "../auth/decorators/roles.decorator";
 
 @ApiTags("9. Cronometraje (Motor de Pista - Field App)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.VET)
+@Roles(
+  UserRole.TIMEKEEPER,
+  UserRole.JUDGE,
+  UserRole.ADMIN,
+  UserRole.CLUB_ADMIN,
+  UserRole.VET,
+)
 @Controller("timing")
 export class TimingController {
   constructor(private readonly timingService: TimingService) {}
@@ -42,7 +48,10 @@ export class TimingController {
     createTimingRecordDto.recordType = TimeRecordType.VET_IN;
     const user = req.user;
     const tenantId = user?.role === UserRole.ADMIN ? undefined : user?.tenantId;
-    const record = await this.timingService.create(createTimingRecordDto, tenantId);
+    const record = await this.timingService.create(
+      createTimingRecordDto,
+      tenantId,
+    );
     return {
       id: record.id,
       recordType: record.recordType,

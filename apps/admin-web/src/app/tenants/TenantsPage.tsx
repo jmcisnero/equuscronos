@@ -356,9 +356,9 @@ export function TenantsPage() {
                     <td className="whitespace-nowrap px-4 py-4 text-sm">
                       {tenant.jerseyImageUrl ? (
                         <img
-                           src={tenant.jerseyImageUrl}
-                           alt="Camiseta"
-                           className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                          src={tenant.jerseyImageUrl}
+                          alt="Camiseta"
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200"
                         />
                       ) : (
                         <span className="text-slate-300" title="Sin camiseta">
@@ -478,7 +478,10 @@ export function TenantsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 space-y-4 overflow-y-auto flex-1"
+            >
               {formError && (
                 <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-semibold flex items-center space-x-2">
                   <svg

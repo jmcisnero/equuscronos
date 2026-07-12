@@ -17,7 +17,11 @@ export default function AuditPage() {
   // Redirect if not authorized
   useEffect(() => {
     if (currentUser) {
-      const allowedRoles = [UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.JUDGE];
+      const allowedRoles = [
+        UserRole.ADMIN,
+        UserRole.CLUB_ADMIN,
+        UserRole.JUDGE,
+      ];
       if (!allowedRoles.includes(currentUser.role as any)) {
         router.push("/");
       }
@@ -74,14 +78,20 @@ export default function AuditPage() {
 
       // Select first log by default if none selected or if selected is not in current list
       if (response.data.length > 0) {
-        if (!selectedLog || !response.data.some((l) => l.id === selectedLog.id)) {
+        if (
+          !selectedLog ||
+          !response.data.some((l) => l.id === selectedLog.id)
+        ) {
           setSelectedLog(response.data[0]);
         }
       } else {
         setSelectedLog(null);
       }
     } catch (err: any) {
-      setError(err.message || "Error al cargar los registros de auditoría del sistema.");
+      setError(
+        err.message ||
+          "Error al cargar los registros de auditoría del sistema.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -157,18 +167,23 @@ export default function AuditPage() {
     if (log.action === "UPDATE") {
       const oldVal = log.oldData || {};
       const newVal = log.newData || {};
-      const allKeys = Array.from(new Set([...Object.keys(oldVal), ...Object.keys(newVal)]));
+      const allKeys = Array.from(
+        new Set([...Object.keys(oldVal), ...Object.keys(newVal)]),
+      );
 
       // Exclude system fields from key diff comparison if they don't carry audit value
       const ignoredKeys = ["updatedAt"];
       const diffKeys = allKeys.filter(
-        (key) => !ignoredKeys.includes(key) && JSON.stringify(oldVal[key]) !== JSON.stringify(newVal[key])
+        (key) =>
+          !ignoredKeys.includes(key) &&
+          JSON.stringify(oldVal[key]) !== JSON.stringify(newVal[key]),
       );
 
       if (diffKeys.length === 0) {
         return (
           <div className="text-xs text-slate-500 italic p-4 bg-slate-50 rounded-xl border border-slate-100">
-            No se detectaron diferencias significativas en las propiedades auditadas (los valores son idénticos).
+            No se detectaron diferencias significativas en las propiedades
+            auditadas (los valores son idénticos).
           </div>
         );
       }
@@ -182,9 +197,15 @@ export default function AuditPage() {
             <table className="min-w-full divide-y divide-slate-100 text-xs">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-bold text-slate-600">Campo</th>
-                  <th className="px-4 py-2.5 text-left font-bold text-rose-600 bg-rose-50/30">Valor Anterior</th>
-                  <th className="px-4 py-2.5 text-left font-bold text-emerald-600 bg-emerald-50/30">Valor Nuevo</th>
+                  <th className="px-4 py-2.5 text-left font-bold text-slate-600">
+                    Campo
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-bold text-rose-600 bg-rose-50/30">
+                    Valor Anterior
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-bold text-emerald-600 bg-emerald-50/30">
+                    Valor Nuevo
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -193,12 +214,30 @@ export default function AuditPage() {
                   const nVal = newVal[key];
                   return (
                     <tr key={key} className="hover:bg-slate-50/40">
-                      <td className="px-4 py-3 font-sans tabular-nums font-bold text-slate-700">{key}</td>
+                      <td className="px-4 py-3 font-sans tabular-nums font-bold text-slate-700">
+                        {key}
+                      </td>
                       <td className="px-4 py-3 bg-rose-50/5 text-rose-700 font-sans tabular-nums break-all whitespace-pre-wrap">
-                        {oVal !== undefined ? (typeof oVal === "object" ? JSON.stringify(oVal, null, 2) : String(oVal)) : <span className="text-slate-300 italic">nulo</span>}
+                        {oVal !== undefined ? (
+                          typeof oVal === "object" ? (
+                            JSON.stringify(oVal, null, 2)
+                          ) : (
+                            String(oVal)
+                          )
+                        ) : (
+                          <span className="text-slate-300 italic">nulo</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 bg-emerald-50/5 text-emerald-700 font-sans tabular-nums break-all whitespace-pre-wrap">
-                        {nVal !== undefined ? (typeof nVal === "object" ? JSON.stringify(nVal, null, 2) : String(nVal)) : <span className="text-slate-300 italic">nulo</span>}
+                        {nVal !== undefined ? (
+                          typeof nVal === "object" ? (
+                            JSON.stringify(nVal, null, 2)
+                          ) : (
+                            String(nVal)
+                          )
+                        ) : (
+                          <span className="text-slate-300 italic">nulo</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -242,7 +281,11 @@ export default function AuditPage() {
           Detalle del Registro de Auditoría
         </h4>
         <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-sans tabular-nums overflow-auto max-h-96 shadow-inner">
-          {JSON.stringify({ oldData: log.oldData, newData: log.newData }, null, 2)}
+          {JSON.stringify(
+            { oldData: log.oldData, newData: log.newData },
+            null,
+            2,
+          )}
         </pre>
       </div>
     );
@@ -267,7 +310,8 @@ export default function AuditPage() {
             Auditoría de Sistema
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Supervise operaciones transaccionales, auditoría de eventos de bases de datos y control de integridad multi-inquilino.
+            Supervise operaciones transaccionales, auditoría de eventos de bases
+            de datos y control de integridad multi-inquilino.
           </p>
         </div>
 
@@ -276,21 +320,37 @@ export default function AuditPage() {
           <div className="flex items-center space-x-3 self-stretch sm:self-auto">
             <button
               disabled={currentUser.role !== UserRole.ADMIN}
-              onClick={() => alert("Función de exportación de base de datos completa iniciada.")}
+              onClick={() =>
+                alert(
+                  "Función de exportación de base de datos completa iniciada.",
+                )
+              }
               className="inline-flex items-center justify-center px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              title={currentUser.role !== UserRole.ADMIN ? "No disponible en modo consulta" : "Exportar base de datos completa"}
+              title={
+                currentUser.role !== UserRole.ADMIN
+                  ? "No disponible en modo consulta"
+                  : "Exportar base de datos completa"
+              }
             >
               Exportar Base de Datos Completa
             </button>
             <button
               disabled={currentUser.role !== UserRole.ADMIN}
               onClick={() => {
-                if (confirm("¿Está seguro de que desea vaciar la bitácora completa de auditoría? Esta acción es irreversible.")) {
+                if (
+                  confirm(
+                    "¿Está seguro de que desea vaciar la bitácora completa de auditoría? Esta acción es irreversible.",
+                  )
+                ) {
                   alert("Procedimiento de limpieza de logs ejecutado.");
                 }
               }}
               className="inline-flex items-center justify-center px-4 py-2 bg-rose-50 hover:bg-rose-100 disabled:bg-rose-50/50 disabled:text-rose-400 disabled:border-rose-100/50 disabled:cursor-not-allowed border border-rose-200 text-rose-700 font-bold text-xs rounded-xl shadow-sm transition-all"
-              title={currentUser.role !== UserRole.ADMIN ? "No disponible en modo consulta" : "Vaciar logs de auditoría"}
+              title={
+                currentUser.role !== UserRole.ADMIN
+                  ? "No disponible en modo consulta"
+                  : "Vaciar logs de auditoría"
+              }
             >
               Vaciar Logs
             </button>
@@ -303,7 +363,9 @@ export default function AuditPage() {
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           Filtros de Búsqueda Interactiva
         </h3>
-        <div className={`grid grid-cols-1 ${currentUser.role === UserRole.ADMIN ? "md:grid-cols-5" : "md:grid-cols-4"} gap-4`}>
+        <div
+          className={`grid grid-cols-1 ${currentUser.role === UserRole.ADMIN ? "md:grid-cols-5" : "md:grid-cols-4"} gap-4`}
+        >
           {/* Action Filter */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -380,7 +442,9 @@ export default function AuditPage() {
                 onChange={() => alert("Filtrado inter-clubes activo.")}
               >
                 <option value="">Todos los clubes</option>
-                <option value="consolidated">Filtro consolidado (Global)</option>
+                <option value="consolidated">
+                  Filtro consolidado (Global)
+                </option>
               </select>
             </div>
           )}
@@ -423,7 +487,8 @@ export default function AuditPage() {
             />
           </svg>
           <span>
-            Filtro de Seguridad Activo: Visualizando exclusivamente la bitácora transaccional de su Club (Aislamiento RLS)
+            Filtro de Seguridad Activo: Visualizando exclusivamente la bitácora
+            transaccional de su Club (Aislamiento RLS)
           </span>
         </div>
       )}
@@ -481,9 +546,12 @@ export default function AuditPage() {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"
                   />
                 </svg>
-                <p className="font-semibold text-slate-700">Bitácora de auditoría limpia</p>
+                <p className="font-semibold text-slate-700">
+                  Bitácora de auditoría limpia
+                </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  No se registraron transacciones que coincidan con los filtros activos.
+                  No se registraron transacciones que coincidan con los filtros
+                  activos.
                 </p>
               </div>
             ) : (
@@ -517,13 +585,15 @@ export default function AuditPage() {
                         key={log.id}
                         onClick={() => setSelectedLog(log)}
                         className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
-                          isSelected ? "bg-equus-green/5 border-l-4 border-l-equus-green font-medium" : ""
+                          isSelected
+                            ? "bg-equus-green/5 border-l-4 border-l-equus-green font-medium"
+                            : ""
                         }`}
                       >
                         <td className="whitespace-nowrap py-3.5 pl-5 pr-3 text-xs">
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${getActionBadge(
-                              log.action
+                              log.action,
                             )}`}
                           >
                             {getActionLabel(log.action)}
@@ -552,7 +622,9 @@ export default function AuditPage() {
                         {currentUser.role === UserRole.ADMIN && (
                           <td className="whitespace-nowrap px-3 py-3.5 text-xs text-slate-600 font-medium">
                             {log.tenant ? (
-                              <span className="text-slate-700 font-semibold">{log.tenant.name}</span>
+                              <span className="text-slate-700 font-semibold">
+                                {log.tenant.name}
+                              </span>
                             ) : (
                               <span className="text-rose-500 italic bg-rose-50 border border-rose-100 text-[10px] px-1.5 py-0.5 rounded">
                                 Global
@@ -582,8 +654,10 @@ export default function AuditPage() {
           {logs.length > 0 && (
             <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex items-center justify-between">
               <div className="text-xs text-slate-500 font-semibold">
-                Mostrando <span className="font-bold text-slate-700">{logs.length}</span> de{" "}
-                <span className="font-bold text-slate-700">{total}</span> registros de auditoría
+                Mostrando{" "}
+                <span className="font-bold text-slate-700">{logs.length}</span>{" "}
+                de <span className="font-bold text-slate-700">{total}</span>{" "}
+                registros de auditoría
               </div>
               <div className="flex items-center space-x-1">
                 {/* Previous Button */}
@@ -620,7 +694,7 @@ export default function AuditPage() {
             {selectedLog && (
               <span
                 className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold ${getActionBadge(
-                  selectedLog.action
+                  selectedLog.action,
                 )}`}
               >
                 {getActionLabel(selectedLog.action)}
@@ -633,8 +707,12 @@ export default function AuditPage() {
               {/* Meta information grid */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-semibold">Log UUID:</span>
-                  <span className="font-sans tabular-nums text-slate-700 font-bold select-all break-all text-right pl-4">{selectedLog.id}</span>
+                  <span className="text-slate-400 font-semibold">
+                    Log UUID:
+                  </span>
+                  <span className="font-sans tabular-nums text-slate-700 font-bold select-all break-all text-right pl-4">
+                    {selectedLog.id}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-semibold">Fecha:</span>
@@ -643,39 +721,52 @@ export default function AuditPage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-semibold">Operador:</span>
+                  <span className="text-slate-400 font-semibold">
+                    Operador:
+                  </span>
                   <span className="font-bold text-slate-800">
-                    {selectedLog.user ? selectedLog.user.name : "Sistema / Fallback"}
+                    {selectedLog.user
+                      ? selectedLog.user.name
+                      : "Sistema / Fallback"}
                   </span>
                 </div>
                 {selectedLog.tenant && (
                   <div className="flex justify-between">
                     <span className="text-slate-400 font-semibold">Club:</span>
-                    <span className="font-bold text-slate-700">{selectedLog.tenant.name}</span>
+                    <span className="font-bold text-slate-700">
+                      {selectedLog.tenant.name}
+                    </span>
                   </div>
                 )}
                 {selectedLog.ipAddress && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400 font-semibold">IP Address:</span>
-                    <span className="font-sans tabular-nums font-bold text-slate-700">{selectedLog.ipAddress}</span>
+                    <span className="text-slate-400 font-semibold">
+                      IP Address:
+                    </span>
+                    <span className="font-sans tabular-nums font-bold text-slate-700">
+                      {selectedLog.ipAddress}
+                    </span>
                   </div>
                 )}
                 {selectedLog.userAgent && (
                   <div className="flex flex-col space-y-1 pt-1 border-t border-slate-200/50">
-                    <span className="text-slate-400 font-semibold">User Agent:</span>
-                    <span className="text-[10px] text-slate-500 break-words leading-tight">{selectedLog.userAgent}</span>
+                    <span className="text-slate-400 font-semibold">
+                      User Agent:
+                    </span>
+                    <span className="text-[10px] text-slate-500 break-words leading-tight">
+                      {selectedLog.userAgent}
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Payload/Diff inspector */}
-              <div className="pt-2">
-                {renderPayloadDiff(selectedLog)}
-              </div>
+              <div className="pt-2">{renderPayloadDiff(selectedLog)}</div>
             </div>
           ) : (
             <div className="py-24 text-center text-slate-400 italic">
-              Seleccione un registro de la tabla para inspeccionar su carga útil JSON y ver el comparador de cambios (diff viewer).
+              Seleccione un registro de la tabla para inspeccionar su carga útil
+              JSON y ver el comparador de cambios (diff viewer).
             </div>
           )}
         </div>

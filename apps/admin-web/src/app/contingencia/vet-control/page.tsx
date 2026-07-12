@@ -5,7 +5,11 @@ import { useAuthStore } from "@/store/auth.store";
 import { TimingService } from "@/services/api/timing.service";
 import { CompetitionEntryService } from "@/services/api/competition-entry.service";
 import { VetInspectionService } from "@/services/api/vet-inspection.service";
-import { GaitStatus, InspectionType, ParticipantStatus } from "@equuscronos/shared";
+import {
+  GaitStatus,
+  InspectionType,
+  ParticipantStatus,
+} from "@equuscronos/shared";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Stage {
@@ -102,7 +106,9 @@ export default function VetControlPage() {
   const [vetInTime, setVetInTime] = useState(localNowHHMMSS());
   const [heartRate, setHeartRate] = useState("");
   const [gaitStatus, setGaitStatus] = useState<GaitStatus>(GaitStatus.APPROVED);
-  const [inspectionType, setInspectionType] = useState<InspectionType>(InspectionType.STANDARD);
+  const [inspectionType, setInspectionType] = useState<InspectionType>(
+    InspectionType.STANDARD,
+  );
   const [requiresRecheck, setRequiresRecheck] = useState(false);
   const [notes, setNotes] = useState("");
 
@@ -117,10 +123,10 @@ export default function VetControlPage() {
   const selectedComp = competitions.find((c) => c.id === competitionId);
   const stages: Stage[] = selectedComp?.stages ?? [];
   const selectedStage = stages.find((s) => s.id === stageId);
-  
+
   // Find active entry matching the typed bib number
   const matchedEntry = entries.find(
-    (e) => String(e.bibNumber) === bibNumber.trim()
+    (e) => String(e.bibNumber) === bibNumber.trim(),
   );
 
   const hasAccess = user ? ALLOWED_ROLES.includes(user.role) : false;
@@ -188,7 +194,7 @@ export default function VetControlPage() {
       (r) =>
         r.recordType === "ARRIVAL" &&
         !r.isVoid &&
-        r.stage?.stageNumber === selectedStage.stageNumber
+        r.stage?.stageNumber === selectedStage.stageNumber,
     );
 
     if (arrivalRecord) {
@@ -207,9 +213,10 @@ export default function VetControlPage() {
   }, [matchedEntry, stageId, selectedStage]);
 
   // Real-time calculations for visual warnings
-  const recoveryDiffMinutes = selectedStage && arrivalTime && vetInTime
-    ? getMinutesDiff(arrivalTime, vetInTime)
-    : 0;
+  const recoveryDiffMinutes =
+    selectedStage && arrivalTime && vetInTime
+      ? getMinutesDiff(arrivalTime, vetInTime)
+      : 0;
 
   const isRecoveryWarning = recoveryDiffMinutes > 20;
   const isPulseWarning = heartRate ? parseInt(heartRate, 10) > 65 : false;
@@ -227,7 +234,7 @@ export default function VetControlPage() {
     setRequiresRecheck(false);
     setNotes("");
     setIsArrivalPreFilled(false);
-    
+
     // Return focus to bib number
     if (resetBib && bibInputRef.current) {
       bibInputRef.current.focus();
@@ -249,18 +256,28 @@ export default function VetControlPage() {
       return;
     }
     if (!matchedEntry) {
-      setErrorMsg("El dorsal ingresado no pertenece a ningún binomio habilitado.");
+      setErrorMsg(
+        "El dorsal ingresado no pertenece a ningún binomio habilitado.",
+      );
       return;
     }
     if (!arrivalTime || !/^\d{2}:\d{2}:\d{2}$/.test(arrivalTime)) {
-      setErrorMsg("La hora de arribo (Puesto 1) es obligatoria y debe tener formato HH:MM:SS.");
+      setErrorMsg(
+        "La hora de arribo (Puesto 1) es obligatoria y debe tener formato HH:MM:SS.",
+      );
       return;
     }
     if (!vetInTime || !/^\d{2}:\d{2}:\d{2}$/.test(vetInTime)) {
-      setErrorMsg("La hora de ingreso (Puesto 2) es obligatoria y debe tener formato HH:MM:SS.");
+      setErrorMsg(
+        "La hora de ingreso (Puesto 2) es obligatoria y debe tener formato HH:MM:SS.",
+      );
       return;
     }
-    if (!heartRate || isNaN(parseInt(heartRate, 10)) || parseInt(heartRate, 10) <= 0) {
+    if (
+      !heartRate ||
+      isNaN(parseInt(heartRate, 10)) ||
+      parseInt(heartRate, 10) <= 0
+    ) {
       setErrorMsg("Debe ingresar un valor de pulsaciones por minuto válido.");
       return;
     }
@@ -282,21 +299,27 @@ export default function VetControlPage() {
 
       setLastResult(result);
       setStatus("success");
-      
+
       // Reload entries list to get updated statuses/times in memory
-      const updatedEntries = await CompetitionEntryService.getAllByCompetition(competitionId);
+      const updatedEntries =
+        await CompetitionEntryService.getAllByCompetition(competitionId);
       setEntries(updatedEntries as CompetitionEntry[]);
 
       // Reset form after short delay or instantly
       clearForm(true);
     } catch (err: any) {
-      setErrorMsg(err.message || "Error al procesar la inspección veterinaria.");
+      setErrorMsg(
+        err.message || "Error al procesar la inspección veterinaria.",
+      );
       setStatus("error");
     }
   };
 
   // Keyboard sequential movement helper
-  const handleKeyDown = (e: React.KeyboardEvent, nextField: React.RefObject<any>) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent,
+    nextField: React.RefObject<any>,
+  ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       nextField.current?.focus();
@@ -311,13 +334,27 @@ export default function VetControlPage() {
       <div className="flex items-center justify-center min-h-[60vh] bg-slate-950 text-white">
         <div className="bg-slate-900 border border-red-500/30 rounded-2xl p-8 text-center max-w-md shadow-2xl">
           <div className="w-14 h-14 bg-red-950/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <svg
+              className="w-7 h-7 text-red-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              />
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-red-400 mb-2">Acceso Denegado</h2>
+          <h2 className="text-lg font-bold text-red-400 mb-2">
+            Acceso Denegado
+          </h2>
           <p className="text-sm text-slate-400">
-            Esta pantalla requiere rol de <strong>ADMIN, CLUB_ADMIN, JUDGE</strong> o <strong>TIMEKEEPER</strong>.
+            Esta pantalla requiere rol de{" "}
+            <strong>ADMIN, CLUB_ADMIN, JUDGE</strong> o{" "}
+            <strong>TIMEKEEPER</strong>.
           </p>
         </div>
       </div>
@@ -326,13 +363,22 @@ export default function VetControlPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4 md:p-6 bg-slate-950 text-white rounded-3xl shadow-2xl border border-slate-800">
-      
       {/* ── Header Area ──────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-5">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-emerald-950/80 border border-emerald-500/20 flex items-center justify-center shadow-lg">
-            <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <svg
+              className="w-8 h-8 text-emerald-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
           </div>
           <div>
@@ -340,7 +386,8 @@ export default function VetControlPage() {
               Mesa de Control Veterinario
             </h1>
             <p className="mt-1.5 text-sm text-slate-400">
-              Consola de alta visibilidad para validación clínica en tiempo real y consolidación de eliminaciones FEU.
+              Consola de alta visibilidad para validación clínica en tiempo real
+              y consolidación de eliminaciones FEU.
             </p>
           </div>
         </div>
@@ -355,8 +402,10 @@ export default function VetControlPage() {
       </div>
 
       {/* ── Form Container ───────────────────────────────────────────────── */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
         {/* LEFT COLUMN: Metadata & Binomio Identification */}
         <div className="space-y-5 bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80">
           <h2 className="text-base font-bold text-slate-300 border-b border-slate-800 pb-2">
@@ -378,7 +427,8 @@ export default function VetControlPage() {
               >
                 {competitions.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} — {c.status === "ACTIVE" ? "🟢 EN CARRERA" : "📋 Planificada"}
+                    {c.name} —{" "}
+                    {c.status === "ACTIVE" ? "🟢 EN CARRERA" : "📋 Planificada"}
                   </option>
                 ))}
               </select>
@@ -441,13 +491,16 @@ export default function VetControlPage() {
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Binomio Identificado
                   </span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase border
-                    ${matchedEntry.status === ParticipantStatus.IN_RACE
-                      ? "bg-emerald-950 text-emerald-400 border-emerald-500/25"
-                      : matchedEntry.status === ParticipantStatus.VET_CHECK
-                        ? "bg-amber-950 text-amber-400 border-amber-500/25"
-                        : "bg-red-950 text-red-400 border-red-500/25"
-                    }`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase border
+                    ${
+                      matchedEntry.status === ParticipantStatus.IN_RACE
+                        ? "bg-emerald-950 text-emerald-400 border-emerald-500/25"
+                        : matchedEntry.status === ParticipantStatus.VET_CHECK
+                          ? "bg-amber-950 text-amber-400 border-amber-500/25"
+                          : "bg-red-950 text-red-400 border-red-500/25"
+                    }`}
+                  >
                     {matchedEntry.status}
                   </span>
                 </div>
@@ -456,7 +509,10 @@ export default function VetControlPage() {
                     {matchedEntry.rider.name}
                   </div>
                   <div className="text-xs font-bold text-slate-400 mt-0.5">
-                    Caballo: <span className="text-emerald-400">{matchedEntry.horse.name}</span>
+                    Caballo:{" "}
+                    <span className="text-emerald-400">
+                      {matchedEntry.horse.name}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -497,9 +553,10 @@ export default function VetControlPage() {
                 maxLength={8}
                 disabled={isArrivalPreFilled}
                 className={`w-full px-4 py-2.5 text-xl font-bold bg-slate-950 border rounded-xl focus:outline-none shadow-inner font-mono
-                  ${isArrivalPreFilled 
-                    ? "border-emerald-500/30 text-emerald-400/90 cursor-not-allowed bg-emerald-950/10" 
-                    : "border-slate-800 text-slate-200 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  ${
+                    isArrivalPreFilled
+                      ? "border-emerald-500/30 text-emerald-400/90 cursor-not-allowed bg-emerald-950/10"
+                      : "border-slate-800 text-slate-200 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
                   }`}
               />
               {isArrivalPreFilled && (
@@ -568,9 +625,15 @@ export default function VetControlPage() {
               onChange={(e) => setGaitStatus(e.target.value as GaitStatus)}
               className="w-full px-4 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 shadow-inner font-semibold"
             >
-              <option value={GaitStatus.APPROVED}>APPROVED — Trote Aprobado (APTO)</option>
-              <option value={GaitStatus.LAMENESS_ELIMINATED}>LAMENESS_ELIMINATED — Cojera (DESCALIFICADO)</option>
-              <option value={GaitStatus.OBSERVATION}>OBSERVATION — Bajo Observación</option>
+              <option value={GaitStatus.APPROVED}>
+                APPROVED — Trote Aprobado (APTO)
+              </option>
+              <option value={GaitStatus.LAMENESS_ELIMINATED}>
+                LAMENESS_ELIMINATED — Cojera (DESCALIFICADO)
+              </option>
+              <option value={GaitStatus.OBSERVATION}>
+                OBSERVATION — Bajo Observación
+              </option>
             </select>
           </div>
 
@@ -581,12 +644,20 @@ export default function VetControlPage() {
             </label>
             <select
               value={inspectionType}
-              onChange={(e) => setInspectionType(e.target.value as InspectionType)}
+              onChange={(e) =>
+                setInspectionType(e.target.value as InspectionType)
+              }
               className="w-full px-4 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 shadow-inner font-semibold"
             >
-              <option value={InspectionType.STANDARD}>STANDARD — Control Regular</option>
-              <option value={InspectionType.RE_INSPECTION_MANDATORY}>RE_INSPECTION_MANDATORY — Recheck Obligatorio</option>
-              <option value={InspectionType.RE_INSPECTION_REQUESTED}>RE_INSPECTION_REQUESTED — Recheck Solicitado (2do Intento)</option>
+              <option value={InspectionType.STANDARD}>
+                STANDARD — Control Regular
+              </option>
+              <option value={InspectionType.RE_INSPECTION_MANDATORY}>
+                RE_INSPECTION_MANDATORY — Recheck Obligatorio
+              </option>
+              <option value={InspectionType.RE_INSPECTION_REQUESTED}>
+                RE_INSPECTION_REQUESTED — Recheck Solicitado (2do Intento)
+              </option>
             </select>
           </div>
 
@@ -599,7 +670,10 @@ export default function VetControlPage() {
               onChange={(e) => setRequiresRecheck(e.target.checked)}
               className="w-5 h-5 text-emerald-500 border-slate-800 bg-slate-950 rounded focus:ring-emerald-500/30 focus:ring-2"
             />
-            <label htmlFor="requiresRecheck" className="text-xs font-bold text-slate-300 select-none cursor-pointer">
+            <label
+              htmlFor="requiresRecheck"
+              className="text-xs font-bold text-slate-300 select-none cursor-pointer"
+            >
               Exigir Rechequeo Obligatorio antes de la Salida de Etapa
             </label>
           </div>
@@ -621,13 +695,22 @@ export default function VetControlPage() {
 
         {/* FULL WIDTH ALERTS & SUBMIT BUTTON */}
         <div className="md:col-span-2 space-y-4">
-          
           {/* Recovery Time Warning Alert */}
           {isRecoveryWarning && (
             <div className="flex items-center gap-4 p-4 bg-red-950 border-2 border-red-500 rounded-2xl animate-pulse shadow-lg">
               <div className="w-10 h-10 bg-red-900 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-red-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-6 h-6 text-red-200"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
               <div>
@@ -635,7 +718,8 @@ export default function VetControlPage() {
                   ⚠️ FUERA DE TIEMPO DE RECUPERACIÓN (ELIMINADO)
                 </h3>
                 <p className="text-xs text-red-300/90 mt-0.5 font-bold">
-                  El tiempo transcurrido es de {Math.round(recoveryDiffMinutes)} minutos. Excede el límite FEU de 20 minutos.
+                  El tiempo transcurrido es de {Math.round(recoveryDiffMinutes)}{" "}
+                  minutos. Excede el límite FEU de 20 minutos.
                 </p>
               </div>
             </div>
@@ -645,8 +729,18 @@ export default function VetControlPage() {
           {isPulseWarning && (
             <div className="flex items-center gap-4 p-4 bg-amber-950 border-2 border-amber-500 rounded-2xl animate-pulse shadow-lg">
               <div className="w-10 h-10 bg-amber-900 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-amber-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-6 h-6 text-amber-200"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
               <div>
@@ -654,7 +748,8 @@ export default function VetControlPage() {
                   ⚠️ PULSO EXCEDIDO. EVALUAR RE-INSPECCIÓN O ELIMINACIÓN
                 </h3>
                 <p className="text-xs text-amber-300/90 mt-0.5 font-bold">
-                  Las pulsaciones registradas son de {heartRate} ppm. Supera el límite FEU de 65 ppm.
+                  Las pulsaciones registradas son de {heartRate} ppm. Supera el
+                  límite FEU de 65 ppm.
                 </p>
               </div>
             </div>
@@ -663,12 +758,26 @@ export default function VetControlPage() {
           {/* Error Message banner */}
           {errorMsg && (
             <div className="flex items-start gap-3 p-4 bg-red-950/70 border border-red-500/30 rounded-xl">
-              <svg className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
-                <p className="text-xs font-black text-red-400">Error en validación clínica</p>
-                <p className="text-xs text-red-300/90 mt-0.5 font-semibold">{errorMsg}</p>
+                <p className="text-xs font-black text-red-400">
+                  Error en validación clínica
+                </p>
+                <p className="text-xs text-red-300/90 mt-0.5 font-semibold">
+                  {errorMsg}
+                </p>
               </div>
             </div>
           )}
@@ -677,8 +786,18 @@ export default function VetControlPage() {
           {status === "success" && lastResult && (
             <div className="flex items-start gap-4 p-4 bg-emerald-950 border border-emerald-500/30 rounded-2xl shadow-lg">
               <div className="w-10 h-10 bg-emerald-900 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-5 h-5 text-emerald-200"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <div>
@@ -686,10 +805,12 @@ export default function VetControlPage() {
                   Inspección Veterinaria Guardada Exitosamente
                 </h3>
                 <p className="text-xs text-emerald-300/90 mt-1 font-semibold">
-                  Dorsal: {lastResult.riderDorsal} · F. Cardíaca: {lastResult.heartRate} ppm · Marcha: {lastResult.gaitStatus}
+                  Dorsal: {lastResult.riderDorsal} · F. Cardíaca:{" "}
+                  {lastResult.heartRate} ppm · Marcha: {lastResult.gaitStatus}
                 </p>
                 <p className="text-[10px] text-emerald-400 mt-1 font-mono">
-                  Transacción de persistencia consolidada. Clasificador y Leaderboard actualizados vía WebSockets.
+                  Transacción de persistencia consolidada. Clasificador y
+                  Leaderboard actualizados vía WebSockets.
                 </p>
               </div>
             </div>
@@ -705,16 +826,41 @@ export default function VetControlPage() {
           >
             {status === "loading" ? (
               <>
-                <svg className="animate-spin w-6 h-6 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                <svg
+                  className="animate-spin w-6 h-6 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
                 </svg>
                 Procesando transacciones FEU…
               </>
             ) : (
               <>
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Consolidar Decisión Veterinaria
               </>
@@ -726,10 +872,14 @@ export default function VetControlPage() {
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div className="text-center pt-4 border-t border-slate-800">
         <p className="text-[11px] text-slate-500 font-bold">
-          EquusCronos Control Desk · Operador: <span className="text-slate-400">{user?.name} ({user?.role})</span>
+          EquusCronos Control Desk · Operador:{" "}
+          <span className="text-slate-400">
+            {user?.name} ({user?.role})
+          </span>
         </p>
         <p className="text-[10px] text-slate-600 mt-1">
-          Estricto cumplimiento del Reglamento de Raid de la Federación Ecuestre Uruguaya.
+          Estricto cumplimiento del Reglamento de Raid de la Federación Ecuestre
+          Uruguaya.
         </p>
       </div>
     </div>

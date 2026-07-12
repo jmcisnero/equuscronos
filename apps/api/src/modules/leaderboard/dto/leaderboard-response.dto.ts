@@ -46,16 +46,21 @@ export class LeaderboardEntryDto {
   })
   nextVetControlTime?: Date;
 
-  @ApiPropertyOptional({ description: "Tiempo total neto de carrera (Milisegundos) o null si está en etapa activa" })
+  @ApiPropertyOptional({
+    description:
+      "Tiempo total neto de carrera (Milisegundos) o null si está en etapa activa",
+  })
   totalRaceTimeMs: number | null;
 
   @ApiPropertyOptional({
-    description: "Diferencia de tiempo con el líder (Milisegundos) o null si está en etapa activa",
+    description:
+      "Diferencia de tiempo con el líder (Milisegundos) o null si está en etapa activa",
   })
   gapToLeaderMs: number | null;
 
   @ApiPropertyOptional({
-    description: "Velocidad promedio del competidor (km/h) con 3 decimales o null si está en etapa activa",
+    description:
+      "Velocidad promedio del competidor (km/h) con 3 decimales o null si está en etapa activa",
     example: 32.734,
   })
   averageSpeed: number | null;

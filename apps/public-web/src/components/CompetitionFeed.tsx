@@ -65,7 +65,10 @@ export default function CompetitionFeed() {
   const formatDate = (dateStr: string) => {
     try {
       if (!dateStr) return "";
-      const [year, month, day] = dateStr.substring(0, 10).split("-").map(Number);
+      const [year, month, day] = dateStr
+        .substring(0, 10)
+        .split("-")
+        .map(Number);
       const d = new Date(Date.UTC(year, month - 1, day));
       return d.toLocaleDateString("es-UY", {
         weekday: "short",
@@ -346,7 +349,8 @@ export default function CompetitionFeed() {
                   No hay competencias activas en este momento.
                 </p>
                 <p className="text-xs text-slate-500 mt-1.5 font-semibold">
-                  Por favor, intente nuevamente más tarde o contacte al administrador.
+                  Por favor, intente nuevamente más tarde o contacte al
+                  administrador.
                 </p>
               </div>
             )}

@@ -672,7 +672,10 @@ function ControlCenter({ comp, queryClient, router }: ControlCenterProps) {
                 {comp.startTime || "07:00:00"} UY
               </strong>{" "}
               del día{" "}
-              <strong className="text-white font-sans tabular-nums">{compDateStr}</strong>.
+              <strong className="text-white font-sans tabular-nums">
+                {compDateStr}
+              </strong>
+              .
             </p>
             <p className="text-[10px] text-slate-500 italic mt-1">
               La validación se realiza de forma duplicada tanto en Frontend (UX)

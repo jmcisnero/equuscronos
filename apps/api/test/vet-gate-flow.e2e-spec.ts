@@ -94,7 +94,7 @@ describe("Vet Gate Flow (e2e)", () => {
       await dataSource.query(`
         INSERT INTO stages (id, tenant_id, competition_id, stage_number, distance_km, neutralization_minutes)
         VALUES 
-          ('${stage1Id}', '${tenantId}', '${competitionId}', 1, 30.00, 30),
+          ('${stage1Id}', '${tenantId}', '${competitionId}', 1, 30.00, 60),
           ('${stage2Id}', '${tenantId}', '${competitionId}', 2, 20.00, 0);
       `);
 
@@ -188,11 +188,15 @@ describe("Vet Gate Flow (e2e)", () => {
         .post("/vet-inspections")
         .set("Authorization", `Bearer ${vetToken}`)
         .send({
-          timingRecordId,
+          competitionId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: new Date("2026-06-10T09:30:00Z").toISOString(),
+          vetInTime: new Date("2026-06-10T09:51:00Z").toISOString(),
           heartRate: 52,
-          temperature: 38.2,
-          motricity: "APTO",
-          metabolic: "NORMAL",
+          gaitStatus: "APPROVED",
+          inspectionType: "STANDARD",
+          requiresRecheck: false,
           notes: "Tested e2e",
         });
 
@@ -264,11 +268,15 @@ describe("Vet Gate Flow (e2e)", () => {
         .post("/vet-inspections")
         .set("Authorization", `Bearer ${vetToken}`)
         .send({
-          timingRecordId,
+          competitionId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: new Date("2026-06-10T09:30:00Z").toISOString(),
+          vetInTime: new Date("2026-06-10T09:45:00Z").toISOString(),
           heartRate: 52,
-          temperature: 38.2,
-          motricity: "APTO",
-          metabolic: "NORMAL",
+          gaitStatus: "APPROVED",
+          inspectionType: "STANDARD",
+          requiresRecheck: false,
           notes: "Tested e2e",
         });
 

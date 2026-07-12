@@ -57,8 +57,7 @@ const ClubJersey = ({
   } | null;
 }) => {
   const shirtUrl =
-    representedTenant?.jerseyImageUrl ||
-    (representedTenant as any)?.shirtUrl;
+    representedTenant?.jerseyImageUrl || (representedTenant as any)?.shirtUrl;
 
   const [hasError, setHasError] = React.useState(false);
 
@@ -322,7 +321,9 @@ export default function LeaderboardTable({
               Control de Meta Cerrado (Tolerancia Expirada)
             </h3>
             <p className="text-rose-100 text-xs font-bold mt-1">
-              La carrera ha concluido y el tiempo límite de tolerancia ha expirado. Todos los binomios que no completaron la prueba pasaron a estado "No Completó" (NC).
+              La carrera ha concluido y el tiempo límite de tolerancia ha
+              expirado. Todos los binomios que no completaron la prueba pasaron
+              a estado "No Completó" (NC).
             </p>
           </div>
         </div>
@@ -344,13 +345,19 @@ export default function LeaderboardTable({
                     : "bg-slate-50 text-slate-700 border-slate-200";
 
             const previousStages = (entry.stages || []).filter(
-              (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED"
+              (s) =>
+                s.stageNumber < entry.currentStage ||
+                entry.status === "FINISHED",
             );
 
             return (
               <div
                 key={entry.bibNumber}
-                onClick={() => setExpandedRowId(expandedRowId === entry.bibNumber ? null : entry.bibNumber)}
+                onClick={() =>
+                  setExpandedRowId(
+                    expandedRowId === entry.bibNumber ? null : entry.bibNumber,
+                  )
+                }
                 className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${
                   entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
                 } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
@@ -655,15 +662,25 @@ export default function LeaderboardTable({
                           : "bg-slate-50 text-slate-700 border-slate-200";
 
                   const previousStages = (entry.stages || []).filter(
-                    (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED"
+                    (s) =>
+                      s.stageNumber < entry.currentStage ||
+                      entry.status === "FINISHED",
                   );
 
                   return (
                     <React.Fragment key={entry.bibNumber}>
                       <tr
-                        onClick={() => setExpandedRowId(expandedRowId === entry.bibNumber ? null : entry.bibNumber)}
+                        onClick={() =>
+                          setExpandedRowId(
+                            expandedRowId === entry.bibNumber
+                              ? null
+                              : entry.bibNumber,
+                          )
+                        }
                         className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${
-                          expandedRowId === entry.bibNumber ? "bg-slate-50/70" : ""
+                          expandedRowId === entry.bibNumber
+                            ? "bg-slate-50/70"
+                            : ""
                         } ${
                           entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
                         }`}
@@ -673,7 +690,9 @@ export default function LeaderboardTable({
                           <div className="flex items-center justify-center space-x-1.5">
                             <svg
                               className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${
-                                expandedRowId === entry.bibNumber ? "rotate-180" : ""
+                                expandedRowId === entry.bibNumber
+                                  ? "rotate-180"
+                                  : ""
                               }`}
                               fill="none"
                               viewBox="0 0 24 24"
@@ -703,7 +722,9 @@ export default function LeaderboardTable({
                         {/* DORSAL */}
                         <td className="py-4.5 px-3 text-center">
                           <div className="flex flex-col items-center space-y-1.5">
-                            <ClubJersey representedTenant={entry.representedTenant} />
+                            <ClubJersey
+                              representedTenant={entry.representedTenant}
+                            />
                             <span className="inline-block bg-slate-900 text-white font-sans tabular-nums text-xs font-extrabold px-2.5 py-1 rounded-lg">
                               #{entry.bibNumber}
                             </span>
@@ -746,7 +767,10 @@ export default function LeaderboardTable({
 
                         {/* DIFERENCIA */}
                         <td className="py-4.5 px-3 font-sans tabular-nums text-xs text-slate-700 whitespace-nowrap">
-                          {formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs)}
+                          {formatGap(
+                            entry.gapToLeaderMs,
+                            entry.totalRaceTimeMs,
+                          )}
                         </td>
 
                         {/* VELOCIDAD PROMEDIO */}
@@ -765,7 +789,8 @@ export default function LeaderboardTable({
                             {entry.nextVetControlTime && !isClosed && (
                               <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
                                 <span className="inline-flex items-center text-[#AD8F6C] bg-[#AD8F6C]/10 border border-[#AD8F6C]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                                  Límite: {formatHHMMSS(entry.nextVetControlTime)}
+                                  Límite:{" "}
+                                  {formatHHMMSS(entry.nextVetControlTime)}
                                 </span>
                               </div>
                             )}
@@ -796,7 +821,10 @@ export default function LeaderboardTable({
                       </tr>
 
                       {/* Fila Secundaria del Acordeón (Detalle de Fases Pasadas) */}
-                      <tr key={`expanded-${(entry as any).id || entry.bibNumber}`} className="bg-slate-50/30">
+                      <tr
+                        key={`expanded-${(entry as any).id || entry.bibNumber}`}
+                        className="bg-slate-50/30"
+                      >
                         <td colSpan={11} className="p-0 border-none">
                           <div
                             className={`transition-all duration-300 ease-in-out overflow-hidden ${
@@ -844,14 +872,19 @@ export default function LeaderboardTable({
                                         className="hover:bg-slate-100/30 transition-colors"
                                       >
                                         {/* Pos. */}
-                                        <td className="py-3 px-2 text-center text-slate-350">—</td>
+                                        <td className="py-3 px-2 text-center text-slate-350">
+                                          —
+                                        </td>
 
                                         {/* Dorsal */}
-                                        <td className="py-3 px-3 text-center text-slate-350">—</td>
+                                        <td className="py-3 px-3 text-center text-slate-350">
+                                          —
+                                        </td>
 
                                         {/* Binomio / Nombre Etapa */}
                                         <td className="py-3 px-3 font-extrabold text-slate-800">
-                                          Etapa {stage.stageNumber} ({stage.distanceKm} km)
+                                          Etapa {stage.stageNumber} (
+                                          {stage.distanceKm} km)
                                         </td>
 
                                         {/* Etapa */}
@@ -870,7 +903,9 @@ export default function LeaderboardTable({
                                         </td>
 
                                         {/* Diferencia */}
-                                        <td className="py-3 px-3 font-sans tabular-nums text-slate-350">—</td>
+                                        <td className="py-3 px-3 font-sans tabular-nums text-slate-350">
+                                          —
+                                        </td>
 
                                         {/* Velocidad Prom. */}
                                         <td className="py-3 px-3 text-slate-600">
@@ -897,7 +932,9 @@ export default function LeaderboardTable({
                                               {stage.heartRate} ppm
                                             </span>
                                           ) : (
-                                            <span className="text-slate-350">—</span>
+                                            <span className="text-slate-350">
+                                              —
+                                            </span>
                                           )}
                                         </td>
 

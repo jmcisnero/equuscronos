@@ -65,7 +65,12 @@ export class CreateHorseDto {
     example: "2026-12-31",
   })
   @IsOptional()
-  @ValidateIf((o) => o.healthRecordsExpiration !== "" && o.healthRecordsExpiration !== null && o.healthRecordsExpiration !== undefined)
+  @ValidateIf(
+    (o) =>
+      o.healthRecordsExpiration !== "" &&
+      o.healthRecordsExpiration !== null &&
+      o.healthRecordsExpiration !== undefined,
+  )
   @IsDateString(
     {},
     {

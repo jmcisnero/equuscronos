@@ -45,7 +45,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     }
   }, [isMounted, user, logout, router]);
 
-
   useEffect(() => {
     if (user?.tenantId) {
       TenantService.getById(user.tenantId)
@@ -82,25 +81,31 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const rawTenantName = activeTenant?.name || (user as any)?.tenantName;
 
   const tenantName = isMounted
-    ? (rawTenantName || "Consola Global / EquusCronos")
+    ? rawTenantName || "Consola Global / EquusCronos"
     : "Cargando...";
 
   const tenantIdentifier = isMounted
-    ? (activeTenant?.location || (activeTenant?.id ? activeTenant.id.substring(0, 8) : (user?.tenantId ? user.tenantId.substring(0, 8) : "Administración Maestra")))
+    ? activeTenant?.location ||
+      (activeTenant?.id
+        ? activeTenant.id.substring(0, 8)
+        : user?.tenantId
+          ? user.tenantId.substring(0, 8)
+          : "Administración Maestra")
     : "...";
 
-  const tenantInitials = isMounted && rawTenantName
-    ? (rawTenantName.split(/\s+/).filter(Boolean).length >= 2
-        ? rawTenantName
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((w: string) => w[0])
-            .join("")
-        : rawTenantName
-      )
-        .substring(0, 3)
-        .toUpperCase()
-    : "EC";
+  const tenantInitials =
+    isMounted && rawTenantName
+      ? (rawTenantName.split(/\s+/).filter(Boolean).length >= 2
+          ? rawTenantName
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((w: string) => w[0])
+              .join("")
+          : rawTenantName
+        )
+          .substring(0, 3)
+          .toUpperCase()
+      : "EC";
 
   // Mapeo dinámico de títulos de página basado en la ruta actual
   const getPageTitle = (path: string) => {
@@ -206,7 +211,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               stroke="currentColor"
               strokeWidth={2}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           ),
         },
@@ -221,7 +230,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               stroke="currentColor"
               strokeWidth={2}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
           ),
         },
@@ -418,17 +431,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       ...group,
       items: group.items.filter((item) => {
         // JUDGE and TIMEKEEPER: restrict to dashboard + contingency arrivals only
-        if (
-          user?.role === "JUDGE" ||
-          user?.role === "TIMEKEEPER"
-        ) {
-          return item.href === "/" || item.href === "/contingencia/arrivals" || item.href === "/contingencia/vet-control";
+        if (user?.role === "JUDGE" || user?.role === "TIMEKEEPER") {
+          return (
+            item.href === "/" ||
+            item.href === "/contingencia/arrivals" ||
+            item.href === "/contingencia/vet-control"
+          );
         }
         return true;
       }),
     }))
     .filter((group) => group.items.length > 0);
-
 
   return (
     <div className="min-h-screen bg-equus-bg flex flex-col md:flex-row font-sans text-equus-text">

@@ -9,7 +9,12 @@ import {
   HttpCode,
   HttpStatus,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from "@nestjs/swagger";
 import { AdminContingencyService } from "./admin-contingency.service";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { UserRole, GaitStatus } from "@equuscronos/shared";
@@ -27,7 +32,9 @@ export class AdminContingencyController {
 
   @Patch("timing-records/:id")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Modificar fecha/hora de un paso de tiempo (Solo ADMIN)" })
+  @ApiOperation({
+    summary: "Modificar fecha/hora de un paso de tiempo (Solo ADMIN)",
+  })
   @ApiResponse({ status: 200, description: "Paso de tiempo actualizado." })
   async updateTimingRecord(
     @Param("id", ParseUUIDPipe) id: string,
@@ -41,7 +48,9 @@ export class AdminContingencyController {
 
   @Delete("timing-records/:id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Eliminar físicamente un paso de tiempo (Solo ADMIN)" })
+  @ApiOperation({
+    summary: "Eliminar físicamente un paso de tiempo (Solo ADMIN)",
+  })
   @ApiResponse({ status: 204, description: "Paso de tiempo eliminado." })
   async deleteTimingRecord(@Param("id", ParseUUIDPipe) id: string) {
     await this.contingencyService.deleteTimingRecord(id);
@@ -53,7 +62,9 @@ export class AdminContingencyController {
 
   @Patch("vet-inspections/:id")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Modificar datos de un control veterinario (Solo ADMIN)" })
+  @ApiOperation({
+    summary: "Modificar datos de un control veterinario (Solo ADMIN)",
+  })
   @ApiResponse({ status: 200, description: "Control veterinario actualizado." })
   async updateVetInspection(
     @Param("id", ParseUUIDPipe) id: string,
@@ -86,7 +97,9 @@ export class AdminContingencyController {
 
   @Post("penalties")
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Crear una nueva penalización de tiempo (Solo ADMIN)" })
+  @ApiOperation({
+    summary: "Crear una nueva penalización de tiempo (Solo ADMIN)",
+  })
   @ApiResponse({ status: 201, description: "Penalización creada." })
   async createPenalty(
     @Body("entryId", ParseUUIDPipe) entryId: string,
@@ -95,7 +108,9 @@ export class AdminContingencyController {
     @Body("reason") reason: string,
   ) {
     if (!entryId || !stageId || timePenaltySeconds === undefined || !reason) {
-      throw new Error("Todos los campos (entryId, stageId, timePenaltySeconds, reason) son obligatorios.");
+      throw new Error(
+        "Todos los campos (entryId, stageId, timePenaltySeconds, reason) son obligatorios.",
+      );
     }
     return await this.contingencyService.createPenalty(
       entryId,
@@ -107,7 +122,9 @@ export class AdminContingencyController {
 
   @Patch("penalties/:id")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Modificar una penalización existente (Solo ADMIN)" })
+  @ApiOperation({
+    summary: "Modificar una penalización existente (Solo ADMIN)",
+  })
   @ApiResponse({ status: 200, description: "Penalización actualizada." })
   async updatePenalty(
     @Param("id", ParseUUIDPipe) id: string,
@@ -115,9 +132,15 @@ export class AdminContingencyController {
     @Body("reason") reason: string,
   ) {
     if (timePenaltySeconds === undefined || !reason) {
-      throw new Error("Los campos timePenaltySeconds y reason son obligatorios.");
+      throw new Error(
+        "Los campos timePenaltySeconds y reason son obligatorios.",
+      );
     }
-    return await this.contingencyService.updatePenalty(id, timePenaltySeconds, reason);
+    return await this.contingencyService.updatePenalty(
+      id,
+      timePenaltySeconds,
+      reason,
+    );
   }
 
   @Delete("penalties/:id")

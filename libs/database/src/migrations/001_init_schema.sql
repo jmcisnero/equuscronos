@@ -210,6 +210,9 @@ CREATE TABLE vet_inspections (
     gait_status gait_status_enum NOT NULL DEFAULT 'APPROVED',
     inspection_type inspection_type_enum NOT NULL DEFAULT 'STANDARD',
     requires_recheck BOOLEAN NOT NULL DEFAULT FALSE,
+    attempt_number INT NOT NULL DEFAULT 1,
+    is_recheck_required BOOLEAN NOT NULL DEFAULT FALSE,
+    next_check_time TIMESTAMP WITH TIME ZONE,
     is_final_decision BOOLEAN NOT NULL DEFAULT TRUE,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

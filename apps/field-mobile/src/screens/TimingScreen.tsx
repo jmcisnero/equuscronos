@@ -53,7 +53,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   onNavigateToSyncMonitor,
 }) => {
   const { user } = useAuth();
-  
+
   // Real-time synchronization states
   const [pendingCount, setPendingCount] = useState(0);
   const [hasErrors, setHasErrors] = useState(false);
@@ -63,11 +63,11 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     const updateCount = async () => {
       const size = await SyncService.getQueueSize();
       setPendingCount(size);
-      
+
       try {
         const db = await getDatabase();
         const failed = await db.getFirstAsync<{ count: number }>(
-          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;"
+          "SELECT COUNT(*) as count FROM sync_queue WHERE attempts > 0;",
         );
         setHasErrors(failed ? failed.count > 0 : false);
       } catch (err) {
@@ -77,9 +77,11 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
     updateCount();
     const unsubscribeQueue = SyncService.registerQueueListener(updateCount);
-    const unsubscribeStatus = SyncService.registerStatusListener((connected) => {
-      setIsOnline(connected);
-    });
+    const unsubscribeStatus = SyncService.registerStatusListener(
+      (connected) => {
+        setIsOnline(connected);
+      },
+    );
 
     return () => {
       unsubscribeQueue();
@@ -664,25 +666,27 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
                 <Text style={styles.backText}>⬅️ Volver</Text>
               </TouchableOpacity>
             )}
-            
+
             {/* Sync Badge Trigger */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={onNavigateToSyncMonitor}
               style={styles.syncHeaderTrigger}
               activeOpacity={0.7}
             >
               <Text style={styles.syncCloudIcon}>{isOnline ? "☁️" : "📶"}</Text>
               {pendingCount > 0 && (
-                <View style={[
-                  styles.syncBadgeCircle,
-                  { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" }
-                ]}>
+                <View
+                  style={[
+                    styles.syncBadgeCircle,
+                    { backgroundColor: hasErrors ? "#EF4444" : "#F59E0B" },
+                  ]}
+                >
                   <Text style={styles.syncBadgeText}>{pendingCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
-          
+
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.title}>
               {recordType === TimeRecordType.START

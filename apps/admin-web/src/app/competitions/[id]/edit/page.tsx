@@ -69,8 +69,14 @@ export default function CompetitionEditPage({
         maxHeartRate: comp.maxHeartRate ?? 65,
         stages: (comp.stages || []).map((s) => ({
           stageNumber: s.stageNumber,
-          distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
-          neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+          distanceKm:
+            typeof s.distanceKm === "string"
+              ? parseFloat(s.distanceKm)
+              : s.distanceKm,
+          neutralizationMinutes:
+            typeof s.neutralizationMinutes === "string"
+              ? parseInt(s.neutralizationMinutes, 10)
+              : (s.neutralizationMinutes ?? 0),
         })),
       });
     }
@@ -189,8 +195,14 @@ export default function CompetitionEditPage({
 
     const cleanStages = (formData.stages || []).map((s) => ({
       stageNumber: s.stageNumber,
-      distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
-      neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+      distanceKm:
+        typeof s.distanceKm === "string"
+          ? parseFloat(s.distanceKm)
+          : s.distanceKm,
+      neutralizationMinutes:
+        typeof s.neutralizationMinutes === "string"
+          ? parseInt(s.neutralizationMinutes, 10)
+          : (s.neutralizationMinutes ?? 0),
     }));
 
     try {

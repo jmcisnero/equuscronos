@@ -18,7 +18,9 @@ function LoginForm() {
   React.useEffect(() => {
     const errCode = searchParams?.get("error");
     if (errCode === "roles_mecanismo_web_denegado") {
-      setError("Acceso denegado: Los roles móviles (USER, TIMEKEEPER, VET) no tienen acceso a la consola de administración web.");
+      setError(
+        "Acceso denegado: Los roles móviles (USER, TIMEKEEPER, VET) no tienen acceso a la consola de administración web.",
+      );
     }
   }, [searchParams]);
 

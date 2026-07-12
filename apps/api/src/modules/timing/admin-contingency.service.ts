@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { TimingRecord } from "../competitions/entities/timing-record.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
@@ -8,7 +12,11 @@ import { Penalty } from "../competitions/entities/penalty.entity";
 import { TimeCalculationService } from "./services/time-calculation.service";
 import { LeaderboardService } from "../leaderboard/leaderboard.service";
 import { RealTimeGateway } from "./real-time.gateway";
-import { TimeRecordType, ParticipantStatus, GaitStatus } from "@equuscronos/shared";
+import {
+  TimeRecordType,
+  ParticipantStatus,
+  GaitStatus,
+} from "@equuscronos/shared";
 
 @Injectable()
 export class AdminContingencyService {
@@ -22,7 +30,10 @@ export class AdminContingencyService {
   /**
    * Helper to recalculate departure times and evaluate disqualification rules (FEU rules check)
    */
-  async recalculateAndValidateEntry(manager: EntityManager, entryId: string): Promise<void> {
+  async recalculateAndValidateEntry(
+    manager: EntityManager,
+    entryId: string,
+  ): Promise<void> {
     const entry = await manager.findOne(CompetitionEntry, {
       where: { id: entryId },
       relations: ["competition", "timingRecords", "timingRecords.stage"],
@@ -82,7 +93,8 @@ export class AdminContingencyService {
       // If was disqualified previously but rules are now satisfied, restore to a valid dynamic status
       if (entry.status === ParticipantStatus.DQ) {
         const sorted = [...activeRecords].sort(
-          (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+          (a, b) =>
+            new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
         );
         const latestRecord = sorted.length > 0 ? sorted[0] : null;
         if (!latestRecord) {
@@ -128,10 +140,14 @@ export class AdminContingencyService {
 
   private async broadcastUpdate(competitionId: string): Promise<void> {
     try {
-      const leaderboard = await this.leaderboardService.getLiveLeaderboard(competitionId);
+      const leaderboard =
+        await this.leaderboardService.getLiveLeaderboard(competitionId);
       this.realTimeGateway.emitLeaderboardUpdate(competitionId, leaderboard);
     } catch (err) {
-      console.error("[AdminContingencyService] Failed to broadcast real-time update:", err);
+      console.error(
+        "[AdminContingencyService] Failed to broadcast real-time update:",
+        err,
+      );
     }
   }
 
@@ -139,7 +155,10 @@ export class AdminContingencyService {
   // TIMING RECORD ACTIONS
   // ==========================================
 
-  async updateTimingRecord(id: string, recordedAt: string): Promise<TimingRecord> {
+  async updateTimingRecord(
+    id: string,
+    recordedAt: string,
+  ): Promise<TimingRecord> {
     return await this.dataSource.transaction(async (manager: EntityManager) => {
       const record = await manager.findOne(TimingRecord, {
         where: { id },
@@ -198,7 +217,9 @@ export class AdminContingencyService {
         relations: ["competition"],
       });
       if (!inspection) {
-        throw new NotFoundException(`Inspección veterinaria ${id} no encontrada.`);
+        throw new NotFoundException(
+          `Inspección veterinaria ${id} no encontrada.`,
+        );
       }
 
       inspection.heartRate = heartRate;
@@ -231,7 +252,9 @@ export class AdminContingencyService {
         relations: ["competition"],
       });
       if (!inspection) {
-        throw new NotFoundException(`Inspección veterinaria ${id} no encontrada.`);
+        throw new NotFoundException(
+          `Inspección veterinaria ${id} no encontrada.`,
+        );
       }
 
       const entry = await manager.findOne(CompetitionEntry, {
@@ -292,7 +315,11 @@ export class AdminContingencyService {
     });
   }
 
-  async updatePenalty(id: string, timePenaltySeconds: number, reason: string): Promise<Penalty> {
+  async updatePenalty(
+    id: string,
+    timePenaltySeconds: number,
+    reason: string,
+  ): Promise<Penalty> {
     return await this.dataSource.transaction(async (manager: EntityManager) => {
       const penalty = await manager.findOne(Penalty, {
         where: { id },

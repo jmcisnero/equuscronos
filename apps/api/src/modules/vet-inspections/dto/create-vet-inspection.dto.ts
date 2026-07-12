@@ -27,11 +27,17 @@ export class CreateVetInspectionDto {
   @IsNotEmpty()
   arrivalTime: string;
 
-  @ApiProperty({ description: "Hora de ingreso al área veterinaria registrada en el Puesto 2" })
+  @ApiProperty({
+    description:
+      "Hora de ingreso al área veterinaria registrada en el Puesto 2",
+  })
   @IsNotEmpty()
   vetInTime: string;
 
-  @ApiProperty({ description: "Pulsaciones por minuto registradas", example: 64 })
+  @ApiProperty({
+    description: "Pulsaciones por minuto registradas",
+    example: 64,
+  })
   @IsInt()
   heartRate: number;
 
@@ -49,9 +55,19 @@ export class CreateVetInspectionDto {
   @IsEnum(InspectionType)
   inspectionType: InspectionType;
 
-  @ApiProperty({ description: "Indica si requiere rechequeo obligatorio antes de la largada", default: false })
+  @ApiProperty({
+    description: "Indica si requiere rechequeo obligatorio antes de la largada",
+    default: false,
+  })
   @IsBoolean()
   requiresRecheck: boolean;
+
+  @ApiPropertyOptional({
+    description: "Hora límite para el rechequeo veterinario (ISO string)",
+  })
+  @IsOptional()
+  @IsString()
+  nextCheckTime?: string;
 
   @ApiPropertyOptional({ description: "Observaciones del Veterinario" })
   @IsOptional()

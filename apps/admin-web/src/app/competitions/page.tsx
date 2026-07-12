@@ -198,8 +198,14 @@ export default function CompetitionsPage() {
       maxHeartRate: comp.maxHeartRate ?? 65,
       stages: (comp.stages || []).map((s) => ({
         stageNumber: s.stageNumber,
-        distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
-        neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+        distanceKm:
+          typeof s.distanceKm === "string"
+            ? parseFloat(s.distanceKm)
+            : s.distanceKm,
+        neutralizationMinutes:
+          typeof s.neutralizationMinutes === "string"
+            ? parseInt(s.neutralizationMinutes, 10)
+            : (s.neutralizationMinutes ?? 0),
       })),
       tenantId: comp.tenant?.id || "",
       competitionTypeId: comp.competitionType?.id || "",
@@ -322,8 +328,14 @@ export default function CompetitionsPage() {
 
     const cleanStages = (formData.stages || []).map((s) => ({
       stageNumber: s.stageNumber,
-      distanceKm: typeof s.distanceKm === "string" ? parseFloat(s.distanceKm) : s.distanceKm,
-      neutralizationMinutes: typeof s.neutralizationMinutes === "string" ? parseInt(s.neutralizationMinutes, 10) : (s.neutralizationMinutes ?? 0),
+      distanceKm:
+        typeof s.distanceKm === "string"
+          ? parseFloat(s.distanceKm)
+          : s.distanceKm,
+      neutralizationMinutes:
+        typeof s.neutralizationMinutes === "string"
+          ? parseInt(s.neutralizationMinutes, 10)
+          : (s.neutralizationMinutes ?? 0),
     }));
 
     try {
@@ -340,7 +352,9 @@ export default function CompetitionsPage() {
           maxHeartRate: formData.maxHeartRate,
           stages: cleanStages,
         });
-        queryClient.invalidateQueries({ queryKey: ["competition", editingCompetition.id] });
+        queryClient.invalidateQueries({
+          queryKey: ["competition", editingCompetition.id],
+        });
         queryClient.invalidateQueries({ queryKey: ["competitions"] });
       } else {
         // Modo Creación
@@ -655,7 +669,9 @@ export default function CompetitionsPage() {
                         <div className="flex items-center justify-end space-x-2">
                           <Link
                             href={`/competitions/${comp.id}/start-list`}
-                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
+                            }
                             className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-emerald-50 rounded-lg transition-all"
                             title={`Ver Start List / Inscripciones de ${comp.name}`}
                           >

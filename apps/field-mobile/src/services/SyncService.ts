@@ -188,11 +188,14 @@ class SyncService {
               `[SyncService] Item #${item.id} is in backoff window. Skipping remaining queue to preserve order. Next retry in ${Math.round(remainingDelay / 1000)}s`,
             );
             if (!this.retryTimeout) {
-              this.retryTimeout = setTimeout(() => {
-                this.syncPendingItems().catch((err) =>
-                  console.error("[SyncService] Retry trigger failed:", err),
-                );
-              }, Math.max(remainingDelay, 100));
+              this.retryTimeout = setTimeout(
+                () => {
+                  this.syncPendingItems().catch((err) =>
+                    console.error("[SyncService] Retry trigger failed:", err),
+                  );
+                },
+                Math.max(remainingDelay, 100),
+              );
             }
             break;
           }
@@ -315,7 +318,9 @@ class SyncService {
 
           // Schedule a retry after backoff delay
           const delay = this.getBackoffDelay(nextAttempt);
-          console.log(`[SyncService] Scheduling retry in ${delay / 1000}s due to error.`);
+          console.log(
+            `[SyncService] Scheduling retry in ${delay / 1000}s due to error.`,
+          );
           if (this.retryTimeout) {
             clearTimeout(this.retryTimeout);
           }

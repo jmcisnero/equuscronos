@@ -12,7 +12,9 @@ import { Server } from "socket.io";
   },
   namespace: "race",
 })
-export class RealTimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RealTimeGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -32,7 +34,10 @@ export class RealTimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   emitRaceClosed(competitionId: string) {
     if (this.server) {
-      this.server.emit(`competition:${competitionId}:closed`, { competitionId, closed: true });
+      this.server.emit(`competition:${competitionId}:closed`, {
+        competitionId,
+        closed: true,
+      });
     }
   }
 }

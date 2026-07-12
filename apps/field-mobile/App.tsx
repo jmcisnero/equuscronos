@@ -111,7 +111,10 @@ function MainApp() {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           entry.id,
-          entry.tenant?.id || activeCompetition.tenant?.id || activeCompetition.tenantId || "77777777-7777-7777-7777-777777777777",
+          entry.tenant?.id ||
+            activeCompetition.tenant?.id ||
+            activeCompetition.tenantId ||
+            "77777777-7777-7777-7777-777777777777",
           activeCompetition.id,
           entry.rider?.id || "rider-unknown",
           entry.rider?.name || "Desconocido",
@@ -193,7 +196,7 @@ function MainApp() {
         // Bootstrapping local sqlite schema
         await initDatabase();
         setDbReady(true);
-        
+
         // Restore persisted API URL
         const storedApiUrl = await SecureStore.getItemAsync("api_url");
         if (storedApiUrl) {
@@ -718,7 +721,11 @@ function MainApp() {
                     keyof typeof TimeRecordType
                   >
                 )
-                  .filter((key) => TimeRecordType[key] !== TimeRecordType.START && TimeRecordType[key] !== TimeRecordType.VET_OUT)
+                  .filter(
+                    (key) =>
+                      TimeRecordType[key] !== TimeRecordType.START &&
+                      TimeRecordType[key] !== TimeRecordType.VET_OUT,
+                  )
                   .map((key) => {
                     const val = TimeRecordType[key];
                     const isActive = stationRecordType === val;
@@ -737,9 +744,7 @@ function MainApp() {
                             isActive && styles.stationTextActive,
                           ]}
                         >
-                          {val === "ARRIVAL"
-                            ? "🏁 Arribos"
-                            : "🩺 Vet In"}
+                          {val === "ARRIVAL" ? "🏁 Arribos" : "🩺 Vet In"}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -916,9 +921,7 @@ function MainApp() {
       )}
 
       {activeScreen === "SYNC_MONITOR" && (
-        <SyncMonitorScreen
-          onBack={handleBackFromSyncMonitor}
-        />
+        <SyncMonitorScreen onBack={handleBackFromSyncMonitor} />
       )}
     </SafeAreaView>
   );

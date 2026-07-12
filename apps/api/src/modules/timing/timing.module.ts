@@ -33,6 +33,11 @@ import { LeaderboardModule } from "../leaderboard/leaderboard.module";
     ControlClosureScheduler,
     AdminContingencyService,
   ],
-  exports: [TimingService, RealTimeGateway, ControlClosureScheduler, AdminContingencyService],
+  exports: [
+    TimingService,
+    RealTimeGateway,
+    ControlClosureScheduler,
+    AdminContingencyService,
+  ],
 })
 export class TimingModule {}

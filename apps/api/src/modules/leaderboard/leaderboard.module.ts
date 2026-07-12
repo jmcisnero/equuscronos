@@ -17,4 +17,3 @@ import { TimingModule } from "../timing/timing.module";
   exports: [LeaderboardService],
 })
 export class LeaderboardModule {}
-

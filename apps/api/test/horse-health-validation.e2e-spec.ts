@@ -45,11 +45,21 @@ describe("Horse Health Records Expiration Validation (e2e)", () => {
 
   afterAll(async () => {
     // Cleanup
-    await dataSource.query(`DELETE FROM competition_entries WHERE competition_id = '${competitionId}';`);
-    await dataSource.query(`DELETE FROM competitions WHERE id = '${competitionId}';`);
-    await dataSource.query(`DELETE FROM horses WHERE name LIKE 'Health Test Horse%';`);
-    await dataSource.query(`DELETE FROM riders WHERE name LIKE 'Health Test Rider%';`);
-    await dataSource.query(`DELETE FROM owners WHERE name = 'Health Test Owner';`);
+    await dataSource.query(
+      `DELETE FROM competition_entries WHERE competition_id = '${competitionId}';`,
+    );
+    await dataSource.query(
+      `DELETE FROM competitions WHERE id = '${competitionId}';`,
+    );
+    await dataSource.query(
+      `DELETE FROM horses WHERE name LIKE 'Health Test Horse%';`,
+    );
+    await dataSource.query(
+      `DELETE FROM riders WHERE name LIKE 'Health Test Rider%';`,
+    );
+    await dataSource.query(
+      `DELETE FROM owners WHERE name = 'Health Test Owner';`,
+    );
     await app.close();
   });
 
@@ -59,8 +69,10 @@ describe("Horse Health Records Expiration Validation (e2e)", () => {
     const ownerId = randomUUID();
     const bibNumber = testBibBase + 1;
 
-    await dataSource.query(`INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`);
-    
+    await dataSource.query(
+      `INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`,
+    );
+
     // Horse with null healthRecordsExpiration
     await dataSource.query(`
       INSERT INTO horses (id, owner_id, name, feu_id, chip_id, is_feu_active, health_records_expiration)
@@ -92,8 +104,10 @@ describe("Horse Health Records Expiration Validation (e2e)", () => {
     const ownerId = randomUUID();
     const bibNumber = testBibBase + 2;
 
-    await dataSource.query(`INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`);
-    
+    await dataSource.query(
+      `INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`,
+    );
+
     // Horse with valid future healthRecordsExpiration (2026-12-31 is after competition date 2026-06-10)
     await dataSource.query(`
       INSERT INTO horses (id, owner_id, name, feu_id, chip_id, is_feu_active, health_records_expiration)
@@ -125,8 +139,10 @@ describe("Horse Health Records Expiration Validation (e2e)", () => {
     const ownerId = randomUUID();
     const bibNumber = testBibBase + 3;
 
-    await dataSource.query(`INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`);
-    
+    await dataSource.query(
+      `INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Health Test Owner', 'PERSON');`,
+    );
+
     // Horse with expired healthRecordsExpiration (2026-05-10 is before competition date 2026-06-10)
     await dataSource.query(`
       INSERT INTO horses (id, owner_id, name, feu_id, chip_id, is_feu_active, health_records_expiration)

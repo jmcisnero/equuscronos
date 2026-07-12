@@ -87,7 +87,14 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       // Cargamos las relaciones asociadas bajo la seguridad de la transacción bloqueada
       const entry = await manager.findOne(CompetitionEntry, {
         where: { id: lockedEntry.id },
-        relations: ["competition", "competition.tenant", "competition.stages", "horse", "rider", "tenant"],
+        relations: [
+          "competition",
+          "competition.tenant",
+          "competition.stages",
+          "horse",
+          "rider",
+          "tenant",
+        ],
       });
 
       if (!entry) {
@@ -96,7 +103,10 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
-      if (currentUserTenantId && entry.competition?.tenant?.id !== currentUserTenantId) {
+      if (
+        currentUserTenantId &&
+        entry.competition?.tenant?.id !== currentUserTenantId
+      ) {
         throw new ForbiddenException(
           "Acción denegada: La competencia pertenece a otra organización/club (Multi-Tenant Isolation).",
         );
@@ -142,7 +152,9 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         relations: ["stage"],
       });
 
-      const currentStage = await manager.findOne(Stage, { where: { id: dto.stageId } });
+      const currentStage = await manager.findOne(Stage, {
+        where: { id: dto.stageId },
+      });
       if (!currentStage) throw new NotFoundException("Etapa no encontrada.");
 
       const stages = entry.competition.stages || [];
@@ -150,15 +162,21 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       const lastStageObj = stages[stages.length - 1];
       const isLastStage = lastStageObj && lastStageObj.id === dto.stageId;
 
-      const vetInspection = await manager.findOne(VetInspection, {
+      const vetInspections = await manager.find(VetInspection, {
         where: {
           competition: { id: entry.competition.id },
           vetGateNumber: currentStage.stageNumber,
           riderDorsal: String(entry.bibNumber),
         },
+        order: { createdAt: "ASC" },
       });
 
-      this.validateLogicalSequence(dto.recordType, existingRecords, vetInspection, isLastStage);
+      this.validateLogicalSequence(
+        dto.recordType,
+        existingRecords,
+        vetInspections,
+        isLastStage,
+      );
 
       // 5. Persistencia del Tiempo
       try {
@@ -204,10 +222,12 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         if (isLastStage && dto.recordType === TimeRecordType.ARRIVAL) {
           // Check if competition.controlClosureTime is set and exceeded
           const freshComp = await manager.findOne(Competition, {
-            where: { id: entry.competition.id }
+            where: { id: entry.competition.id },
           });
           if (freshComp && freshComp.controlClosureTime) {
-            const isLate = new Date(dto.recordedAt).getTime() > new Date(freshComp.controlClosureTime).getTime();
+            const isLate =
+              new Date(dto.recordedAt).getTime() >
+              new Date(freshComp.controlClosureTime).getTime();
             if (isLate) {
               isApproved = false;
               eliminationType = EliminationCode.TIME;
@@ -247,17 +267,27 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
               relations: ["competitionType"],
             });
             if (competition && !competition.controlClosureTime) {
-              const totalDistance = stages.reduce((sum, s) => sum + Number(s.distanceKm || 0), 0);
-              const rulesConfig = competition.competitionType?.rulesConfig || {};
+              const totalDistance = stages.reduce(
+                (sum, s) => sum + Number(s.distanceKm || 0),
+                0,
+              );
+              const rulesConfig =
+                competition.competitionType?.rulesConfig || {};
               const rulesList = rulesConfig.distance_tolerance_rules || [];
-              
+
               let toleranceMins = 30;
               const matchedRule = rulesList.find((r: any) => {
-                const minOk = r.min_distance === null || r.min_distance === undefined || totalDistance >= Number(r.min_distance);
-                const maxOk = r.max_distance === null || r.max_distance === undefined || totalDistance < Number(r.max_distance);
+                const minOk =
+                  r.min_distance === null ||
+                  r.min_distance === undefined ||
+                  totalDistance >= Number(r.min_distance);
+                const maxOk =
+                  r.max_distance === null ||
+                  r.max_distance === undefined ||
+                  totalDistance < Number(r.max_distance);
                 return minOk && maxOk;
               });
-              
+
               if (matchedRule) {
                 toleranceMins = Number(matchedRule.tolerance_minutes);
               } else {
@@ -269,15 +299,17 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
                   toleranceMins = 60;
                 }
               }
-              
+
               const winnerTimestamp = new Date(dto.recordedAt);
-              const closureTime = new Date(winnerTimestamp.getTime() + toleranceMins * 60 * 1000);
-              
+              const closureTime = new Date(
+                winnerTimestamp.getTime() + toleranceMins * 60 * 1000,
+              );
+
               competition.controlClosureTime = closureTime;
               await manager.save(Competition, competition);
-              
+
               console.log(
-                `[Control Closure] Winner arrived. Total distance: ${totalDistance} km. Tolerance: ${toleranceMins} mins. Control closure time set to: ${closureTime.toISOString()}`
+                `[Control Closure] Winner arrived. Total distance: ${totalDistance} km. Tolerance: ${toleranceMins} mins. Control closure time set to: ${closureTime.toISOString()}`,
               );
             }
           }
@@ -305,10 +337,14 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
   private validateLogicalSequence(
     newRecordType: TimeRecordType,
     existingRecords: TimingRecord[],
-    vetInspection: VetInspection | null,
+    vetInspections: VetInspection[],
     isLastStage: boolean = false,
   ): void {
-    if (isLastStage && (newRecordType === TimeRecordType.VET_IN || newRecordType === TimeRecordType.VET_OUT)) {
+    if (
+      isLastStage &&
+      (newRecordType === TimeRecordType.VET_IN ||
+        newRecordType === TimeRecordType.VET_OUT)
+    ) {
       throw new BadRequestException(
         "Acción denegada: No se permiten registros veterinarios (VET_IN / VET_OUT) en la última etapa de la competencia.",
       );
@@ -332,7 +368,14 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
             "Máximo de 2 intentos de inspección veterinaria (VET_IN) permitidos por etapa.",
           );
         }
-        if (vetInspection && vetInspection.isFinalDecision) {
+
+        const firstInspection = vetInspections[0];
+        if (!firstInspection) {
+          throw new BadRequestException(
+            "No se puede registrar un segundo intento de VET_IN si el primero aún no ha sido inspeccionado.",
+          );
+        }
+        if (!firstInspection.isRecheckRequired) {
           throw new BadRequestException(
             "No se puede registrar un segundo intento de VET_IN si el primero ya fue aprobado o descalificado definitivamente.",
           );
@@ -387,10 +430,13 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
 
         if (isLastStage) {
           const freshComp = await manager.findOne(Competition, {
-            where: { id: entry.competition.id }
+            where: { id: entry.competition.id },
           });
-          const isLate = freshComp && freshComp.controlClosureTime &&
-            new Date(dto.recordedAt).getTime() > new Date(freshComp.controlClosureTime).getTime();
+          const isLate =
+            freshComp &&
+            freshComp.controlClosureTime &&
+            new Date(dto.recordedAt).getTime() >
+              new Date(freshComp.controlClosureTime).getTime();
 
           if (isLate) {
             newStatus = ParticipantStatus.NO_COMPLETED;
@@ -825,6 +871,23 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       return {
         eligible: false,
         reason: `El binomio está fuera de competencia (${fullEntry.status}).`,
+      };
+    }
+
+    const vetInspection = await mgr.findOne(VetInspection, {
+      where: {
+        competition: { id: fullEntry.competition.id },
+        vetGateNumber: currentStage.stageNumber,
+        riderDorsal: String(fullEntry.bibNumber),
+        isFinalDecision: true,
+      },
+    });
+
+    if (vetInspection && vetInspection.isRecheckRequired) {
+      return {
+        eligible: false,
+        reason:
+          "El binomio requiere un rechequeo veterinario obligatorio antes de largar.",
       };
     }
 

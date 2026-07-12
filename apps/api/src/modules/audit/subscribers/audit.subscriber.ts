@@ -33,9 +33,12 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     // Salvaguarda explícita para TimingRecord / timing_records
     if (event.metadata.tableName === "timing_records" || !entityId) {
       const rawId = event.entity?.id;
-      const entryId = event.entity?.entry?.id || event.entity?.entry_id || event.entity?.entryId;
+      const entryId =
+        event.entity?.entry?.id ||
+        event.entity?.entry_id ||
+        event.entity?.entryId;
       if (!entityId) {
-        entityId = rawId ? String(rawId) : (entryId ? String(entryId) : null);
+        entityId = rawId ? String(rawId) : entryId ? String(entryId) : null;
       }
     }
 
@@ -87,10 +90,15 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (event.metadata.tableName === "timing_records" || !entityId) {
       const rawId = event.entity?.id || event.databaseEntity?.id;
-      const entryId = event.entity?.entry?.id || event.entity?.entry_id || event.entity?.entryId ||
-                      event.databaseEntity?.entry?.id || event.databaseEntity?.entry_id || event.databaseEntity?.entryId;
+      const entryId =
+        event.entity?.entry?.id ||
+        event.entity?.entry_id ||
+        event.entity?.entryId ||
+        event.databaseEntity?.entry?.id ||
+        event.databaseEntity?.entry_id ||
+        event.databaseEntity?.entryId;
       if (!entityId) {
-        entityId = rawId ? String(rawId) : (entryId ? String(entryId) : null);
+        entityId = rawId ? String(rawId) : entryId ? String(entryId) : null;
       }
     }
 
@@ -139,9 +147,12 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (event.metadata.tableName === "timing_records" || !entityId) {
       const rawId = event.entityId || event.databaseEntity?.id;
-      const entryId = event.databaseEntity?.entry?.id || event.databaseEntity?.entry_id || event.databaseEntity?.entryId;
+      const entryId =
+        event.databaseEntity?.entry?.id ||
+        event.databaseEntity?.entry_id ||
+        event.databaseEntity?.entryId;
       if (!entityId) {
-        entityId = rawId ? String(rawId) : (entryId ? String(entryId) : null);
+        entityId = rawId ? String(rawId) : entryId ? String(entryId) : null;
       }
     }
 
@@ -187,9 +198,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   /**
    * Obtiene el usuario autenticado de la sesión.
    */
-  private async getCurrentUser(
-    event: any,
-  ): Promise<User | null> {
+  private async getCurrentUser(event: any): Promise<User | null> {
     const store = tenantStorage.getStore();
     const userId = store?.userId;
     if (userId) {
@@ -207,9 +216,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   /**
    * Obtiene el tenant para la auditoría, usando la entidad o un fallback.
    */
-  private async getTenantForEntity(
-    event: any,
-  ): Promise<Tenant | null> {
+  private async getTenantForEntity(event: any): Promise<Tenant | null> {
     const entity = event.entity || event.databaseEntity;
     if (entity) {
       if (entity.tenant) {
@@ -276,7 +283,10 @@ export class AuditSubscriber implements EntitySubscriberInterface {
         });
         if (tenant) return tenant;
       } catch (err) {
-        console.error("[AuditSubscriber] Error fetching tenant from store:", err);
+        console.error(
+          "[AuditSubscriber] Error fetching tenant from store:",
+          err,
+        );
       }
     }
 
@@ -338,7 +348,8 @@ export class AuditSubscriber implements EntitySubscriberInterface {
   private toSafeUuid(val: any): string | null {
     if (!val) return null;
     const str = String(val);
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(str)) {
       return str.toLowerCase();
     }
@@ -346,7 +357,10 @@ export class AuditSubscriber implements EntitySubscriberInterface {
       const hash = crypto.createHash("md5").update(str).digest("hex");
       return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
     } catch (err) {
-      console.error("[AuditSubscriber] Error generating safe UUID from string:", err);
+      console.error(
+        "[AuditSubscriber] Error generating safe UUID from string:",
+        err,
+      );
       return null;
     }
   }
