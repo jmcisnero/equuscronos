@@ -6,7 +6,7 @@ COPY package*.json ./
 COPY apps/public-web/package*.json ./apps/public-web/
 COPY libs/shared/package*.json ./libs/shared/
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY apps/public-web ./apps/public-web
 COPY libs/shared ./libs/shared

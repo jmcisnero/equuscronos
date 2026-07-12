@@ -6,7 +6,7 @@ COPY package*.json ./
 COPY apps/admin-web/package*.json ./apps/admin-web/
 COPY libs/shared/package*.json ./libs/shared/
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY apps/admin-web ./apps/admin-web
 COPY libs/shared ./libs/shared
