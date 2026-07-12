@@ -117,6 +117,11 @@ export default function LeaderboardTable({
   // Datos reales del SWR
   const activeData = leaderboard;
 
+  // Verificar si hay algún competidor en estado NO_COMPLETED
+  const hasNoCompleted = React.useMemo(() => {
+    return activeData.some((entry) => entry.status === "NO_COMPLETED");
+  }, [activeData]);
+
   // Filtrado reactivo multivariable (nombre jinete, caballo o número de dorsal)
   const filteredData = React.useMemo(() => {
     return activeData.filter((entry) => {
@@ -306,9 +311,9 @@ export default function LeaderboardTable({
 
   return (
     <div className="space-y-6">
-      {isClosed && (
-        <div className="bg-rose-500 text-white rounded-3xl p-5 shadow-lg border border-rose-600 flex items-start space-x-4 animate-pulse">
-          <div className="p-2 rounded-xl bg-white/20 text-white flex-shrink-0">
+      {isClosed && hasNoCompleted && (
+        <div className="bg-slate-100 text-slate-800 rounded-3xl p-5 border border-slate-200 flex items-start space-x-4">
+          <div className="p-2 rounded-xl bg-slate-200 text-slate-600 flex-shrink-0">
             <svg
               className="h-6 w-6"
               fill="none"
@@ -319,18 +324,16 @@ export default function LeaderboardTable({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2.5}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </div>
           <div>
-            <h3 className="text-base font-black tracking-tight leading-tight">
-              Control de Meta Cerrado (Tolerancia Expirada)
+            <h3 className="text-base font-black tracking-tight leading-tight text-slate-900">
+              Control de Meta Cerrado (Tiempo Expirado)
             </h3>
-            <p className="text-rose-100 text-xs font-bold mt-1">
-              La carrera ha concluido y el tiempo límite de tolerancia ha
-              expirado. Todos los binomios que no completaron la prueba pasaron
-              a estado "No Completó" (NC).
+            <p className="text-slate-600 text-xs mt-1">
+              La carrera ha concluido. Aquellos binomios que no lograron completar la meta final dentro del tiempo límite reglamentario se registran como "No Completó" (NC).
             </p>
           </div>
         </div>
