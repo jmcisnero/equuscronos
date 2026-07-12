@@ -103,6 +103,7 @@ class ApiService {
       UserRole.TIMEKEEPER,
       UserRole.JUDGE,
       UserRole.ADMIN,
+      UserRole.VET,
     ]);
     const db = await getDatabase();
 
@@ -149,6 +150,7 @@ class ApiService {
       UserRole.TIMEKEEPER,
       UserRole.JUDGE,
       UserRole.ADMIN,
+      UserRole.VET,
     ]);
     const response = await this.client.patch(`/timing/${id}`, payload);
     return response.data;
@@ -165,6 +167,7 @@ class ApiService {
       UserRole.TIMEKEEPER,
       UserRole.JUDGE,
       UserRole.ADMIN,
+      UserRole.VET,
     ]);
     const response = await this.client.patch(`/timing/${id}/void`, payload);
     return response.data;

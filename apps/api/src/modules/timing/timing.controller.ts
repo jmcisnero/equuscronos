@@ -26,7 +26,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 
 @ApiTags("9. Cronometraje (Motor de Pista - Field App)")
 @ApiBearerAuth("access-token")
-@Roles(UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN, UserRole.CLUB_ADMIN)
+@Roles(UserRole.TIMEKEEPER, UserRole.JUDGE, UserRole.ADMIN, UserRole.CLUB_ADMIN, UserRole.VET)
 @Controller("timing")
 export class TimingController {
   constructor(private readonly timingService: TimingService) {}
