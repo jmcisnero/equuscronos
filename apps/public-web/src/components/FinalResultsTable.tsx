@@ -15,20 +15,20 @@ import {
   StageHistoryTable,
 } from "./LeaderboardShared";
 
-interface LeaderboardTableProps {
+interface FinalResultsTableProps {
   competitionId: string;
   searchQuery?: string;
   onErrorChange?: (hasError: boolean) => void;
   onValidatingChange?: (isValidating: boolean) => void;
-  // Optional props for orchestration
+  // Props opcionales provistas por el componente orquestador
   leaderboard?: LeaderboardEntry[];
   isLoading?: boolean;
   error?: any;
   isValidating?: boolean;
-  isClosed?: boolean;
+  maxHeartRate?: number;
 }
 
-export default function LeaderboardTable({
+export default function FinalResultsTable({
   competitionId,
   searchQuery = "",
   onErrorChange,
@@ -37,8 +37,8 @@ export default function LeaderboardTable({
   isLoading: propsIsLoading,
   error: propsError,
   isValidating: propsIsValidating,
-  isClosed: propsIsClosed,
-}: LeaderboardTableProps) {
+  maxHeartRate = 65,
+}: FinalResultsTableProps) {
   // Consumir el hook si no se proveen las propiedades por parámetro
   const hookData = useLiveLeaderboard(competitionId);
   
@@ -46,36 +46,32 @@ export default function LeaderboardTable({
   const isLoading = propsIsLoading !== undefined ? propsIsLoading : hookData.isLoading;
   const error = propsError !== undefined ? propsError : hookData.error;
   const isValidating = propsIsValidating !== undefined ? propsIsValidating : hookData.isValidating;
-  const isClosed = propsIsClosed !== undefined ? propsIsClosed : hookData.isClosed;
 
-  // Control de estado reactivo para la fila expandida (Acordeón estricto)
+  // Control de fila expandida
   const [expandedRowId, setExpandedRowId] = React.useState<number | null>(null);
 
-  // Informar al layout root sobre errores en la llamada a la API
+  // Informar al layout root sobre errores
   React.useEffect(() => {
     if (onErrorChange) {
       onErrorChange(!!error);
     }
   }, [error, onErrorChange]);
 
-  // Notificar al componente padre sobre la validación en segundo plano de SWR
+  // Notificar al componente padre sobre la validación
   React.useEffect(() => {
     if (onValidatingChange) {
       onValidatingChange(isValidating);
     }
   }, [isValidating, onValidatingChange]);
 
-  // Datos reales del SWR
-  const activeData = leaderboard;
-
   // Verificar si hay algún competidor en estado NO_COMPLETED
   const hasNoCompleted = React.useMemo(() => {
-    return activeData.some((entry) => entry.status === "NO_COMPLETED");
-  }, [activeData]);
+    return leaderboard.some((entry) => entry.status === "NO_COMPLETED");
+  }, [leaderboard]);
 
-  // Filtrado reactivo multivariable (nombre jinete, caballo o número de dorsal)
+  // Filtrado multivariable
   const filteredData = React.useMemo(() => {
-    return activeData.filter((entry) => {
+    return leaderboard.filter((entry) => {
       const query = searchQuery.toLowerCase().trim();
       if (!query) return true;
       return (
@@ -84,11 +80,106 @@ export default function LeaderboardTable({
         entry.bibNumber.toString().includes(query)
       );
     });
-  }, [activeData, searchQuery]);
+  }, [leaderboard, searchQuery]);
 
-  // AUDITORÍA RESPONSIVA Y CLS:
-  // Renderizamos cargadores Skeletons con diseño espejo (Dual Layout Skeleton)
-  // para evitar saltos bruscos de Cumulative Layout Shift (CLS) en celulares.
+  // Calcular la suma de distancias (Kms) de cada binomio usando useMemo
+  const entriesWithCalculatedKms = React.useMemo(() => {
+    return filteredData.map((entry) => {
+      const totalKms = (entry.stages || []).reduce(
+        (sum, stage) => sum + (stage.distanceKm || 0),
+        0
+      );
+      return {
+        ...entry,
+        totalKms,
+      };
+    });
+  }, [filteredData]);
+
+  // Algoritmo del Trofeo FEU (Art. 42)
+  const feuTrophyWinnerBib = React.useMemo(() => {
+    // Paso 1: Filtrar clasificados
+    const classified = leaderboard.filter(
+      (entry) =>
+        entry.status === "FINISHED" ||
+        entry.status === "FINISHED_PROVISIONAL" ||
+        (entry.rank !== null && entry.rank !== undefined && entry.rank > 0)
+    );
+
+    // Paso 2: Mapear a dorsal, pulso de etapa 1 y rank
+    const candidates = classified
+      .map((entry) => {
+        const stage1 = entry.stages?.find((s) => s.stageNumber === 1);
+        const pulse = stage1?.heartRate;
+        return {
+          bibNumber: entry.bibNumber,
+          pulse: pulse !== undefined && pulse !== null && !isNaN(pulse) ? pulse : null,
+          rank: entry.rank !== null && entry.rank !== undefined ? entry.rank : Infinity,
+        };
+      })
+      .filter((c) => c.pulse !== null) as { bibNumber: number; pulse: number; rank: number }[];
+
+    if (candidates.length === 0) return null;
+
+    // Paso 3: Encontrar el pulso mínimo
+    const minPulse = Math.min(...candidates.map((c) => c.pulse));
+
+    // Paso 4: Resolver empates por mejor rank (número menor)
+    const minPulseCandidates = candidates.filter((c) => c.pulse === minPulse);
+    if (minPulseCandidates.length === 0) return null;
+
+    minPulseCandidates.sort((a, b) => a.rank - b.rank);
+
+    return minPulseCandidates[0].bibNumber;
+  }, [leaderboard]);
+
+  // Renderizador de la columna especial de Pulso
+  const renderStage1Pulse = (entry: LeaderboardEntry) => {
+    const stage1 = entry.stages?.find((s) => s.stageNumber === 1);
+    const pulse = stage1?.heartRate;
+
+    if (pulse === undefined || pulse === null) {
+      return <span className="text-slate-400 font-bold">—</span>;
+    }
+
+    const isWinner = entry.bibNumber === feuTrophyWinnerBib;
+    const isHigh = pulse > maxHeartRate;
+
+    let heartColorClass = "";
+    if (isWinner) {
+      heartColorClass = "text-amber-500 hover:text-amber-600"; // Oro / Dorado
+    } else if (isHigh) {
+      heartColorClass = "text-rose-500 hover:text-rose-600"; // Rojo (Peligro)
+    } else {
+      heartColorClass = "text-equus-green hover:text-[#153B29]"; // Verde de la paleta de colores de equuscronos (#1C4F38)
+    }
+
+    return (
+      <div className="flex items-center justify-center space-x-0.5">
+        {isWinner && (
+          <span
+            title="Ganador del Trofeo FEU (Mejor Pulso de Etapa 1)"
+            className="text-base select-none leading-none z-10"
+          >
+            🏆
+          </span>
+        )}
+        <div className="relative inline-flex items-center justify-center w-10 h-10 group">
+          <svg
+            className={`w-10 h-10 ${heartColorClass} fill-current transition-colors drop-shadow-sm`}
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white select-none mt-[-1px]">
+            {pulse}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -111,7 +202,6 @@ export default function LeaderboardTable({
                 <div className="h-5 w-24 bg-slate-200 rounded"></div>
                 <div className="h-5 w-16 bg-slate-200 rounded"></div>
                 <div className="h-5 w-20 bg-slate-200 rounded"></div>
-                <div className="h-5 w-12 bg-slate-200 rounded"></div>
                 <div className="h-8 w-24 bg-slate-200 rounded-full"></div>
               </div>
             ))}
@@ -151,7 +241,7 @@ export default function LeaderboardTable({
 
   return (
     <div className="space-y-6">
-      {isClosed && hasNoCompleted && (
+      {hasNoCompleted && (
         <div className="bg-slate-100 text-slate-800 rounded-3xl p-5 border border-slate-200 flex items-start space-x-4">
           <div className="p-2 rounded-xl bg-slate-200 text-slate-600 flex-shrink-0">
             <svg
@@ -170,7 +260,7 @@ export default function LeaderboardTable({
           </div>
           <div>
             <h3 className="text-base font-black tracking-tight leading-tight text-slate-900">
-              Control de Meta Cerrado (Tiempo Expirado)
+              Resultados Oficiales - Control de Meta Cerrado
             </h3>
             <p className="text-slate-600 text-xs mt-1">
               La carrera ha concluido. Aquellos binomios que no lograron completar la meta final dentro del tiempo límite reglamentario se registran como "No Completó" (NC).
@@ -178,13 +268,13 @@ export default function LeaderboardTable({
           </div>
         </div>
       )}
+
       {/* ========================================================================= */}
       {/* VISTA MÓVIL (MOBILE CARD VIEW)                                            */}
-      {/* Evita desbordamiento y scroll horizontal incómodo en celulares de baja gama*/}
       {/* ========================================================================= */}
       <div className="block md:hidden space-y-4">
-        {filteredData.length > 0 ? (
-          filteredData.map((entry) => {
+        {entriesWithCalculatedKms.length > 0 ? (
+          entriesWithCalculatedKms.map((entry) => {
             const rankBg =
               entry.rank === 1
                 ? "bg-amber-100 text-amber-950 border-amber-300"
@@ -194,25 +284,19 @@ export default function LeaderboardTable({
                     ? "bg-orange-100 text-orange-950 border-orange-300"
                     : "bg-slate-50 text-slate-700 border-slate-200";
 
-            const previousStages = (entry.stages || []).filter(
-              (s) =>
-                s.stageNumber < entry.currentStage ||
-                entry.status === "FINISHED",
-            );
-
             return (
               <div
                 key={entry.bibNumber}
                 onClick={() =>
                   setExpandedRowId(
-                    expandedRowId === entry.bibNumber ? null : entry.bibNumber,
+                    expandedRowId === entry.bibNumber ? null : entry.bibNumber
                   )
                 }
                 className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${
                   entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
                 } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
               >
-                {/* Cabecera de la Tarjeta del Binomio */}
+                {/* Cabecera */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <svg
@@ -251,24 +335,29 @@ export default function LeaderboardTable({
                   {renderStatusBadge(entry.status)}
                 </div>
 
-                {/* Información del Binomio con Alto Contraste para Lectura al Aire Libre */}
+                {/* Binomio */}
                 <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-900 text-base leading-tight">
+                  <h4 className="font-extrabold text-slate-900 text-xs leading-tight">
                     {entry.riderName}
                   </h4>
                   <p className="text-xs text-slate-500 font-bold flex items-center">
-                    Caballo: {entry.horseName}
+                    Equino: {entry.horseName}
                   </p>
+                  {entry.representedTenant?.name && (
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                      {entry.representedTenant.name}
+                    </p>
+                  )}
                 </div>
 
-                {/* Grid de Estadísticas Técnicas del Binomio */}
+                {/* Grid Estadístico */}
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs">
                   <div>
                     <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
-                      Etapa
+                      Distancia Total
                     </span>
                     <span className="font-extrabold text-slate-800">
-                      Etapa {entry.currentStage}
+                      {entry.totalKms.toFixed(1)} km
                     </span>
                   </div>
                   <div>
@@ -293,79 +382,39 @@ export default function LeaderboardTable({
                     </span>
                     <span className="text-slate-800">
                       {entry.averageSpeed
-                        ? `${entry.averageSpeed.toFixed(2)} km/h`
+                        ? `${entry.averageSpeed.toFixed(3)} km/h`
                         : "--"}
                     </span>
                   </div>
-
-                  {entry.startTime && (
-                    <div>
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
-                        Hora Salida
-                      </span>
-                      <span className="font-sans tabular-nums font-bold text-[#1C4F38]">
-                        {formatHHMMSS(entry.startTime)}
-                      </span>
+                  <div>
+                    <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
+                      Pulso
+                    </span>
+                    <div className="mt-1 flex items-center">
+                      {renderStage1Pulse(entry)}
                     </div>
-                  )}
+                  </div>
+
                   {entry.arrivalTime && (
                     <div>
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
-                        Hora Llegada
+                        Hora Llegada Meta
                       </span>
                       <span className="font-sans tabular-nums font-bold text-[#1C4F38]">
                         {formatHHMMSS(entry.arrivalTime)}
                       </span>
                     </div>
                   )}
-                  {entry.vetInTime && (
-                    <div>
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
-                        Toma de Pulso
-                      </span>
-                      <span className="font-sans tabular-nums text-slate-800">
-                        {formatHHMMSS(entry.vetInTime)}
-                      </span>
-                    </div>
-                  )}
-                  {entry.nextVetControlTime && !isClosed && (
-                    <div>
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
-                        Límite Vet Gate
-                      </span>
-                      <span className="font-sans tabular-nums font-bold text-[#AD8F6C]">
-                        {formatHHMMSS(entry.nextVetControlTime)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Frecuencia cardíaca (Pulso) conforme límites FEU */}
-                  {entry.heartRate && (
-                    <div className="col-span-2 pt-2 border-t border-dashed border-slate-100 flex justify-between items-center">
-                      <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">
-                        Pulsaciones (Límite 60/64 FEU)
-                      </span>
-                      <span
-                        className={`font-sans tabular-nums font-black px-2.5 py-1 rounded-lg text-xs ${
-                          entry.heartRate > 64
-                            ? "bg-rose-100 text-rose-900 border border-rose-200"
-                            : "bg-slate-100 text-slate-900 border border-slate-200"
-                        }`}
-                      >
-                        {entry.heartRate} ppm
-                      </span>
-                    </div>
-                  )}
                 </div>
 
-                {/* Historial de Etapas Anteriores (Bitácora Móvil) */}
+                {/* Acordeón Móvil (Historial clínico completo) */}
                 <div
                   className={`transition-all duration-300 ease-in-out overflow-hidden ${
                     expandedRowId === entry.bibNumber
                       ? "max-h-[800px] opacity-100 pt-4 border-t border-slate-100"
                       : "max-h-0 opacity-0 pointer-events-none"
                   }`}
-                  onClick={(e) => e.stopPropagation()} // Evita cerrar el acordeón al hacer clic dentro
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <h5 className="font-extrabold text-slate-800 text-xs mb-3 uppercase tracking-wider flex items-center">
                     <svg
@@ -381,9 +430,9 @@ export default function LeaderboardTable({
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    Historial de Etapas Anteriores (Detalle Clínico)
+                    Historial de Etapas (Detalle Clínico)
                   </h5>
-                  <StageHistoryMobile stages={previousStages} />
+                  <StageHistoryMobile stages={entry.stages || []} />
                 </div>
               </div>
             );
@@ -397,29 +446,43 @@ export default function LeaderboardTable({
 
       {/* ========================================================================= */}
       {/* VISTA ESCRITORIO (DESKTOP TABLE VIEW)                                     */}
-      {/* Renderizado de tabla estructurada en pantallas grandes (md y superiores)  */}
       {/* ========================================================================= */}
       <div className="hidden md:block bg-white border border-slate-200/60 rounded-3xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse table-fixed">
+            {/* 
+              Establecer las proporciones de las columnas mediante <colgroup>.
+              Distribuimos el ancho extra equitativamente para acomodar la columna de Pulso.
+            */}
+            <colgroup>
+              <col className="w-12" /> {/* Pos. */}
+              <col className="w-16" /> {/* Dorsal */}
+              <col className="w-[28%]" /> {/* Binomio */}
+              <col className="w-16" /> {/* Kms */}
+              <col className="w-[12%]" /> {/* Llegada */}
+              <col className="w-[20%]" /> {/* Tiempo Neto */}
+              <col className="w-[12%]" /> {/* Diferencia */}
+              <col className="w-24" /> {/* Vel. Prom. */}
+              <col className="w-24" /> {/* Pulso */}
+              <col className="w-24" /> {/* Estado */}
+            </colgroup>
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <th className="py-4.5 px-2 text-center w-12">Pos.</th>
-                <th className="py-4.5 px-3 text-center w-16">Dorsal</th>
+                <th className="py-4.5 px-2 text-center">Pos.</th>
+                <th className="py-4.5 px-3 text-center">Dorsal</th>
                 <th className="py-4.5 px-3">Binomio</th>
-                <th className="py-4.5 px-2 text-center w-14">Etapa</th>
+                <th className="py-4.5 px-2 text-center">Kms</th>
                 <th className="py-4.5 px-3">Llegada</th>
                 <th className="py-4.5 px-3">Tiempo Neto</th>
                 <th className="py-4.5 px-3">Diferencia</th>
-                <th className="py-4.5 px-2 text-center w-24">Vel. Prom.</th>
-                <th className="py-4.5 px-3">Toma de Pulso</th>
-                <th className="py-4.5 px-2 text-center w-16">Pulso</th>
+                <th className="py-4.5 px-2 text-center">Vel. Prom.</th>
+                <th className="py-4.5 px-3 text-center">Pulso</th>
                 <th className="py-4.5 px-3 text-center">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-              {filteredData.length > 0 ? (
-                filteredData.map((entry) => {
+              {entriesWithCalculatedKms.length > 0 ? (
+                entriesWithCalculatedKms.map((entry) => {
                   const rankColors =
                     entry.rank === 1
                       ? "bg-amber-100 text-amber-950 border-amber-300"
@@ -429,12 +492,6 @@ export default function LeaderboardTable({
                           ? "bg-orange-100 text-orange-950 border-orange-300"
                           : "bg-slate-50 text-slate-700 border-slate-200";
 
-                  const previousStages = (entry.stages || []).filter(
-                    (s) =>
-                      s.stageNumber < entry.currentStage ||
-                      entry.status === "FINISHED",
-                  );
-
                   return (
                     <React.Fragment key={entry.bibNumber}>
                       <tr
@@ -442,7 +499,7 @@ export default function LeaderboardTable({
                           setExpandedRowId(
                             expandedRowId === entry.bibNumber
                               ? null
-                              : entry.bibNumber,
+                              : entry.bibNumber
                           )
                         }
                         className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${
@@ -502,25 +559,23 @@ export default function LeaderboardTable({
                         {/* BINOMIO */}
                         <td className="py-4.5 px-3">
                           <div className="flex flex-col">
-                            <span className="font-extrabold text-slate-900 text-sm">
+                            <span className="font-extrabold text-slate-900 text-xs">
                               {entry.riderName}
                             </span>
                             <span className="text-xs text-slate-500 font-bold flex items-center mt-0.5 whitespace-nowrap">
                               {entry.horseName}
                             </span>
-                            {entry.startTime && (
-                              <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                                <span className="inline-flex items-center text-[#1C4F38] bg-[#1C4F38]/10 border border-[#1C4F38]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                                  Salida: {formatHHMMSS(entry.startTime)}
-                                </span>
-                              </div>
+                            {entry.representedTenant?.name && (
+                              <span className="text-[10px] text-slate-400 font-medium mt-0.5 whitespace-nowrap">
+                                {entry.representedTenant.name}
+                              </span>
                             )}
                           </div>
                         </td>
 
-                        {/* ETAPA */}
+                        {/* KMS */}
                         <td className="py-4.5 px-2 text-center font-bold text-slate-800">
-                          E{entry.currentStage}
+                          {entry.totalKms.toFixed(1)}
                         </td>
 
                         {/* LLEGADA */}
@@ -537,49 +592,20 @@ export default function LeaderboardTable({
                         <td className="py-4.5 px-3 font-sans tabular-nums text-xs text-slate-700 whitespace-nowrap">
                           {formatGap(
                             entry.gapToLeaderMs,
-                            entry.totalRaceTimeMs,
+                            entry.totalRaceTimeMs
                           )}
                         </td>
 
                         {/* VELOCIDAD PROMEDIO */}
-                        <td className="py-4.5 px-2 text-center text-slate-800 whitespace-nowrap">
+                        <td className="py-4.5 px-2 text-center text-slate-800 whitespace-nowrap font-medium">
                           {entry.averageSpeed
-                            ? `${entry.averageSpeed.toFixed(2)} km/h`
+                            ? `${entry.averageSpeed.toFixed(3)} km/h`
                             : "--"}
                         </td>
 
-                        {/* TOMA DE PULSO */}
-                        <td className="py-4.5 px-3">
-                          <div className="flex flex-col whitespace-nowrap">
-                            <span className="font-sans tabular-nums text-slate-950 text-sm whitespace-nowrap">
-                              {formatHHMMSS(entry.vetInTime)}
-                            </span>
-                            {entry.nextVetControlTime && !isClosed && (
-                              <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
-                                <span className="inline-flex items-center text-[#AD8F6C] bg-[#AD8F6C]/10 border border-[#AD8F6C]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                                  Límite:{" "}
-                                  {formatHHMMSS(entry.nextVetControlTime)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
                         {/* PULSO */}
-                        <td className="py-4.5 px-2 text-center">
-                          {entry.heartRate ? (
-                            <span
-                              className={`inline-block font-sans tabular-nums font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${
-                                entry.heartRate > 64
-                                  ? "bg-rose-100 text-rose-900 border border-rose-200"
-                                  : "bg-slate-100 text-slate-900 border border-slate-200"
-                              }`}
-                            >
-                              {entry.heartRate} ppm
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">--</span>
-                          )}
+                        <td className="py-4.5 px-3 text-center">
+                          {renderStage1Pulse(entry)}
                         </td>
 
                         {/* ESTADO */}
@@ -588,16 +614,17 @@ export default function LeaderboardTable({
                         </td>
                       </tr>
 
-                      {/* Fila Secundaria del Acordeón (Detalle de Fases Pasadas) */}
+                      {/* Fila Secundaria del Acordeón (Detalle de Fases Pasadas Clínico) */}
                       <tr
                         key={`expanded-${entry.bibNumber}`}
                         className="bg-slate-50/30"
                       >
-                        <td colSpan={11} className="p-0 border-none">
+                        {/* El colSpan debe ser 10 para coincidir con la grilla de esta tabla */}
+                        <td colSpan={10} className="p-0 border-none">
                           <div
                             className={`transition-all duration-300 ease-in-out overflow-hidden ${
                               expandedRowId === entry.bibNumber
-                                ? "max-h-[500px] opacity-100 border-b border-slate-100"
+                                ? "max-h-[600px] opacity-100 border-b border-slate-100"
                                 : "max-h-0 opacity-0 pointer-events-none"
                             }`}
                           >
@@ -616,9 +643,9 @@ export default function LeaderboardTable({
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                   />
                                 </svg>
-                                Historial de Etapas Anteriores (Detalle Clínico)
+                                Historial de Etapas (Trazabilidad Clínicas Completa y Auditoría FEU)
                               </h5>
-                              <StageHistoryTable stages={previousStages} />
+                              <StageHistoryTable stages={entry.stages || []} />
                             </div>
                           </div>
                         </td>
@@ -629,7 +656,7 @@ export default function LeaderboardTable({
               ) : (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={10}
                     className="py-12 px-6 text-center text-slate-500 font-medium"
                   >
                     No se encontraron binomios que coincidan con la búsqueda.

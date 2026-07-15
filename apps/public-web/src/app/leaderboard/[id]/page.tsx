@@ -4,6 +4,8 @@ import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useCompetitions } from "../../../hooks/useCompetitions";
 import LeaderboardTable from "../../../components/LeaderboardTable";
+import FinalResultsTable from "../../../components/FinalResultsTable";
+import { useLiveLeaderboard } from "../../../hooks/useLiveLeaderboard";
 import { useSyncStatus } from "../../Providers";
 
 interface LeaderboardPageProps {
@@ -17,6 +19,10 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
   const { competitions } = useCompetitions();
   const currentCompetition = competitions.find((c) => c.id === competitionId);
   const tenant = currentCompetition?.tenant;
+
+  // Consumir el hook de live leaderboard aquí para orquestar la vista
+  const { leaderboard, error, isLoading, isValidating: hookIsValidating, isClosed } =
+    useLiveLeaderboard(competitionId);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [countdown, setCountdown] = useState(30);
@@ -199,12 +205,31 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
         </div>
 
         {/* 2.3 COMPONENTE TABLA DE POSICIONES (Consumo de API o Mock mediante SWR) */}
-        <LeaderboardTable
-          competitionId={competitionId}
-          searchQuery={searchQuery}
-          onErrorChange={setHasError}
-          onValidatingChange={setIsValidating}
-        />
+        {isClosed ? (
+          <FinalResultsTable
+            competitionId={competitionId}
+            searchQuery={searchQuery}
+            leaderboard={leaderboard}
+            isLoading={isLoading}
+            error={error}
+            isValidating={hookIsValidating}
+            onErrorChange={setHasError}
+            onValidatingChange={setIsValidating}
+            maxHeartRate={currentCompetition?.maxHeartRate}
+          />
+        ) : (
+          <LeaderboardTable
+            competitionId={competitionId}
+            searchQuery={searchQuery}
+            leaderboard={leaderboard}
+            isLoading={isLoading}
+            error={error}
+            isValidating={hookIsValidating}
+            isClosed={isClosed}
+            onErrorChange={setHasError}
+            onValidatingChange={setIsValidating}
+          />
+        )}
       </main>
     </div>
   );
