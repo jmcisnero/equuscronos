@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { Providers } from "./Providers";
 import SyncIndicator from "../components/SyncIndicator";
@@ -45,17 +46,22 @@ export default function RootLayout({
           <header className="bg-equus-green text-white shadow-md sticky top-0 z-50 border-b border-equus-tan-light/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="bg-white px-3 py-1.5 rounded-xl shadow-sm flex items-center justify-center border border-slate-100/10">
+                <Link
+                  href="https://www.equuscronos.com"
+                  className="bg-white px-3 py-1.5 rounded-xl shadow-sm flex items-center justify-center border border-slate-100/10 hover:opacity-90 transition-opacity"
+                >
                   <img
                     src="/ECLogo Leyenda.png"
                     alt="EquusCronos Logo Oficial"
                     className="h-10 w-auto object-contain"
                   />
-                </div>
+                </Link>
                 <div className="h-6 w-px bg-white/20"></div>
-                <span className="text-sm font-extrabold tracking-widest uppercase text-[#A99677] font-sans">
-                  PORTAL DE RESULTADOS EN VIVO
-                </span>
+                <Link href="/">
+                  <span className="text-sm font-extrabold tracking-widest uppercase text-[#A99677] font-sans hover:opacity-80 transition-opacity">
+                    PORTAL DE RESULTADOS
+                  </span>
+                </Link>
               </div>
               <SyncIndicator />
             </div>

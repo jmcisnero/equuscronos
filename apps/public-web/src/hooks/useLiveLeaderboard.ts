@@ -8,15 +8,15 @@ export interface LeaderboardEntry {
   riderName: string;
   horseName: string;
   status:
-    | "IN_RACE"
-    | "VET_CHECK"
-    | "RESTING"
-    | "FINISHED"
-    | "DQ"
-    | "DNF"
-    | "WD"
-    | "NO_COMPLETED"
-    | "FINISHED_PROVISIONAL";
+  | "IN_RACE"
+  | "VET_CHECK"
+  | "RESTING"
+  | "FINISHED"
+  | "DQ"
+  | "DNF"
+  | "WD"
+  | "NO_COMPLETED"
+  | "FINISHED_PROVISIONAL";
   currentStage: number;
   lastArrivalTime?: string;
   nextVetControlTime?: string;
@@ -56,7 +56,7 @@ const fetcher = async (path: string) => {
     const errorInfo = await res.json().catch(() => ({}));
     const error = new Error(
       errorInfo?.message ||
-        "Ocurrió un error al consultar el servidor principal.",
+      "Ocurrió un error al consultar el servidor principal.",
     ) as any;
     error.status = res.status;
     error.info = errorInfo;

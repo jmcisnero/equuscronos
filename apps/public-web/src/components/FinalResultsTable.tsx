@@ -41,7 +41,7 @@ export default function FinalResultsTable({
 }: FinalResultsTableProps) {
   // Consumir el hook si no se proveen las propiedades por parámetro
   const hookData = useLiveLeaderboard(competitionId);
-  
+
   const leaderboard = propsLeaderboard !== undefined ? propsLeaderboard : hookData.leaderboard;
   const isLoading = propsIsLoading !== undefined ? propsIsLoading : hookData.isLoading;
   const error = propsError !== undefined ? propsError : hookData.error;
@@ -292,17 +292,15 @@ export default function FinalResultsTable({
                     expandedRowId === entry.bibNumber ? null : entry.bibNumber
                   )
                 }
-                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${
-                  entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
-                } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
+                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
+                  } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
               >
                 {/* Cabecera */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <svg
-                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
-                        expandedRowId === entry.bibNumber ? "rotate-180" : ""
-                      }`}
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${expandedRowId === entry.bibNumber ? "rotate-180" : ""
+                        }`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -409,11 +407,10 @@ export default function FinalResultsTable({
 
                 {/* Acordeón Móvil (Historial clínico completo) */}
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    expandedRowId === entry.bibNumber
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedRowId === entry.bibNumber
                       ? "max-h-[800px] opacity-100 pt-4 border-t border-slate-100"
                       : "max-h-0 opacity-0 pointer-events-none"
-                  }`}
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h5 className="font-extrabold text-slate-800 text-xs mb-3 uppercase tracking-wider flex items-center">
@@ -502,23 +499,20 @@ export default function FinalResultsTable({
                               : entry.bibNumber
                           )
                         }
-                        className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${
-                          expandedRowId === entry.bibNumber
+                        className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${expandedRowId === entry.bibNumber
                             ? "bg-slate-50/70"
                             : ""
-                        } ${
-                          entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
-                        }`}
+                          } ${entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
+                          }`}
                       >
                         {/* PUESTO */}
                         <td className="py-4.5 px-2 text-center font-bold">
                           <div className="flex items-center justify-center space-x-1.5">
                             <svg
-                              className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${
-                                expandedRowId === entry.bibNumber
+                              className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${expandedRowId === entry.bibNumber
                                   ? "rotate-180"
                                   : ""
-                              }`}
+                                }`}
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke="currentColor"
@@ -622,11 +616,10 @@ export default function FinalResultsTable({
                         {/* El colSpan debe ser 10 para coincidir con la grilla de esta tabla */}
                         <td colSpan={10} className="p-0 border-none">
                           <div
-                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                              expandedRowId === entry.bibNumber
+                            className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedRowId === entry.bibNumber
                                 ? "max-h-[600px] opacity-100 border-b border-slate-100"
                                 : "max-h-0 opacity-0 pointer-events-none"
-                            }`}
+                              }`}
                           >
                             <div className="p-6 bg-slate-50/60 shadow-inner">
                               <h5 className="font-extrabold text-slate-800 text-xs mb-3 uppercase tracking-wider flex items-center">

@@ -12,12 +12,12 @@ export const FallbackJersey = ({
 }) => {
   const initials = representedTenant?.name
     ? representedTenant.name
-        .split(" ")
-        .filter((w) => w.length > 1) // Evitar preposiciones cortas
-        .map((w) => w[0])
-        .join("")
-        .substring(0, 3)
-        .toUpperCase()
+      .split(" ")
+      .filter((w) => w.length > 1) // Evitar preposiciones cortas
+      .map((w) => w[0])
+      .join("")
+      .substring(0, 3)
+      .toUpperCase()
     : "L";
 
   return (
@@ -264,11 +264,10 @@ export function StageHistoryMobile({ stages }: StageHistoryProps) {
                 Pulso
               </span>
               <span
-                className={`font-sans tabular-nums font-bold px-1.5 py-0.5 rounded text-[11px] ${
-                  stage.heartRate && stage.heartRate > 64
+                className={`font-sans tabular-nums font-bold px-1.5 py-0.5 rounded text-[11px] ${stage.heartRate && stage.heartRate > 64
                     ? "bg-rose-100 text-rose-800"
                     : "bg-slate-100 text-slate-805"
-                }`}
+                  }`}
               >
                 {stage.heartRate ? `${stage.heartRate} ppm` : "—"}
               </span>
@@ -348,11 +347,10 @@ export function StageHistoryTable({ stages }: StageHistoryProps) {
               <td className="py-3 px-3 text-center">
                 {stage.heartRate ? (
                   <span
-                    className={`inline-block font-sans tabular-nums font-extrabold text-[11px] px-2 py-0.5 rounded ${
-                      stage.heartRate > 64
+                    className={`inline-block font-sans tabular-nums font-extrabold text-[11px] px-2 py-0.5 rounded ${stage.heartRate > 64
                         ? "bg-rose-50 text-rose-750 border border-rose-100"
                         : "bg-slate-50 text-slate-600 border border-slate-100"
-                    }`}
+                      }`}
                   >
                     {stage.heartRate} ppm
                   </span>
