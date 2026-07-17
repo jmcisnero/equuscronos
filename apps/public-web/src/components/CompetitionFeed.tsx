@@ -132,8 +132,7 @@ export default function CompetitionFeed() {
                 Portal de Resultados para Espectadores
               </h2>
               <p className="text-xs text-slate-500 font-bold mt-1">
-                Selecciona una competencia activa a continuación para ver
-                clasificaciones, o filtra por club, lugar o modalidad.
+                Selecciona una competencia a continuación para ver clasificaciones, o filtra por club, lugar o modalidad.
               </p>
             </div>
           </div>
@@ -223,21 +222,21 @@ export default function CompetitionFeed() {
           {/* ========================================================================= */}
           {/* PRIORIDAD A: EN VIVO (ACTIVE, PAUSED)                                     */}
           {/* ========================================================================= */}
-          <div>
-            <div className="flex items-center space-x-3 mb-6 border-b border-slate-200/60 pb-3">
-              <span className="relative flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
-              </span>
-              <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">
-                Competencias en Vivo
-              </h3>
-              <span className="bg-emerald-50 text-emerald-950 text-[10px] font-black px-2.5 py-1 rounded-full border border-emerald-300">
-                {liveCompetitions.length} Evento(s)
-              </span>
-            </div>
+          {liveCompetitions.length > 0 && (
+            <div>
+              <div className="flex items-center space-x-3 mb-6 border-b border-slate-200/60 pb-3">
+                <span className="relative flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+                </span>
+                <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                  Competencias en Vivo
+                </h3>
+                <span className="bg-emerald-50 text-emerald-950 text-[10px] font-black px-2.5 py-1 rounded-full border border-emerald-300">
+                  {liveCompetitions.length} Evento(s)
+                </span>
+              </div>
 
-            {liveCompetitions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {liveCompetitions.map((comp) => (
                   <div
@@ -330,46 +329,23 @@ export default function CompetitionFeed() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-center text-slate-500">
-                <svg
-                  className="h-10 w-10 mx-auto text-slate-400 mb-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h2v-2.243a4.978 4.978 0 011.07-.19M12 13V9"
-                  />
-                </svg>
-                <p className="text-sm font-bold text-slate-800">
-                  No hay competencias activas en este momento.
-                </p>
-                <p className="text-xs text-slate-500 mt-1.5 font-semibold">
-                  Por favor, intente nuevamente más tarde o contacte al
-                  administrador.
-                </p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* PRIORIDAD B: PLANIFICADAS (PLANNED)                                       */}
           {/* ========================================================================= */}
-          <div>
-            <div className="flex items-center space-x-3 mb-6 border-b border-slate-200 pb-3">
-              <h3 className="text-base font-black text-slate-800 tracking-tight uppercase">
-                Próximos Eventos Planificados
-              </h3>
-              <span className="bg-slate-100 text-slate-800 text-[10px] font-black px-2.5 py-1 rounded-full border border-slate-200">
-                {plannedCompetitions.length} Evento(s)
-              </span>
-            </div>
+          {plannedCompetitions.length > 0 && (
+            <div>
+              <div className="flex items-center space-x-3 mb-6 border-b border-slate-200 pb-3">
+                <h3 className="text-base font-black text-slate-800 tracking-tight uppercase">
+                  Próximos Eventos Planificados
+                </h3>
+                <span className="bg-slate-100 text-slate-800 text-[10px] font-black px-2.5 py-1 rounded-full border border-slate-200">
+                  {plannedCompetitions.length} Evento(s)
+                </span>
+              </div>
 
-            {plannedCompetitions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {plannedCompetitions.map((comp) => (
                   <div
@@ -486,12 +462,8 @@ export default function CompetitionFeed() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="bg-white border border-slate-200/60 rounded-3xl p-8 text-center text-slate-400 text-sm font-semibold">
-                No hay competencias planificadas registradas.
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* PRIORIDAD C: HISTÓRICOS (COMPLETED, OFFICIAL, CANCELLED)                  */}
@@ -500,7 +472,7 @@ export default function CompetitionFeed() {
           <div>
             <div className="flex items-center space-x-3 mb-6 border-b border-slate-200 pb-3">
               <h3 className="text-base font-black text-slate-800 tracking-tight uppercase">
-                Historial de Resultados Consolidados
+                Historial de Resultados
               </h3>
               <span className="bg-slate-100 text-slate-800 text-[10px] font-black px-2.5 py-1 rounded-full border border-slate-200">
                 {pastCompetitions.length} Evento(s)

@@ -77,7 +77,7 @@
                     <img src="images/Logo.png" alt="EquusCronos Logo" class="h-10 mr-2">
                     <span class="text-2xl font-extrabold brand-green tracking-tight">EquusCronos</span>
                 </a>
-                <a href="https://live.equuscronos.com" target="_blank" rel="noopener noreferrer" class="flex items-center bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-5 py-2 rounded-lg font-bold shadow-sm transition-transform transform hover:scale-105" data-i18n="hero_cta_live">
+                <a href="https://live.equuscronos.com" target="_blank" rel="noopener noreferrer" class="flex items-center bg-brand-gold hover:bg-brand-gold-dark text-white px-5 py-2 rounded-lg font-bold shadow-sm transition-all transform hover:scale-105 min-h-[44px]" data-i18n="hero_cta_live">
                     <span class="flex h-2.5 w-2.5 relative mr-1.5">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
@@ -92,7 +92,7 @@
                 <!-- Language Selector -->
                 <div class="relative" id="lang-switcher">
                     <button class="flex items-center text-gray-600 hover:brand-gold font-semibold transition duration-300">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m0 0a9 9 0 019-9m-9 9a9 9 0 009 9"></path></svg>
+                        <span id="lang-flag-icon" class="mr-1.5">🇺🇾</span>
                         <span id="current-lang">ES</span>
                         <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
@@ -475,6 +475,17 @@
                 currentLangSpan.textContent = lang.toUpperCase();
                 langOptions.classList.add('hidden');
                 
+                const flagIcon = document.getElementById('lang-flag-icon');
+                if (flagIcon) {
+                    if (lang === 'es') {
+                        flagIcon.textContent = '🇺🇾';
+                    } else if (lang === 'en') {
+                        flagIcon.textContent = '🇬🇧';
+                    } else if (lang === 'pt') {
+                        flagIcon.textContent = '🇧🇷';
+                    }
+                }
+
                 document.querySelectorAll('[data-i18n]').forEach(element => {
                     const key = element.getAttribute('data-i18n');
                     if (translations[lang] && translations[lang][key]) {
@@ -491,6 +502,38 @@
                 document.querySelector('title').innerText = translations[lang].title;
             };
 
+            async function checkLiveCompetitions() {
+                const liveBtn = document.querySelector('[data-i18n="hero_cta_live"]');
+                if (!liveBtn) return;
+
+                try {
+                    const res = await fetch('https://api.equuscronos.com/admin/competitions');
+                    if (!res.ok) throw new Error('API response error');
+                    const competitions = await res.json();
+
+                    const hasActive = Array.isArray(competitions) && competitions.some(comp => comp.status === 'ACTIVE' || comp.status === 'PAUSED');
+
+                    if (hasActive) {
+                        translations.es.hero_cta_live = `<span class="flex h-2.5 w-2.5 relative mr-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span> 📺 SEGUIMIENTO EN VIVO`;
+                        translations.en.hero_cta_live = `<span class="flex h-2.5 w-2.5 relative mr-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span> 📺 LIVE TRACKING`;
+                        translations.pt.hero_cta_live = `<span class="flex h-2.5 w-2.5 relative mr-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span> 📺 ACOMPANHAMENTO AO VIVO`;
+                    } else {
+                        translations.es.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                        translations.en.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                        translations.pt.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                    }
+                } catch (e) {
+                    console.error('Error fetching live competitions:', e);
+                    translations.es.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                    translations.en.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                    translations.pt.hero_cta_live = `📊 PORTAL DE RESULTADOS`;
+                } finally {
+                    liveBtn.href = "https://live.equuscronos.com";
+                    const currentLang = document.documentElement.lang || 'es';
+                    setLanguage(currentLang);
+                }
+            }
+
             langOptions.addEventListener('click', (e) => {
                 if (e.target.tagName === 'A') {
                     const lang = e.target.getAttribute('data-lang');
@@ -504,6 +547,8 @@
             } else {
                 setLanguage('es'); // Default language
             }
+
+            checkLiveCompetitions();
             // --- FIN CÓDIGO DE TRADUCCIÓN ---
         });
     </script>
