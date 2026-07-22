@@ -213,7 +213,7 @@ export class VetInspectionsService {
           targetStatus = ParticipantStatus.ELIMINATED_PP;
           shouldDisqualify = true;
           eliminationCode = EliminationCode.METABOLIC;
-          reason = `Falla metabólica: Pulso excedido en rechequeo (${dto.heartRate} ppm).`;
+          reason = `F.C.A. - Frecuencia Cardíaca Alta: Pulso excedido en rechequeo (${dto.heartRate} ppm). Failed to Qualify – Metabolic.`;
         } else {
           // Primer intento fallido -> Aún tiene tiempo de recuperarse (VET_CHECK)
           targetStatus = ParticipantStatus.VET_CHECK;

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CompetitionService } from "@/services/api/competition.service";
 import { useLiveLeaderboard, LeaderboardEntry } from "@/hooks/useLiveLeaderboard";
@@ -9,10 +10,20 @@ import { useLiveLeaderboard, LeaderboardEntry } from "@/hooks/useLiveLeaderboard
 export default function OfficialSheetPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: Promise<{ id: string }>;
 }) {
-  const resolvedParams = React.use(params);
-  const id = resolvedParams.id;
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = React.use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback to routeParams if params Promise unwrapping fails
+    }
+  }
+  const id = routeId || unwrappedId;
 
   const [printDateTime, setPrintDateTime] = React.useState("");
   React.useEffect(() => {
@@ -149,22 +160,22 @@ export default function OfficialSheetPage({
     }
     if (statusStr === "ELIMINATED_PP") {
       const hr = stg?.heartRate || entry.heartRate;
-      return hr ? `${hr} ppm Ex. P.` : "Ex. P.";
+      return hr ? `${hr} ppm F.C.A.` : "F.C.A.";
     }
     if (statusStr === "ELIMINATED_TR") {
-      return "T. Rec.";
+      return "Ex. T. Rec.";
     }
     if (stg?.heartRate && stg.heartRate > (comp.maxHeartRate || 65)) {
-      return `${stg.heartRate} ppm Ex. P.`;
+      return `${stg.heartRate} ppm F.C.A.`;
     }
     if (statusStr === "DQ") {
       if (stg?.motricity === "LAMENESS_ELIMINATED") return "Cojera";
       if (stg?.heartRate && stg.heartRate > (comp.maxHeartRate || 65)) {
-        return `${stg.heartRate} ppm Ex. P.`;
+        return `${stg.heartRate} ppm F.C.A.`;
       }
       return "Descalif.";
     }
-    if (statusStr === "NO_COMPLETED") return "NC";
+    if (statusStr === "NO_COMPLETED") return "N.C.";
     return "Eliminado";
   };
 

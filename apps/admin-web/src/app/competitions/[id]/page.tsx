@@ -2,7 +2,7 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CompetitionService } from "@/services/api/competition.service";
 import LiveLeaderboardContingency from "./LiveLeaderboardContingency";
@@ -10,10 +10,20 @@ import LiveLeaderboardContingency from "./LiveLeaderboardContingency";
 export default function CompetitionDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: Promise<{ id: string }>;
 }) {
-  const resolvedParams = use(params);
-  const id = resolvedParams.id;
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback
+    }
+  }
+  const id = routeId || unwrappedId;
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -362,12 +372,30 @@ export default function CompetitionDetailPage({
               </p>
             </div>
 
-            <Link
-              href={`/competitions/${comp.id}/start-list`}
-              className="mt-2 w-full inline-flex items-center justify-center px-4 py-3 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg text-center"
-            >
-              Gestionar Start List
-            </Link>
+            <div className="space-y-2 pt-1">
+              <Link
+                href={`/competitions/${comp.id}/start-list`}
+                className="w-full inline-flex items-center justify-center px-4 py-2.5 bg-equus-green hover:bg-opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg text-center"
+              >
+                Gestionar Start List
+              </Link>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Link
+                  href={`/competitions/${comp.id}/official-sheet`}
+                  className="inline-flex items-center justify-center px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm text-center"
+                  title="Ver Planilla Oficial de Resultados FEU"
+                >
+                  📄 Planilla Oficial
+                </Link>
+                <Link
+                  href={`/competitions/${comp.id}/entry-sheet`}
+                  className="inline-flex items-center justify-center px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 transition-all text-center"
+                  title="Ver Planilla de Inscripciones"
+                >
+                  📋 Inscripciones
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Tarjeta de Límites Médicos */}

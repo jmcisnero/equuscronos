@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { getEliminationDisplayLabel } from "@equuscronos/shared";
 import { LeaderboardEntry } from "../hooks/useLiveLeaderboard";
 
 export const FallbackJersey = ({
@@ -155,36 +156,109 @@ export const renderStatusBadge = (status: string) => {
           🏁 Fin
         </span>
       );
-    case "DQ":
+    case "ELIMINATED_PP":
+    case "METABOLIC": {
+      const info = getEliminationDisplayLabel(status);
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap">
-          🛑 DQ
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
+        >
+          🛑 {info.code}
         </span>
       );
-    case "DNF":
+    }
+    case "ELIMINATED_GAIT":
+    case "GAIT": {
+      const info = getEliminationDisplayLabel(status);
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap">
-          ⚠️ DNF
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
+        >
+          🛑 {info.code}
         </span>
       );
-    case "WD":
+    }
+    case "ELIMINATED_TR":
+    case "TIME": {
+      const info = getEliminationDisplayLabel(status);
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap">
-          ⚠️ WD
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
+        >
+          🛑 {info.code}
         </span>
       );
-    case "NO_COMPLETED":
+    }
+    case "RET":
+    case "DNF": {
+      const info = getEliminationDisplayLabel(status);
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-350 whitespace-nowrap">
-          ❌ NC
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
+        >
+          ⚠️ {info.code}
         </span>
       );
-    default:
+    }
+    case "FAIL_WEIGHT": {
+      const info = getEliminationDisplayLabel(status);
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 whitespace-nowrap">
-          {status}
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
+        >
+          ⚠️ {info.code}
         </span>
       );
+    }
+    case "NO_COMPLETED": {
+      const info = getEliminationDisplayLabel(status);
+      return (
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
+        >
+          ❌ {info.code}
+        </span>
+      );
+    }
+    case "WD": {
+      const info = getEliminationDisplayLabel(status);
+      return (
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
+        >
+          ⚠️ {info.code}
+        </span>
+      );
+    }
+    case "DQ": {
+      const info = getEliminationDisplayLabel(status);
+      return (
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
+        >
+          🛑 {info.code}
+        </span>
+      );
+    }
+    default: {
+      const info = getEliminationDisplayLabel(status);
+      return (
+        <span
+          title={`${info.label} (${info.feiLabel})`}
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 whitespace-nowrap cursor-help"
+        >
+          {info.code}
+        </span>
+      );
+    }
   }
 };
 

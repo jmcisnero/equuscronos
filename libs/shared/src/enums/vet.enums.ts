@@ -17,6 +17,7 @@ export enum EliminationCode {
   FTQ = "FTQ",
   OTHER = "OTHER",
   TIME = "TIME",
+  FAIL_WEIGHT = "FAIL_WEIGHT",
 }
 
 export enum GaitStatus {

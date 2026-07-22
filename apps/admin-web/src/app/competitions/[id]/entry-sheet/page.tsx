@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CompetitionService } from "@/services/api/competition.service";
 import { CompetitionEntryService } from "@/services/api/competition-entry.service";
@@ -9,10 +10,20 @@ import { CompetitionEntryService } from "@/services/api/competition-entry.servic
 export default function EntrySheetPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: Promise<{ id: string }>;
 }) {
-  const resolvedParams = React.use(params);
-  const id = resolvedParams.id;
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = React.use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback
+    }
+  }
+  const id = routeId || unwrappedId;
 
   // 1. Fetch competition metadata
   const { data: comp, isLoading: isCompLoading, error: compError } = useQuery({

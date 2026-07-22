@@ -23,8 +23,12 @@ describe("Security and Multi-Tenancy (e2e)", () => {
     await app.init();
 
     const dataSource = app.get(DataSource);
-    await dataSource.query("DELETE FROM vet_inspections;");
-    await dataSource.query("DELETE FROM timing_records;");
+    await dataSource.query(
+      "DELETE FROM vet_inspections WHERE competence_id <> 'c2000000-0000-0000-0000-000000000001';",
+    );
+    await dataSource.query(
+      "DELETE FROM timing_records WHERE entry_id NOT IN (SELECT id FROM competition_entries WHERE competition_id = 'c2000000-0000-0000-0000-000000000001');",
+    );
     await dataSource.query(
       "DELETE FROM competition_entries WHERE competition_id <> 'c2000000-0000-0000-0000-000000000001';",
     );

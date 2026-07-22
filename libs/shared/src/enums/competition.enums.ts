@@ -35,6 +35,7 @@ export enum ParticipantStatus {
   ELIMINATED_TR = "ELIMINATED_TR", // Eliminado por Tiempo de Recuperación
   ELIMINATED_PP = "ELIMINATED_PP", // Eliminado por Pulso / Parámetros
   ELIMINATED_GAIT = "ELIMINATED_GAIT", // Eliminado por Aire Irregular
+  FAIL_WEIGHT = "FAIL_WEIGHT", // Falta de Peso (Art. 20)
   FINISHED_PROVISIONAL = "FINISHED_PROVISIONAL", // Finalizado provisional (última etapa, pendiente firma de actas)
 }
 

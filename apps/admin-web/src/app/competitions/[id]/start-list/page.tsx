@@ -625,8 +625,26 @@ export default function StartListPage() {
             </p>
           </div>
 
-          <div className="text-xs bg-slate-50 font-extrabold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-100 font-sans tabular-nums">
-            Total Inscriptos: {entries.length}
+          <div className="flex items-center space-x-3">
+            <Link
+              href={`/competitions/${competitionId}/official-sheet`}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center space-x-1.5"
+              title="Ver Planilla Oficial de Resultados F.E.U."
+            >
+              <span>📄</span>
+              <span>Planilla Oficial</span>
+            </Link>
+            <Link
+              href={`/competitions/${competitionId}/entry-sheet`}
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 transition-all flex items-center space-x-1.5"
+              title="Ver Planilla de Participantes Inscritos"
+            >
+              <span>📋</span>
+              <span>Planilla Inscripciones</span>
+            </Link>
+            <div className="text-xs bg-slate-50 font-extrabold text-slate-600 px-3 py-1.5 rounded-lg border border-slate-100 font-sans tabular-nums">
+              Total Inscriptos: {entries.length}
+            </div>
           </div>
         </div>
 

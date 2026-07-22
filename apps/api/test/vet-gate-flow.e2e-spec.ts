@@ -120,8 +120,12 @@ describe("Vet Gate Flow (e2e)", () => {
 
     afterEach(async () => {
       // Cleanup testing data in correct order
-      await dataSource.query(`DELETE FROM vet_inspections;`);
-      await dataSource.query(`DELETE FROM timing_records;`);
+      await dataSource.query(
+        `DELETE FROM vet_inspections WHERE competence_id = '${competitionId}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM timing_records WHERE entry_id = '${entryId}';`,
+      );
       await dataSource.query(
         `DELETE FROM competition_entries WHERE competition_id = '${competitionId}';`,
       );
@@ -311,6 +315,75 @@ describe("Vet Gate Flow (e2e)", () => {
       const expectedStartTime = new Date("2026-06-10T10:30:00Z").getTime();
       const actualStartTime = new Date(nextStageStart[0].recorded_at).getTime();
       expect(actualStartTime).toBe(expectedStartTime);
+    });
+
+    it("should register F.C.A. elimination reason when heart rate exceeds limit on recheck", async () => {
+      // 1. Record START time
+      const startRecordId = randomUUID();
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES ('${startRecordId}', 'a1000000-0000-0000-0000-000000000001', '${entryId}', '${stage1Id}', 'START', '2026-06-10 08:00:00-03', TRUE);
+      `);
+
+      // 2. Record ARRIVAL time
+      await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "ARRIVAL",
+          recordedAt: new Date("2026-06-10T09:30:00Z").toISOString(),
+        });
+
+      // 3. Record VET_IN timing milestone
+      const vetInRes = await request(app.getHttpServer())
+        .post("/timing/vet-in")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "VET_IN",
+          recordedAt: new Date("2026-06-10T09:40:00Z").toISOString(),
+        });
+
+      const timingRecordId = vetInRes.body.id;
+
+      // 4. Submit Re-inspection with heartRate = 68 (exceeding 65 limit)
+      const vetInspectionRes = await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: new Date("2026-06-10T09:30:00Z").toISOString(),
+          vetInTime: new Date("2026-06-10T09:40:00Z").toISOString(),
+          heartRate: 68,
+          gaitStatus: "APPROVED",
+          inspectionType: "RE_INSPECTION_REQUESTED",
+          requiresRecheck: false,
+          notes: "Tested e2e F.C.A.",
+        });
+
+      expect(vetInspectionRes.status).toBe(201);
+
+      // 5. Verify timing_record has eliminationReason starting with F.C.A.
+      const updatedTiming = await dataSource.query(`
+        SELECT is_approved, elimination_type, elimination_reason FROM timing_records WHERE id = '${timingRecordId}';
+      `);
+      expect(updatedTiming[0].is_approved).toBe(false);
+      expect(updatedTiming[0].elimination_type).toBe("METABOLIC");
+      expect(updatedTiming[0].elimination_reason).toMatch(/^F\.C\.A\./);
+      expect(updatedTiming[0].elimination_reason).toContain("Frecuencia Cardíaca Alta");
+
+      // 6. Verify entry status is ELIMINATED_PP
+      const updatedEntry = await dataSource.query(`
+        SELECT status FROM competition_entries WHERE id = '${entryId}';
+      `);
+      expect(updatedEntry[0].status).toBe("ELIMINATED_PP");
     });
   });
 });

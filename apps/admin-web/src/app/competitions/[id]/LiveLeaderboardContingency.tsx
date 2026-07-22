@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getEliminationDisplayLabel } from "@equuscronos/shared";
 import {
   useLiveLeaderboard,
   LeaderboardEntry,
@@ -348,23 +349,53 @@ export default function LiveLeaderboardContingency({
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                              entry.status === "IN_RACE"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : entry.status === "VET_CHECK"
-                                  ? "bg-amber-50 text-amber-700 border-amber-100"
-                                  : entry.status === "RESTING"
-                                    ? "bg-blue-50 text-blue-700 border-blue-100"
-                                    : entry.status === "FINISHED"
-                                      ? "bg-purple-50 text-purple-700 border-purple-100"
-                                      : entry.status === "FINISHED_PROVISIONAL"
-                                        ? "bg-blue-50 text-blue-700 border-blue-100"
-                                        : "bg-rose-50 text-rose-700 border-rose-100"
-                            }`}
-                          >
-                            {entry.status === "FINISHED_PROVISIONAL" ? "PROVISIONAL" : entry.status}
-                          </span>
+                          {(() => {
+                            if (entry.status === "IN_RACE") {
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-50 text-emerald-700 border-emerald-100">
+                                  🏇 CARRERA
+                                </span>
+                              );
+                            }
+                            if (entry.status === "VET_CHECK") {
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-amber-50 text-amber-700 border-amber-100">
+                                  🩺 VET CHECK
+                                </span>
+                              );
+                            }
+                            if (entry.status === "RESTING") {
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-blue-50 text-blue-700 border-blue-100">
+                                  ⏱️ NEUTRALIZACIÓN
+                                </span>
+                              );
+                            }
+                            if (entry.status === "FINISHED") {
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-purple-50 text-purple-700 border-purple-100">
+                                  🏁 FINALIZADO
+                                </span>
+                              );
+                            }
+                            if (entry.status === "FINISHED_PROVISIONAL") {
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-blue-50 text-blue-700 border-blue-100">
+                                  🏁 PROVISIONAL
+                                </span>
+                              );
+                            }
+
+                            const info = getEliminationDisplayLabel(entry.status);
+                            return (
+                              <span
+                                title={`${info.label} (${info.feiLabel})`}
+                                className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 text-rose-700 border-rose-200 cursor-help"
+                              >
+                                🛑 {info.code}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-4 px-4 font-sans tabular-nums font-bold text-slate-700">
                           E{entry.currentStage}
