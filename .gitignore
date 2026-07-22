@@ -59,7 +59,8 @@ pgdata/
 *.sql.bak
 
 # --- IDEs y Editores ---
-.vscode/
+.vscode/*
+!.vscode/settings.json
 !.vscode/extensions.json # Útil para sugerir extensiones al equipo
 .idea/
 *.swp

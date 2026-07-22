@@ -447,7 +447,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-equus-bg flex flex-col md:flex-row font-sans text-equus-text">
       {/* 1. SIDEBAR DESKTOP */}
       <aside
-        className={`hidden md:flex md:flex-col md:fixed md:inset-y-0 bg-equus-green text-white shadow-xl z-20 transition-all duration-300 ease-in-out ${
+        className={`hidden md:flex md:flex-col md:fixed md:inset-y-0 bg-equus-green text-white shadow-xl z-20 transition-all duration-300 ease-in-out print:hidden ${
           isCollapsed ? "md:w-20" : "md:w-64"
         }`}
       >
@@ -586,7 +586,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* 2. SIDEBAR MOVIL (Overlay & Drawer Panel) */}
       <div className="md:hidden">
         {/* Navbar superior fija móvil */}
-        <header className="flex items-center justify-between h-16 px-4 bg-equus-green text-white shadow-md fixed top-0 w-full z-30">
+        <header className="flex items-center justify-between h-16 px-4 bg-equus-green text-white shadow-md fixed top-0 w-full z-30 print:hidden">
           <div className="flex items-center space-x-3">
             <div className="bg-white p-1 rounded max-w-[110px]">
               <img
@@ -637,7 +637,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Backdrop overlay */}
         <div
-          className={`fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${
+          className={`fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 print:hidden ${
             isMobileMenuOpen
               ? "opacity-100 pointer-events-auto"
               : "opacity-0 pointer-events-none"
@@ -647,7 +647,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Drawer Panel */}
         <aside
-          className={`fixed top-0 bottom-0 left-0 z-50 w-full max-w-xs bg-equus-green text-white p-6 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+          className={`fixed top-0 bottom-0 left-0 z-50 w-full max-w-xs bg-equus-green text-white p-6 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out print:hidden ${
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -769,12 +769,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
       {/* 3. CONTENEDOR PRINCIPAL */}
       <div
-        className={`flex flex-col flex-1 min-h-screen pt-16 md:pt-0 bg-equus-bg transition-all duration-300 ease-in-out ${
+        className={`flex flex-col flex-1 min-h-screen pt-16 md:pt-0 bg-equus-bg transition-all duration-300 ease-in-out print:pl-0 print:pt-0 ${
           isCollapsed ? "md:pl-20" : "md:pl-64"
         }`}
       >
         {/* Topbar Desktop */}
-        <header className="hidden md:flex items-center justify-between h-16 px-8 bg-white border-b border-gray-200 shadow-sm z-10">
+        <header className="hidden md:flex items-center justify-between h-16 px-8 bg-white border-b border-gray-200 shadow-sm z-10 print:hidden">
           {/* Lado Izquierdo: Título de Sección */}
           <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
             {getPageTitle(pathname)}
@@ -820,8 +820,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </header>
 
         {/* 4. AREA DE CONTENIDO PRINCIPAL */}
-        <main className="flex-1 bg-equus-bg p-6 md:p-8">
-          <div className="max-w-7xl mx-auto animate-fade-in text-slate-800">
+        <main className="flex-1 bg-equus-bg p-6 md:p-8 print:p-0 print:bg-white">
+          <div className="max-w-7xl mx-auto animate-fade-in text-slate-800 print:max-w-none print:mx-0 print:text-black">
             {children}
           </div>
         </main>

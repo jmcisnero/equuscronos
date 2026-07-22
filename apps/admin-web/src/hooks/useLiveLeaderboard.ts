@@ -11,9 +11,12 @@ export interface LeaderboardStage {
   heartRate?: number;
   netTimeMs?: number;
   averageSpeed?: number;
+  motricity?: string;
+  metabolic?: string;
 }
 
 export interface LeaderboardEntry {
+  entryId: string;
   rank: number | null;
   bibNumber: number;
   riderName: string;

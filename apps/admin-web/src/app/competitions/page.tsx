@@ -739,6 +739,50 @@ export default function CompetitionsPage() {
                               />
                             </svg>
                           </button>
+
+                          {comp.status === "COMPLETED" || comp.status === "OFFICIAL" ? (
+                            <Link
+                              href={`/competitions/${comp.id}/official-sheet`}
+                              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                              className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-slate-100 rounded-lg transition-all"
+                              title="Ver Planilla de Resultados Oficiales F.E.U."
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="6 9 6 2 18 2 18 9" />
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                <rect x="6" y="14" width="12" height="8" />
+                              </svg>
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/competitions/${comp.id}/entry-sheet`}
+                              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                              className="p-1.5 text-slate-400 hover:text-equus-green hover:bg-slate-100 rounded-lg transition-all"
+                              title="Ver Planilla de Participantes Inscritos"
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            </Link>
+                          )}
                         </div>
                       </td>
                     </tr>
