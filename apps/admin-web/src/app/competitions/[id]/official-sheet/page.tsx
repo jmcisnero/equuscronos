@@ -81,6 +81,17 @@ export default function OfficialSheetPage({
   }
 
   // Formatting helpers
+  const formatDateOnly = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const parts = datePart.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+    }
+    return dateStr;
+  };
+
   const formatTimeOnly = (dateStr?: string | Date) => {
     if (!dateStr) return "";
     try {
@@ -196,6 +207,14 @@ export default function OfficialSheetPage({
     return stg && stg.arrivalTime;
   });
 
+  // Winners and FEU Trophy calculations
+  const classifiedCompetitors = leaderboard.filter(e => e.rank !== null && e.rank !== undefined && e.rank > 0);
+  const ganadorCompetencia = classifiedCompetitors.find(e => e.rank === 1);
+  
+  const winnerTimeStr = ganadorCompetencia?.totalRaceTimeMs ? formatDuration(ganadorCompetencia.totalRaceTimeMs) : "-";
+  const winnerSpeedStr = ganadorCompetencia?.averageSpeed ? ganadorCompetencia.averageSpeed.toFixed(3) : "-";
+  const displayCompetenciaWinner = ganadorCompetencia ? `${ganadorCompetencia.bibNumber} - ${ganadorCompetencia.horseName}` : "-";
+
   const s1Leader = s1Finishers.length > 0
     ? [...s1Finishers].sort((a, b) => {
         const sa = a.stages?.find(s => s.stageNumber === 1)?.netTimeMs || Infinity;
@@ -205,8 +224,13 @@ export default function OfficialSheetPage({
     : null;
 
   const s1LeaderStg = s1Leader?.stages?.find(s => s.stageNumber === 1);
-  const s1LeaderSpeedStr = s1LeaderStg?.averageSpeed ? s1LeaderStg.averageSpeed.toFixed(3) : "-";
-  const s1LeaderTimeStr = s1LeaderStg?.netTimeMs ? formatDuration(s1LeaderStg.netTimeMs) : "-";
+  const ganadorS1 = ganadorCompetencia?.stages?.find(s => s.stageNumber === 1);
+  const s1TimeStr = ganadorS1?.netTimeMs
+    ? formatDuration(ganadorS1.netTimeMs)
+    : (s1LeaderStg?.netTimeMs ? formatDuration(s1LeaderStg.netTimeMs) : "-");
+  const s1SpeedStr = ganadorS1?.averageSpeed
+    ? ganadorS1.averageSpeed.toFixed(3)
+    : (s1LeaderStg?.averageSpeed ? s1LeaderStg.averageSpeed.toFixed(3) : "-");
 
   // Stage 2 Statistics
   const s2Started = leaderboard.filter(e => {
@@ -234,16 +258,13 @@ export default function OfficialSheetPage({
     : null;
 
   const s2LeaderStg = s2Leader?.stages?.find(s => s.stageNumber === 2);
-  const s2LeaderSpeedStr = s2LeaderStg?.averageSpeed ? s2LeaderStg.averageSpeed.toFixed(3) : "-";
-  const s2LeaderTimeStr = s2LeaderStg?.netTimeMs ? formatDuration(s2LeaderStg.netTimeMs) : "-";
-
-  // Winners and FEU Trophy calculations
-  const classifiedCompetitors = leaderboard.filter(e => e.rank !== null && e.rank !== undefined && e.rank > 0);
-  const ganadorCompetencia = classifiedCompetitors.find(e => e.rank === 1);
-  
-  const winnerTimeStr = ganadorCompetencia?.totalRaceTimeMs ? formatDuration(ganadorCompetencia.totalRaceTimeMs) : "-";
-  const winnerSpeedStr = ganadorCompetencia?.averageSpeed ? ganadorCompetencia.averageSpeed.toFixed(3) : "-";
-  const displayCompetenciaWinner = ganadorCompetencia ? `${ganadorCompetencia.bibNumber} - ${ganadorCompetencia.horseName}` : "-";
+  const ganadorS2 = ganadorCompetencia?.stages?.find(s => s.stageNumber === 2);
+  const s2TimeStr = ganadorS2?.netTimeMs
+    ? formatDuration(ganadorS2.netTimeMs)
+    : (s2LeaderStg?.netTimeMs ? formatDuration(s2LeaderStg.netTimeMs) : "-");
+  const s2SpeedStr = ganadorS2?.averageSpeed
+    ? ganadorS2.averageSpeed.toFixed(3)
+    : (s2LeaderStg?.averageSpeed ? s2LeaderStg.averageSpeed.toFixed(3) : "-");
 
   const getStage1HeartRate = (e: LeaderboardEntry) => {
     const stg = e.stages?.find(s => s.stageNumber === 1);
@@ -266,7 +287,7 @@ export default function OfficialSheetPage({
     });
   }
 
-  const displayFeuWinner = ganadorTrofeoFeu
+  const displayFeuWinner = (ganadorTrofeoFeu && getStage1HeartRate(ganadorTrofeoFeu) !== Infinity)
     ? `${ganadorTrofeoFeu.bibNumber} - ${ganadorTrofeoFeu.horseName}`
     : "-";
 
@@ -297,7 +318,7 @@ export default function OfficialSheetPage({
   // Determine row count: exactly 25 minimum rows, expandable if there are more leftEntries or rightEntries + 6 bottom rows
   const totalRows = Math.max(25, leftEntries.length, rightEntries.length + 6);
 
-  const displayDate = comp.competitionDate ? new Date(comp.competitionDate).toLocaleDateString("es-UY", { timeZone: "America/Montevideo" }) : "-";
+  const displayDate = formatDateOnly(comp.competitionDate);
 
   // Calculate dynamic control closure time in HH:MM:SS based on winner's final stage arrival time + distance tolerance
   const getDynamicControlClosureTime = () => {
@@ -469,11 +490,11 @@ export default function OfficialSheetPage({
             <div className="grid grid-cols-2 mt-1 text-[10px] text-equus-green/90 font-medium">
               <div>
                 <span>TIEMPO: </span>
-                <span className="text-black font-bold font-sans ml-1">{s1LeaderTimeStr}</span>
+                <span className="text-black font-bold font-sans ml-1">{s1TimeStr}</span>
               </div>
               <div className="text-right">
                 <span>PROMEDIO: </span>
-                <span className="text-black font-bold font-sans ml-1">{s1LeaderSpeedStr} Km/h</span>
+                <span className="text-black font-bold font-sans ml-1">{s1SpeedStr} Km/h</span>
               </div>
             </div>
           </div>
@@ -497,11 +518,11 @@ export default function OfficialSheetPage({
             <div className="grid grid-cols-2 mt-1 text-[10px] text-equus-green/90 font-medium">
               <div>
                 <span>TIEMPO: </span>
-                <span className="text-black font-bold font-sans ml-1">{s2LeaderTimeStr}</span>
+                <span className="text-black font-bold font-sans ml-1">{s2TimeStr}</span>
               </div>
               <div className="text-right">
                 <span>PROMEDIO: </span>
-                <span className="text-black font-bold font-sans ml-1">{s2LeaderSpeedStr} Km/h</span>
+                <span className="text-black font-bold font-sans ml-1">{s2SpeedStr} Km/h</span>
               </div>
             </div>
           </div>

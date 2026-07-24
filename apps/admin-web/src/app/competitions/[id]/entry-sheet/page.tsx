@@ -71,6 +71,16 @@ export default function EntrySheetPage({
       </div>
     );
   }
+  const formatDateOnly = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const parts = datePart.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+    }
+    return dateStr;
+  };
 
   // Sort entries by bib number (Dorsal) ascending
   const sortedEntries = [...entries].sort((a, b) => a.bibNumber - b.bibNumber);
@@ -92,16 +102,18 @@ export default function EntrySheetPage({
 
   return (
     <div className="min-h-screen bg-slate-100 py-8 print:py-0 print:bg-white transition-colors duration-200">
-      {/* Strict A4 Vertical Page Layout Styling */}
+      {/* Dynamic Printing Style Setup */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body {
             background-color: white !important;
             color: black !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           @page {
-            size: A4 portrait;
-            margin: 15mm 15mm 15mm 15mm;
+            size: A4;
+            margin: 10mm;
           }
           ::-webkit-scrollbar {
             display: none;
@@ -109,7 +121,7 @@ export default function EntrySheetPage({
         }
       `}} />
 
-      {/* Floating navigation and print control buttons */}
+      {/* Floating navigation and control action buttons */}
       <div className="fixed bottom-6 right-6 flex items-center space-x-3 z-50 print:hidden">
         <Link
           href={`/competitions/${id}`}
@@ -122,10 +134,20 @@ export default function EntrySheetPage({
         </Link>
         <button
           onClick={() => window.print()}
-          className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 cursor-pointer transition-all hover:scale-105 active:scale-95 text-sm"
+          className="bg-equus-green hover:bg-[#153e2b] text-white font-extrabold px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 cursor-pointer transition-all hover:scale-105 active:scale-95 text-sm"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.821V21h10.56v-7.179M9 17h6M19.5 8.25v7.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 15.75v-7.5m15 0A2.25 2.25 0 0017.25 6H6.75A2.25 2.25 0 004.5 8.25M19.5 8.25a2.25 2.25 0 00-2.25-2.25H17.25m-10.5 0h10.5m-10.5 0a2.25 2.25 0 00-2.25 2.25M6.75 6h10.5" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
           </svg>
           <span>Imprimir Planilla</span>
         </button>
@@ -139,7 +161,7 @@ export default function EntrySheetPage({
           <h1 className="text-2xl font-black tracking-widest text-black uppercase">PLANILLA DE PARTICIPANTES</h1>
           <h2 className="text-base font-bold text-slate-800 uppercase mt-1.5">{comp.name}</h2>
           <p className="text-xs font-bold text-slate-500 uppercase mt-0.5">
-            Fecha: {comp.competitionDate ? new Date(comp.competitionDate).toLocaleDateString("es-UY", { timeZone: "America/Montevideo" }) : "-"}
+            Fecha: {formatDateOnly(comp.competitionDate)}
           </p>
         </div>
 
