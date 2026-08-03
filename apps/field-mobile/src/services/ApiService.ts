@@ -4,7 +4,29 @@ import { LocalTimingRecord, LocalVetInspection } from "../database/schema";
 import { getDatabase } from "../database/db";
 import { UserRole } from "@equuscronos/shared";
 
-const DEFAULT_API_BASE_URL = "https://api.equuscronos.com";
+const DEFAULT_API_BASE_URL =
+  typeof __DEV__ !== "undefined" && __DEV__
+    ? "http://192.168.1.26:3000"
+    : "https://api.equuscronos.com";
+
+export interface DirectTimingPayload {
+  competitionId: string;
+  stageId: string;
+  bibNumber: number;
+  recordType: string;
+  recordedAt: string;
+  isApproved?: boolean;
+  eliminationType?: string;
+  eliminationReason?: string;
+}
+
+export interface DirectVetInspectionPayload {
+  timingRecordId: string;
+  heartRate: number;
+  motricity: string;
+  metabolic: string;
+  notes?: string;
+}
 
 class ApiService {
   private client: AxiosInstance;
@@ -13,7 +35,7 @@ class ApiService {
   constructor() {
     this.client = axios.create({
       baseURL: this.currentBaseUrl,
-      timeout: 10000,
+      timeout: 5000,
       headers: {
         "Content-Type": "application/json",
         // Default tenant header for development multitenancy
@@ -146,6 +168,31 @@ class ApiService {
     const endpoint =
       record.record_type === "VET_IN" ? "/timing/vet-in" : "/timing";
     const response = await this.client.post(endpoint, payload);
+    return response.data;
+  }
+
+  /**
+   * Directly posts a timing record to the backend (Online-First)
+   */
+  async postTimingRecordDirect(payload: DirectTimingPayload): Promise<any> {
+    await this.validateRole([
+      UserRole.TIMEKEEPER,
+      UserRole.JUDGE,
+      UserRole.ADMIN,
+      UserRole.VET,
+    ]);
+    const endpoint =
+      payload.recordType === "VET_IN" ? "/timing/vet-in" : "/timing";
+    const response = await this.client.post(endpoint, payload);
+    return response.data;
+  }
+
+  /**
+   * Directly posts a vet inspection record to the backend (Online-First)
+   */
+  async postVetInspectionDirect(payload: DirectVetInspectionPayload): Promise<any> {
+    await this.validateRole([UserRole.VET, UserRole.ADMIN]);
+    const response = await this.client.post("/vet-inspections", payload);
     return response.data;
   }
 

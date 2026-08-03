@@ -254,6 +254,40 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
         // 6. Sincronización del Estado del Competidor
         await this.syncEntryState(manager, entry, dto, isLateVetIn);
 
+        // 6a. Registro silencioso de VET_IN en modalidad Manual (enableRfidChips = false)
+        if (
+          dto.recordType === TimeRecordType.ARRIVAL &&
+          isApproved &&
+          !isLastStage
+        ) {
+          const freshComp = await manager.findOne(Competition, {
+            where: { id: entry.competition.id },
+          });
+
+          const isChipMode = freshComp?.enableRfidChips ?? false;
+          if (!isChipMode) {
+            const projectedVetInTime = new Date(
+              new Date(dto.recordedAt).getTime() + 20 * 60 * 1000,
+            );
+
+            const automaticVetIn = manager.create(TimingRecord, {
+              tenant: entry.tenant,
+              entry,
+              stage: { id: dto.stageId },
+              recordType: TimeRecordType.VET_IN,
+              recordedAt: projectedVetInTime,
+              isApproved: true,
+              isAutomatic: true,
+            });
+            await manager.save(automaticVetIn);
+
+            await manager.update(CompetitionEntry, entry.id, {
+              status: ParticipantStatus.VET_CHECK,
+              currentStage: { id: dto.stageId },
+            });
+          }
+        }
+
         // 6b. Detección de hora cero para cierre de control (meta final del primer binomio clasificado)
         if (dto.recordType === TimeRecordType.ARRIVAL && isApproved) {
           const stages = await manager.find(Stage, {

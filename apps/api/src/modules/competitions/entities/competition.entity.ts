@@ -41,6 +41,17 @@ export class Competition {
   @Column({ name: "is_federated", type: "boolean", default: false })
   isFederated: boolean;
 
+  @Column({ name: "enable_rfid_chips", type: "boolean", default: false })
+  enableRfidChips: boolean;
+
+  @Column({
+    name: "vet_inspection_mode",
+    type: "varchar",
+    length: 20,
+    default: "SIMPLE",
+  })
+  vetInspectionMode: "SIMPLE" | "DETAILED";
+
   @Column({ type: "int", default: 65, name: "max_heart_rate" })
   maxHeartRate: number;
 

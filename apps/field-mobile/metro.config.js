@@ -10,6 +10,17 @@ const config = getDefaultConfig(projectRoot);
 // 1. Watch all files within the monorepo (including shared libraries in libs/)
 config.watchFolders = [workspaceRoot];
 
+// Exclude heavy web build directories, .git, and brain logs from Metro watcher on Windows
+config.resolver.blockList = [
+  /.*\/apps\/admin-web\/\.next\/.*/,
+  /.*\/apps\/public-web\/\.next\/.*/,
+  /.*\/apps\/web-informativa\/\.next\/.*/,
+  /.*\/dist\/.*/,
+  /.*\/\.git\/.*/,
+  /.*\/\.system_generated\/.*/,
+  /.*\/brain\/.*/,
+];
+
 // 2. Tell Metro to resolve packages looking at the project node_modules and the workspace node_modules
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

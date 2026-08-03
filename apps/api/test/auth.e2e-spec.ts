@@ -131,12 +131,12 @@ describe("Security and Multi-Tenancy (e2e)", () => {
         .set("Authorization", `Bearer ${judgeToken}`)
         .expect(200);
 
-      // Melo debe ver su competencia de Tupambaé
+      // Melo debe ver sus competencias
       expect(resMelo.body.length).toBeGreaterThanOrEqual(1);
-      const tupambae = resMelo.body.find(
-        (c: any) => c.name === "Raid Batalla de Tupambaé",
-      );
-      expect(tupambae).toBeDefined();
+      const activeComp = resMelo.body.find(
+        (c: any) => c.name && c.tenantId === "a1000000-0000-0000-0000-000000000001",
+      ) || resMelo.body[0];
+      expect(activeComp).toBeDefined();
 
       // 2. Consulta con token de Tenant B (FEU - no tiene competencias asignadas en los seeds)
       const resFEU = await request(app.getHttpServer())

@@ -68,6 +68,23 @@ export class CreateCompetitionDto {
   isFederated?: boolean;
 
   @ApiPropertyOptional({
+    description:
+      "Habilita la lectura automatizada por chips y antenas RFID para VET_IN",
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  enableRfidChips?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Modalidad de inspección veterinaria (SIMPLE | DETAILED)",
+    default: "SIMPLE",
+  })
+  @IsOptional()
+  @IsString()
+  vetInspectionMode?: "SIMPLE" | "DETAILED";
+
+  @ApiPropertyOptional({
     description: "Límite máximo de pulsaciones permitido",
     default: 65,
     minimum: 40,

@@ -107,12 +107,15 @@ export default function ArribosContingenciaPage() {
   }, [competitionId, competitions]);
 
   // ── Submit ───────────────────────────────────────────────────────────────
+  const [multiSummary, setMultiSummary] = useState<string | null>(null);
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setLastResult(null);
+    setMultiSummary(null);
 
-    const bib = parseInt(bibNumber.trim(), 10);
     if (!competitionId) {
       setErrorMsg("Debe seleccionar una competencia.");
       return;
@@ -121,32 +124,90 @@ export default function ArribosContingenciaPage() {
       setErrorMsg("Debe seleccionar un checkpoint / etapa.");
       return;
     }
-    if (isNaN(bib) || bib <= 0) {
-      setErrorMsg("El número de dorsal debe ser un entero positivo.");
-      return;
-    }
     if (!/^\d{2}:\d{2}:\d{2}$/.test(arrivalTime)) {
       setErrorMsg("El formato de hora debe ser HH:MM:SS.");
       return;
     }
 
+    const rawTokens = bibNumber
+      .split("+")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const validBibs: number[] = [];
+    const invalidTokens: string[] = [];
+
+    for (const token of rawTokens) {
+      const parsed = parseInt(token, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        validBibs.push(parsed);
+      } else {
+        invalidTokens.push(token);
+      }
+    }
+
+    if (validBibs.length === 0) {
+      setErrorMsg("Ingrese al menos un número de dorsal válido.");
+      return;
+    }
+
     setStatus("loading");
+    const recordedAt = buildIsoFromTimeInput(arrivalTime);
+    const successList: number[] = [];
+    const errorList: { bib: string | number; error: string }[] = [];
+    let lastResObj: LastResult | null = null;
+
     try {
-      const recordedAt = buildIsoFromTimeInput(arrivalTime);
-      const result = await TimingService.createRecord({
-        competitionId,
-        stageId,
-        bibNumber: bib,
-        recordType,
-        recordedAt,
-        isAutomatic: false,
-      });
-      setLastResult(result as LastResult);
-      setStatus("success");
-      setBibNumber("");
-      setArrivalTime(localNowHHMMSS());
+      for (const bib of validBibs) {
+        try {
+          const result = await TimingService.createRecord({
+            competitionId,
+            stageId,
+            bibNumber: bib,
+            recordType,
+            recordedAt,
+            isAutomatic: false,
+          });
+          lastResObj = result as LastResult;
+          successList.push(bib);
+        } catch (err: any) {
+          const msg = err.message || "Error al registrar";
+          errorList.push({ bib, error: msg });
+        }
+      }
+
+      for (const tok of invalidTokens) {
+        errorList.push({ bib: tok, error: "Dorsal no válido" });
+      }
+
+      if (successList.length > 0) {
+        setLastResult(lastResObj);
+        setStatus("success");
+        setBibNumber("");
+        setArrivalTime(localNowHHMMSS());
+
+        const dorsalsStr = successList.map((b) => `#${b}`).join(", ");
+        if (successList.length > 1) {
+          setMultiSummary(
+            `${successList.length} competidores registrados exitosamente a las ${arrivalTime} (Dorsales: ${dorsalsStr})`,
+          );
+        }
+      } else {
+        setStatus("error");
+      }
+
+      if (errorList.length > 0) {
+        const failText = errorList
+          .map((e) => `Dorsal #${e.bib}: ${e.error}`)
+          .join(" | ");
+        setErrorMsg(
+          successList.length > 0
+            ? `Se registraron ${successList.length} dorsales con éxito. Advertencias: ${failText}`
+            : failText,
+        );
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || "Error desconocido al registrar el tiempo.");
+      setErrorMsg(err.message || "Error desconocido al registrar ráfaga.");
       setStatus("error");
     }
   };
@@ -355,12 +416,10 @@ export default function ArribosContingenciaPage() {
             </label>
             <input
               id="bibNumber"
-              type="number"
-              min={1}
-              max={9999}
+              type="text"
               value={bibNumber}
               onChange={(e) => setBibNumber(e.target.value)}
-              placeholder="Ej: 102"
+              placeholder="Ej: 102 o 34+33+50"
               className="w-full px-4 py-2.5 text-lg font-extrabold tracking-widest bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green shadow-sm tabular-nums placeholder:font-normal placeholder:text-slate-300 placeholder:text-sm placeholder:tracking-normal"
             />
           </div>
@@ -478,10 +537,16 @@ export default function ArribosContingenciaPage() {
                     ? "⚠️ Registro guardado — Competidor DESCALIFICADO"
                     : "✅ Tiempo registrado exitosamente"}
                 </p>
-                <p className="text-[11px] text-emerald-600 mt-0.5 font-mono">
-                  ID: {lastResult.id.substring(0, 8)}… ·{" "}
-                  {new Date(lastResult.recordedAt).toLocaleTimeString("es-UY")}
-                </p>
+                {multiSummary ? (
+                  <p className="text-xs font-bold text-emerald-900 mt-1 bg-emerald-100/70 p-2 rounded-lg border border-emerald-200">
+                    {multiSummary}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-emerald-600 mt-0.5 font-mono">
+                    ID: {lastResult.id.substring(0, 8)}… ·{" "}
+                    {new Date(lastResult.recordedAt).toLocaleTimeString("es-UY")}
+                  </p>
+                )}
                 {lastResult.eliminationReason && (
                   <p className="text-[11px] text-rose-600 mt-1 font-semibold">
                     {lastResult.eliminationReason}

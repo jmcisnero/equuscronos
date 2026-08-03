@@ -87,8 +87,8 @@ describe("Vet Gate Flow (e2e)", () => {
       ownerId = randomUUID();
 
       await dataSource.query(`
-        INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date)
-        VALUES ('${competitionId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Test E2E Competition', 'ACTIVE', 'Melo', '2026-06-10');
+        INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips)
+        VALUES ('${competitionId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Test E2E Competition', 'ACTIVE', 'Melo', '2026-06-10', TRUE);
       `);
 
       await dataSource.query(`
@@ -384,6 +384,239 @@ describe("Vet Gate Flow (e2e)", () => {
         SELECT status FROM competition_entries WHERE id = '${entryId}';
       `);
       expect(updatedEntry[0].status).toBe("ELIMINATED_PP");
+    });
+  });
+
+  describe("RFID Chips vs Manual Mode VET_IN Silent Flow", () => {
+    const tenantId = "a1000000-0000-0000-0000-000000000001";
+    let manualCompId: string;
+    let chipCompId: string;
+    let manualStage1Id: string;
+    let manualStage2Id: string;
+    let chipStage1Id: string;
+    let chipStage2Id: string;
+    const bibManual = 902;
+    const bibChip = 903;
+
+    beforeEach(async () => {
+      await dataSource.query(
+        `DELETE FROM competition_entries WHERE bib_number IN (${bibManual}, ${bibChip});`,
+      );
+      await dataSource.query(
+        `DELETE FROM horses WHERE feu_id IN ('FEU-H-${bibManual}', 'FEU-H-${bibChip}');`,
+      );
+      await dataSource.query(
+        `DELETE FROM riders WHERE feu_id IN ('FEU-R-${bibManual}', 'FEU-R-${bibChip}');`,
+      );
+
+      manualCompId = randomUUID();
+      chipCompId = randomUUID();
+      manualStage1Id = randomUUID();
+      manualStage2Id = randomUUID();
+      chipStage1Id = randomUUID();
+      chipStage2Id = randomUUID();
+
+      // Competition 1: Manual Mode (enable_rfid_chips = false)
+      await dataSource.query(`
+        INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips)
+        VALUES ('${manualCompId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Manual Mode Event', 'ACTIVE', 'Melo', '2026-06-10', FALSE);
+      `);
+      await dataSource.query(`
+        INSERT INTO stages (id, tenant_id, competition_id, stage_number, distance_km, neutralization_minutes)
+        VALUES 
+          ('${manualStage1Id}', '${tenantId}', '${manualCompId}', 1, 30.00, 60),
+          ('${manualStage2Id}', '${tenantId}', '${manualCompId}', 2, 20.00, 0);
+      `);
+
+      // Competition 2: Chip Mode (enable_rfid_chips = true)
+      await dataSource.query(`
+        INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips)
+        VALUES ('${chipCompId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Chip Mode Event', 'ACTIVE', 'Melo', '2026-06-10', TRUE);
+      `);
+      await dataSource.query(`
+        INSERT INTO stages (id, tenant_id, competition_id, stage_number, distance_km, neutralization_minutes)
+        VALUES 
+          ('${chipStage1Id}', '${tenantId}', '${chipCompId}', 1, 30.00, 60),
+          ('${chipStage2Id}', '${tenantId}', '${chipCompId}', 2, 20.00, 0);
+      `);
+
+      // Setup Horse, Rider, Entry for Manual
+      const hManual = randomUUID();
+      const rManual = randomUUID();
+      const oManual = randomUUID();
+      await dataSource.query(
+        `INSERT INTO owners (id, name, type) VALUES ('${oManual}', 'Owner Manual', 'PERSON');`,
+      );
+      await dataSource.query(
+        `INSERT INTO horses (id, name, feu_id, chip_id, is_feu_active, owner_id) VALUES ('${hManual}', 'Horse Manual', 'FEU-H-${bibManual}', 'CHIP-${bibManual}', TRUE, '${oManual}');`,
+      );
+      await dataSource.query(
+        `INSERT INTO riders (id, name, national_id, feu_id, is_feu_active) VALUES ('${rManual}', 'Rider Manual', 'CI-${bibManual}', 'FEU-R-${bibManual}', TRUE);`,
+      );
+      const eManual = randomUUID();
+      await dataSource.query(`
+        INSERT INTO competition_entries (id, tenant_id, competition_id, rider_id, horse_id, bib_number, status, current_stage_id)
+        VALUES ('${eManual}', '${tenantId}', '${manualCompId}', '${rManual}', '${hManual}', ${bibManual}, 'IN_RACE', '${manualStage1Id}');
+      `);
+
+      // Setup Horse, Rider, Entry for Chip
+      const hChip = randomUUID();
+      const rChip = randomUUID();
+      const oChip = randomUUID();
+      await dataSource.query(
+        `INSERT INTO owners (id, name, type) VALUES ('${oChip}', 'Owner Chip', 'PERSON');`,
+      );
+      await dataSource.query(
+        `INSERT INTO horses (id, name, feu_id, chip_id, is_feu_active, owner_id) VALUES ('${hChip}', 'Horse Chip', 'FEU-H-${bibChip}', 'CHIP-${bibChip}', TRUE, '${oChip}');`,
+      );
+      await dataSource.query(
+        `INSERT INTO riders (id, name, national_id, feu_id, is_feu_active) VALUES ('${rChip}', 'Rider Chip', 'CI-${bibChip}', 'FEU-R-${bibChip}', TRUE);`,
+      );
+      const eChip = randomUUID();
+      await dataSource.query(`
+        INSERT INTO competition_entries (id, tenant_id, competition_id, rider_id, horse_id, bib_number, status, current_stage_id)
+        VALUES ('${eChip}', '${tenantId}', '${chipCompId}', '${rChip}', '${hChip}', ${bibChip}, 'IN_RACE', '${chipStage1Id}');
+      `);
+
+      // Record START for both entries
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES 
+          ('${randomUUID()}', '${tenantId}', '${eManual}', '${manualStage1Id}', 'START', '2026-06-10 07:00:00-03', TRUE),
+          ('${randomUUID()}', '${tenantId}', '${eChip}', '${chipStage1Id}', 'START', '2026-06-10 07:00:00-03', TRUE);
+      `);
+    });
+
+    it("Prueba 1: Modalidad Manual (enableRfidChips = false) - Autogenera VET_IN silencioso a las 08:20 y cambia status a VET_CHECK", async () => {
+      const arrTime = new Date("2026-06-10T08:00:00Z");
+
+      const response = await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: manualCompId,
+          stageId: manualStage1Id,
+          bibNumber: bibManual,
+          recordType: "ARRIVAL",
+          recordedAt: arrTime.toISOString(),
+        });
+
+      expect(response.status).toBe(201);
+
+      // Verify two records created for stage: ARRIVAL at 08:00 and automatic VET_IN at 08:20
+      const records = await dataSource.query(`
+        SELECT record_type, recorded_at, is_automatic FROM timing_records
+        WHERE stage_id = '${manualStage1Id}' AND record_type IN ('ARRIVAL', 'VET_IN')
+        ORDER BY recorded_at ASC;
+      `);
+
+      expect(records.length).toBe(2);
+      expect(records[0].record_type).toBe("ARRIVAL");
+      expect(records[1].record_type).toBe("VET_IN");
+      expect(records[1].is_automatic).toBe(true);
+
+      const expectedVetInMs = new Date("2026-06-10T08:20:00Z").getTime();
+      expect(new Date(records[1].recorded_at).getTime()).toBe(expectedVetInMs);
+
+      // Verify entry status changed to VET_CHECK
+      const entryRes = await dataSource.query(`
+        SELECT status FROM competition_entries WHERE bib_number = ${bibManual};
+      `);
+      expect(entryRes[0].status).toBe("VET_CHECK");
+
+      // Verify POST /vet-inspections accepts inspection data without errors
+      const vetRes = await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: manualCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibManual),
+          arrivalTime: arrTime.toISOString(),
+          vetInTime: new Date("2026-06-10T08:20:00Z").toISOString(),
+          heartRate: 56,
+          gaitStatus: "APPROVED",
+          inspectionType: "STANDARD",
+          requiresRecheck: false,
+          notes: "Manual mode test ok",
+        });
+
+      if (vetRes.status !== 201) {
+        console.error("vetRes error in Prueba 1:", vetRes.body);
+      }
+      expect(vetRes.status).toBe(201);
+    });
+
+    it("Prueba 2: Modalidad con Chip (enableRfidChips = true) - NO autogenera VET_IN silencioso", async () => {
+      const arrTime = new Date("2026-06-10T08:00:00Z");
+
+      const response = await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: chipCompId,
+          stageId: chipStage1Id,
+          bibNumber: bibChip,
+          recordType: "ARRIVAL",
+          recordedAt: arrTime.toISOString(),
+        });
+
+      expect(response.status).toBe(201);
+
+      // Verify ONLY 1 timing record (ARRIVAL) exists for chip mode
+      const records = await dataSource.query(`
+        SELECT record_type FROM timing_records
+        WHERE stage_id = '${chipStage1Id}' AND record_type IN ('ARRIVAL', 'VET_IN');
+      `);
+
+      expect(records.length).toBe(1);
+      expect(records[0].record_type).toBe("ARRIVAL");
+    });
+  });
+
+  describe("Parametrización vetInspectionMode (SIMPLE vs DETAILED)", () => {
+    let modeCompId: string;
+    const tenantId = "a1000000-0000-0000-0000-000000000001";
+
+    it("Prueba 1: Creación de Competencia asume vetInspectionMode = 'SIMPLE' por defecto", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/admin/competitions")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          tenantId,
+          competitionTypeId: "c1000000-0000-0000-0000-000000000001",
+          name: "Competencia Modo Test Simple",
+          competitionDate: "2026-09-01",
+          startTime: "07:00:00",
+          isFederated: true,
+          stages: [{ stageNumber: 1, distanceKm: 40, neutralizationMinutes: 60 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.vetInspectionMode).toBe("SIMPLE");
+      modeCompId = res.body.id;
+
+      // Verificar que registros históricos en la BD tengan 'SIMPLE' por defecto
+      const dbRes = await dataSource.query(
+        `SELECT vet_inspection_mode FROM competitions WHERE id = '${modeCompId}';`,
+      );
+      expect(dbRes[0].vet_inspection_mode).toBe("SIMPLE");
+    });
+
+    it("Prueba 2: Permite actualizar modalidad de inspección a 'DETAILED'", async () => {
+      const updateRes = await request(app.getHttpServer())
+        .patch(`/admin/competitions/${modeCompId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          vetInspectionMode: "DETAILED",
+        });
+
+      expect(updateRes.status).toBe(200);
+
+      const dbRes = await dataSource.query(
+        `SELECT vet_inspection_mode FROM competitions WHERE id = '${modeCompId}';`,
+      );
+      expect(dbRes[0].vet_inspection_mode).toBe("DETAILED");
     });
   });
 });

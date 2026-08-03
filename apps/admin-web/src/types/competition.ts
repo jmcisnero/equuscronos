@@ -12,6 +12,8 @@ export interface Competition {
   startTime: string;
   location?: string;
   isFederated: boolean;
+  enableRfidChips?: boolean;
+  vetInspectionMode?: "SIMPLE" | "DETAILED";
   maxHeartRate: number;
   status: string;
   controlClosureTime?: string | null;
@@ -35,6 +37,8 @@ export interface CreateCompetitionDto {
   startTime: string;
   location?: string;
   isFederated?: boolean;
+  enableRfidChips?: boolean;
+  vetInspectionMode?: "SIMPLE" | "DETAILED";
   maxHeartRate?: number;
   status?: string;
   stages: CreateStageDto[];

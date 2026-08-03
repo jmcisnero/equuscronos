@@ -21,6 +21,7 @@ export interface LocalCompetitionEntry {
   ballast_weight: number;
   created_at: string;
   updated_at: string;
+  vet_inspection_mode?: "SIMPLE" | "DETAILED";
 }
 
 export interface LocalTimingRecord {
@@ -85,7 +86,8 @@ export const SQL_CREATE_TABLES = [
     current_stage_id TEXT NOT NULL,
     ballast_weight REAL DEFAULT 0.0,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    vet_inspection_mode TEXT DEFAULT 'SIMPLE'
   );`,
 
   // 2. Timing Records

@@ -202,22 +202,19 @@ export class CompetitionsService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Obtener todos los IDs de inscripciones (competition_entries) para esta competencia
+      // 1. Eliminar inspecciones veterinarias asociadas a la competencia
+      await queryRunner.manager.query(
+        `DELETE FROM vet_inspections WHERE competence_id = $1`,
+        [id],
+      );
+
+      // 2. Obtener todos los IDs de inscripciones (competition_entries) para esta competencia
       const entries = await queryRunner.manager.query(
         `SELECT id FROM competition_entries WHERE competition_id = $1`,
         [id],
       );
       const entryIds = entries.map((e: any) => e.id);
-
       if (entryIds.length > 0) {
-        // 2. Eliminar inspecciones veterinarias asociadas a los registros de tiempo de estas inscripciones
-        await queryRunner.manager.query(
-          `DELETE FROM vet_inspections WHERE timing_record_id IN (
-            SELECT id FROM timing_records WHERE entry_id = ANY($1)
-          )`,
-          [entryIds],
-        );
-
         // 3. Eliminar los registros de tiempo (timing_records)
         await queryRunner.manager.query(
           `DELETE FROM timing_records WHERE entry_id = ANY($1)`,
