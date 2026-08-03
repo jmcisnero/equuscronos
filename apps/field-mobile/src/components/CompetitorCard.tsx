@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { LocalCompetitionEntry } from "../database/schema";
 import { colors } from "../theme/colors";
 import { Button } from "./Button";
-import { ParticipantStatus } from "@equuscronos/shared";
+import { ParticipantStatus, getEliminationDisplayLabel } from "@equuscronos/shared";
 
 interface CompetitorCardProps {
   entry: LocalCompetitionEntry;
@@ -11,6 +11,25 @@ interface CompetitorCardProps {
   onPressVet: (entry: LocalCompetitionEntry) => void;
   showTiming?: boolean;
   showVet?: boolean;
+}
+
+export function getStatusDisplayLabel(status: ParticipantStatus): string {
+  switch (status) {
+    case ParticipantStatus.IN_RACE:
+      return "🏇 CARRERA";
+    case ParticipantStatus.VET_CHECK:
+      return "🩺 VET CHECK";
+    case ParticipantStatus.RESTING:
+      return "⏱️ NEUTRALIZACIÓN";
+    case ParticipantStatus.FINISHED:
+      return "🏁 FINALIZADO";
+    case ParticipantStatus.FINISHED_PROVISIONAL:
+      return "🏁 PROVISIONAL";
+    default: {
+      const elim = getEliminationDisplayLabel(status);
+      return elim.code !== "-" ? `🛑 ${elim.code}` : `🛑 ${status}`;
+    }
+  }
 }
 
 export const CompetitorCard: React.FC<CompetitorCardProps> = ({
@@ -44,17 +63,18 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
           bg: { backgroundColor: "#DBEAFE" },
           textStyle: { color: "#1E40AF" },
         };
-      case ParticipantStatus.DQ:
+      case ParticipantStatus.FINISHED_PROVISIONAL:
         return {
-          bg: { backgroundColor: "#FEE2E2" },
-          textStyle: { color: "#991B1B" },
+          bg: { backgroundColor: "#E0F2FE" },
+          textStyle: { color: "#1E40AF" },
         };
+      case ParticipantStatus.DQ:
       case ParticipantStatus.DNF:
       case ParticipantStatus.WD:
       default:
         return {
-          bg: { backgroundColor: "#F3F4F6" },
-          textStyle: { color: "#374151" },
+          bg: { backgroundColor: "#FEE2E2" },
+          textStyle: { color: "#991B1B" },
         };
     }
   };
@@ -80,7 +100,7 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
 
         <View style={[styles.badge, badgeStyle.bg]}>
           <Text style={[styles.badgeText, badgeStyle.textStyle]}>
-            {entry.status}
+            {getStatusDisplayLabel(entry.status)}
           </Text>
         </View>
       </View>
@@ -93,12 +113,6 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
             {entry.ballast_weight > 0
               ? `${entry.ballast_weight.toFixed(1)} kg`
               : "Sin Lastre"}
-          </Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>ID Binomio</Text>
-          <Text style={styles.detailValue} numberOfLines={1}>
-            {entry.id.substring(0, 8)}
           </Text>
         </View>
       </View>
@@ -219,7 +233,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    height: 44, // Slightly shorter for grid fitting
+    height: 44,
     marginVertical: 0,
   },
   btnText: {

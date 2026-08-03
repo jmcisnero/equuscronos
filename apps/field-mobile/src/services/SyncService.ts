@@ -96,6 +96,21 @@ class SyncService {
   }
 
   /**
+   * Helper to determine if an error is due to network failure/timeout vs a server HTTP error response.
+   */
+  isNetworkError(error: any): boolean {
+    if (!error) return false;
+    if (
+      error.code === "ECONNABORTED" ||
+      error.code === "ERR_NETWORK" ||
+      !error.response
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Enqueues a transaction into the local sync queue.
    * If online, it schedules a sync task immediately.
    */

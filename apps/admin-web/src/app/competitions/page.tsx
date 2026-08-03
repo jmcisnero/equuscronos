@@ -51,6 +51,7 @@ export default function CompetitionsPage() {
     startTime: string;
     location: string;
     isFederated: boolean;
+    vetInspectionMode: "SIMPLE" | "DETAILED";
     maxHeartRate: number;
     stages: CreateStageDto[];
     tenantId: string;
@@ -61,6 +62,7 @@ export default function CompetitionsPage() {
     startTime: "07:00",
     location: "",
     isFederated: true,
+    vetInspectionMode: "SIMPLE",
     maxHeartRate: 65,
     stages: [],
     tenantId: "",
@@ -162,6 +164,7 @@ export default function CompetitionsPage() {
       startTime: "07:00",
       location: "",
       isFederated: true,
+      vetInspectionMode: "SIMPLE",
       maxHeartRate: defaultHeartRate,
       stages: [],
       tenantId: user?.tenantId || tenants[0]?.id || "",
@@ -195,6 +198,7 @@ export default function CompetitionsPage() {
       startTime: comp.startTime ? comp.startTime.substring(0, 5) : "07:00",
       location: comp.location || "",
       isFederated: comp.isFederated ?? false,
+      vetInspectionMode: comp.vetInspectionMode || "SIMPLE",
       maxHeartRate: comp.maxHeartRate ?? 65,
       stages: (comp.stages || []).map((s) => ({
         stageNumber: s.stageNumber,
@@ -349,6 +353,7 @@ export default function CompetitionsPage() {
               ? `${formData.startTime}:00`
               : formData.startTime,
           location: formData.location.trim() || undefined,
+          vetInspectionMode: formData.vetInspectionMode,
           maxHeartRate: formData.maxHeartRate,
           stages: cleanStages,
         });
@@ -369,6 +374,7 @@ export default function CompetitionsPage() {
               : formData.startTime,
           location: formData.location.trim() || undefined,
           isFederated: formData.isFederated,
+          vetInspectionMode: formData.vetInspectionMode,
           maxHeartRate: formData.maxHeartRate,
           stages: cleanStages,
         };
@@ -1005,12 +1011,33 @@ export default function CompetitionsPage() {
                 </div>
               </div>
 
-              {/* Fila de Configuración FEU */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Fila de Configuración FEU y Control Veterinario */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Modalidad de Control Veterinario */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Modo Registro Vet *
+                  </label>
+                  <select
+                    disabled={isFieldsDisabled}
+                    value={formData.vetInspectionMode}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        vetInspectionMode: e.target.value as "SIMPLE" | "DETAILED",
+                      })
+                    }
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-semibold disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-100"
+                  >
+                    <option value="SIMPLE">SIMPLE (Mesa Rápida FEU)</option>
+                    <option value="DETAILED">DETAILED (Formulario Extendido)</option>
+                  </select>
+                </div>
+
                 {/* Pulsaciones Máximas */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Pulsaciones Máximas Vet Gate (ppm) *
+                    Pulsaciones Máximas (ppm) *
                   </label>
                   <input
                     type="number"
@@ -1032,11 +1059,11 @@ export default function CompetitionsPage() {
                 {/* Switch de Competencia Federada */}
                 <div className="flex flex-col justify-center">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    ¿Es Competencia Federada?
+                    ¿Competencia Federada?
                   </span>
                   <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                     <span className="text-[10px] text-slate-400 font-medium">
-                      Habilita ranking nacional FEU
+                      Ranking FEU
                     </span>
                     <label
                       className={`relative inline-flex items-center ${editingCompetition !== null ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}

@@ -109,6 +109,8 @@ CREATE TABLE competitions (
     competition_date DATE NOT NULL,
     location VARCHAR(255),
     is_federated BOOLEAN DEFAULT FALSE,
+    enable_rfid_chips BOOLEAN DEFAULT FALSE,
+    vet_inspection_mode VARCHAR(20) DEFAULT 'SIMPLE',
     max_heart_rate INT DEFAULT 65,
     status comp_status DEFAULT 'PLANNED',
     start_time TIME NOT NULL DEFAULT '07:00:00',

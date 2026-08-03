@@ -104,11 +104,16 @@ function MainApp() {
         currentStageId = sortedStages[0]?.id || "";
       }
 
+      const vetMode =
+        activeCompetition.vetInspectionMode ||
+        activeCompetition.vet_inspection_mode ||
+        "SIMPLE";
+
       await db.runAsync(
         `INSERT INTO competition_entries (
           id, tenant_id, competition_id, rider_id, rider_name, horse_id, horse_name, 
-          bib_number, status, current_stage_id, ballast_weight, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          bib_number, status, current_stage_id, ballast_weight, created_at, updated_at, vet_inspection_mode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           entry.id,
           entry.tenant?.id ||
@@ -126,6 +131,7 @@ function MainApp() {
           Number(entry.ballastWeight) || 0,
           entry.createdAt || now,
           entry.updatedAt || now,
+          vetMode,
         ],
       );
 
@@ -234,64 +240,79 @@ function MainApp() {
     }
   }, [dbReady]);
 
-  // Handle auto-import from server only when logged in and local DB is empty
-  useEffect(() => {
-    async function handleAutoImport() {
-      if (!dbReady || !user) return;
+  const autoSyncAndImportOnLogin = async () => {
+    if (!dbReady) return;
 
-      try {
-        const db = await getDatabase();
-        const rows = await db.getAllAsync<LocalCompetitionEntry>(
-          "SELECT * FROM competition_entries ORDER BY bib_number ASC;",
-        );
-
-        if (rows.length === 0) {
-          console.log(
-            "[App] Local database is empty. Attempting automatic active competition import...",
-          );
-          setIsImporting(true);
-          try {
-            const competitions = await ApiService.fetchCompetitions();
-            const activeCompetition = competitions.find(
-              (c) => c.status === "ACTIVE",
-            );
-
-            if (activeCompetition) {
-              const serverEntries = await ApiService.fetchLatestEntries(
-                activeCompetition.id,
-              );
-              if (serverEntries.length > 0) {
-                await importActiveCompetitionData(
-                  activeCompetition,
-                  serverEntries,
-                );
-                console.log(
-                  `[App] Auto-imported active competition: ${activeCompetition.name}`,
-                );
-                await reloadEntries();
-              }
-            }
-          } catch (autoImportErr) {
-            console.warn(
-              "[App] Auto-import of active competition failed (likely offline/unreachable):",
-              autoImportErr,
-            );
-          } finally {
-            setIsImporting(false);
-          }
-        }
-      } catch (err) {
-        console.warn("[App] Error in auto-import check:", err);
-      }
+    if (!SyncService.isOnline()) {
+      console.log(
+        "[App] Offline post-login: Skipping server sync/import. Using existing local SQLite data.",
+      );
+      await reloadEntries();
+      return;
     }
 
-    handleAutoImport();
-  }, [dbReady, user]);
+    try {
+      console.log(
+        "[App] Post-login online detection: Assessing pending sync queue prior to refresh...",
+      );
+      setIsImporting(true);
 
-  // Handle role-based redirect upon login
+      // Paso 1: Si existen elementos en sync_queue, subirlos al servidor antes de refrescar SQLite
+      let pendingCount = await SyncService.getQueueSize();
+      if (pendingCount > 0) {
+        console.log(
+          `[App] ${pendingCount} pending items in sync_queue. Flushes queue prior to SQLite refresh...`,
+        );
+        try {
+          await SyncService.forceSync();
+          await updateQueueInfo();
+        } catch (syncErr) {
+          console.warn("[App] Warning during pre-import forceSync:", syncErr);
+        }
+      }
+
+      // Re-verificar que la cola local esté completamente procesada
+      pendingCount = await SyncService.getQueueSize();
+      if (pendingCount > 0) {
+        console.warn(
+          "[App] Post-login import skipped to protect local queue items that could not be flushed.",
+        );
+        setIsImporting(false);
+        return;
+      }
+
+      // Paso 2: Descargar e importar datos actualizados de la competencia activa del servidor
+      const competitions = await ApiService.fetchCompetitions();
+      const activeCompetition =
+        competitions.find((c: any) => c.status === "ACTIVE") || competitions[0];
+
+      if (activeCompetition) {
+        const serverEntries = await ApiService.fetchLatestEntries(
+          activeCompetition.id,
+        );
+        if (serverEntries && serverEntries.length > 0) {
+          await importActiveCompetitionData(activeCompetition, serverEntries);
+          console.log(
+            `[App] Post-login auto-update successful: ${serverEntries.length} binomios loaded for "${activeCompetition.name}".`,
+          );
+          await reloadEntries();
+        }
+      }
+    } catch (err) {
+      console.warn("[App] Error in post-login auto sync/import:", err);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Handle role-based redirect & auto-update upon login
   useEffect(() => {
     if (user && !previousUser) {
       setPreviousUser(user);
+
+      // Trigger post-login auto-update & queue flush
+      autoSyncAndImportOnLogin();
+
       if (user.role === UserRole.VET) {
         setSelectedEntry(null);
         setCurrentScreen("VET_GATE");
@@ -307,7 +328,7 @@ function MainApp() {
     } else if (!user) {
       setPreviousUser(null);
     }
-  }, [user]);
+  }, [user, dbReady]);
 
   // Synchronize local apiUrl state when user logs in to prevent showing stale default IP
   useEffect(() => {
@@ -525,29 +546,20 @@ function MainApp() {
     );
   }
 
-  // Force screen redirects/guards based on role to block unauthorized navigation
+  // Guard the rendering of screens based on role
   let activeScreen = currentScreen;
-  if (user && currentScreen !== "SYNC_MONITOR") {
-    if (user.role === UserRole.VET) {
-      activeScreen = "VET_GATE";
-    } else if (
-      user.role === UserRole.TIMEKEEPER ||
-      user.role === UserRole.JUDGE
-    ) {
-      activeScreen = "TIMING";
-    }
-  }
 
   // Guard the rendering of screens based on role
   if (activeScreen === "TIMING") {
     const isAllowed =
       user.role === UserRole.ADMIN ||
       user.role === UserRole.TIMEKEEPER ||
-      user.role === UserRole.JUDGE;
+      user.role === UserRole.JUDGE ||
+      user.role === UserRole.VET;
     if (!isAllowed) {
       return (
         <PermissionErrorScreen
-          expectedRoles={[UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER]}
+          expectedRoles={[UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET]}
           currentRole={user?.role}
           onBack={handleBackToList}
         />
@@ -557,11 +569,14 @@ function MainApp() {
 
   if (activeScreen === "VET_GATE") {
     const isAllowed =
-      user.role === UserRole.ADMIN || user.role === UserRole.VET;
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.VET ||
+      user.role === UserRole.TIMEKEEPER ||
+      user.role === UserRole.JUDGE;
     if (!isAllowed) {
       return (
         <PermissionErrorScreen
-          expectedRoles={[UserRole.ADMIN, UserRole.VET]}
+          expectedRoles={[UserRole.ADMIN, UserRole.VET, UserRole.TIMEKEEPER, UserRole.JUDGE]}
           currentRole={user?.role}
           onBack={handleBackToList}
         />
@@ -686,28 +701,35 @@ function MainApp() {
       {/* 3. SCREEN NAVIGATOR */}
       {activeScreen === "LIST" && (
         <View style={styles.mainContent}>
-          {/* Quick Timing Entry Stream Button */}
-          {(user.role === UserRole.ADMIN ||
-            user.role === UserRole.TIMEKEEPER ||
-            user.role === UserRole.JUDGE) && (
+          {/* Quick Action Buttons for Field Officers */}
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
             <TouchableOpacity
-              style={styles.quickTimingBtn}
+              style={[styles.quickTimingBtn, { flex: 1, marginBottom: 0 }]}
               onPress={() => {
                 setSelectedEntry(null);
                 setCurrentScreen("TIMING");
               }}
             >
               <Text style={styles.quickTimingBtnText}>
-                ⏱️ Puesto{" "}
-                {stationRecordType === "START"
-                  ? "Largada"
-                  : stationRecordType === "ARRIVAL"
-                    ? "Arribos"
-                    : "Vet In"}
-                : Registrar (Stream)
+                ⏱️ Arribos
               </Text>
             </TouchableOpacity>
-          )}
+
+            <TouchableOpacity
+              style={[
+                styles.quickTimingBtn,
+                { flex: 1, marginBottom: 0, backgroundColor: "#0284C7", borderColor: "#0369A1" },
+              ]}
+              onPress={() => {
+                setSelectedEntry(null);
+                setCurrentScreen("VET_GATE");
+              }}
+            >
+              <Text style={styles.quickTimingBtnText}>
+                🩺 Mesa Vet
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Workstation Config Segment bar */}
           {(user.role === UserRole.ADMIN ||
@@ -880,14 +902,6 @@ function MainApp() {
                 entry={item}
                 onPressTiming={openTiming}
                 onPressVet={openVet}
-                showTiming={
-                  user.role === UserRole.ADMIN ||
-                  user.role === UserRole.TIMEKEEPER ||
-                  user.role === UserRole.JUDGE
-                }
-                showVet={
-                  user.role === UserRole.ADMIN || user.role === UserRole.VET
-                }
               />
             )}
             ListEmptyComponent={

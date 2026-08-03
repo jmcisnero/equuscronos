@@ -15,6 +15,7 @@ import { LocalCompetitionEntry } from "../database/schema";
 import { colors } from "../theme/colors";
 import { getDatabase } from "../database/db";
 import SyncService from "../services/SyncService";
+import ApiService from "../services/ApiService";
 import { ValidationService } from "../services/ValidationService";
 import {
   TimeRecordType,
@@ -94,7 +95,9 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
   // Ocultar selector y hacer tipo de evento inmutable para la sesión
   const [recordType] = useState<TimeRecordType>(stationRecordType);
-  const [timeSource, setTimeSource] = useState<"SYSTEM" | "MANUAL">("SYSTEM");
+  const [timeSource, setTimeSource] = useState<"SYSTEM" | "MANUAL">("MANUAL");
+  const [isClockPaused, setIsClockPaused] = useState<boolean>(false);
+  const [frozenTime, setFrozenTime] = useState<Date | null>(null);
   const [systemTime, setSystemTime] = useState<Date>(new Date());
   const [manualOffsetSeconds, setManualOffsetSeconds] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,6 +112,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   const [lastSaved, setLastSaved] = useState<{
     bib: number;
     time: string;
+    message?: string;
   } | null>(null);
 
   // Editing & Voiding Dialog States
@@ -202,8 +206,24 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   }, [bibNumber]);
 
   const getTargetTime = (): Date => {
+    if (isClockPaused && frozenTime) {
+      return frozenTime;
+    }
     if (timeSource === "SYSTEM") return systemTime;
     return new Date(systemTime.getTime() + manualOffsetSeconds * 1000);
+  };
+
+  const handlePauseClock = () => {
+    const currentTime = getTargetTime();
+    setFrozenTime(currentTime);
+    setIsClockPaused(true);
+  };
+
+  const handleResumeClock = () => {
+    setIsClockPaused(false);
+    setFrozenTime(null);
+    setTimeSource("SYSTEM");
+    setManualOffsetSeconds(0);
   };
 
   const triggerFlash = () => {
@@ -239,9 +259,38 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       return;
     }
 
-    const bibInt = parseInt(trimmed, 10);
-    if (isNaN(bibInt)) {
-      Alert.alert("Error", "Ingrese un número de dorsal válido.", [
+    const rawTokens = trimmed
+      .split("+")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (rawTokens.length === 0) {
+      Alert.alert("Entrada Vacía", "Por favor, ingrese un número de dorsal.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setBibNumber("");
+            setTimeout(() => inputRef.current?.focus(), 150);
+          },
+        },
+      ]);
+      return;
+    }
+
+    const bibInts: number[] = [];
+    const invalidBibTokens: string[] = [];
+
+    for (const token of rawTokens) {
+      const parsed = parseInt(token, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        bibInts.push(parsed);
+      } else {
+        invalidBibTokens.push(token);
+      }
+    }
+
+    if (bibInts.length === 0 && invalidBibTokens.length > 0) {
+      Alert.alert("Error", "Ingrese números de dorsal válidos.", [
         {
           text: "OK",
           onPress: () => {
@@ -257,162 +306,324 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     const recordTime = getTargetTime();
     const recordedAt = recordTime.toISOString();
 
+    const successBibs: number[] = [];
+    const failedBibs: { bib: string | number; reason: string }[] = [];
+    let hasLateVetIn = false;
+    let mainSyncMsg = "";
+
     try {
       const db = await getDatabase();
+      const isOnline = SyncService.isOnline();
 
-      // Verify competitor exists in SQLite local DB
-      const entryRow = await db.getFirstAsync<LocalCompetitionEntry>(
-        "SELECT * FROM competition_entries WHERE bib_number = ?;",
-        [bibInt],
+      // Retrieve default/active competition_id and stage_id from local SQLite entries if available
+      let defaultCompId = "77777777-7777-7777-7777-777777777777";
+      let defaultStageId = "";
+      const sampleEntry = await db.getFirstAsync<LocalCompetitionEntry>(
+        "SELECT competition_id, current_stage_id, tenant_id FROM competition_entries LIMIT 1;",
       );
-
-      if (!entryRow) {
-        Alert.alert(
-          "Dorsal no encontrado",
-          "Dorsal no encontrado en esta carrera",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setBibNumber("");
-                setTimeout(() => inputRef.current?.focus(), 150);
-              },
-            },
-          ],
-        );
-        setIsSubmitting(false);
-        return;
+      if (sampleEntry) {
+        defaultCompId = sampleEntry.competition_id;
+        defaultStageId = sampleEntry.current_stage_id;
       }
 
-      const tenantId = entryRow.tenant_id;
-      const stageId = entryRow.current_stage_id;
-
-      // 1. Validar secuencia e idempotencia reglamentaria FEU
-      const valResult = await ValidationService.validateTimingRecord(
-        db,
-        entryRow.id,
-        stageId,
-        recordType,
-      );
-
-      if (!valResult.isValid) {
-        Alert.alert(
-          "Validación de Secuencia",
-          valResult.error || "Operación denegada por reglas FEU.",
-          [
-            {
-              text: "Entendido",
-              onPress: () => {
-                setBibNumber("");
-                setTimeout(() => inputRef.current?.focus(), 150);
-              },
-            },
-          ],
+      for (const bibInt of bibInts) {
+        // Query local SQLite entry
+        let entryRow = await db.getFirstAsync<LocalCompetitionEntry>(
+          "SELECT * FROM competition_entries WHERE bib_number = ?;",
+          [bibInt],
         );
-        setIsSubmitting(false);
-        return;
-      }
 
-      const recordId = `tr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        let competitionId = entryRow ? entryRow.competition_id : defaultCompId;
+        let stageId = entryRow ? entryRow.current_stage_id : defaultStageId;
+        let tenantId = entryRow
+          ? entryRow.tenant_id
+          : "77777777-7777-7777-7777-777777777777";
 
-      // Determine target competitor status depending on TimeRecordType selected
-      let targetStatus = entryRow.status;
-      let isApproved = 1;
-      let eliminationType: string | null = null;
-      let eliminationReason: string | null = null;
-      let isLateVetIn = false;
+        let recordId = `tr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        let isOnlineSuccess = false;
+        let syncStatusMsg = "";
 
-      if (recordType === TimeRecordType.START) {
-        targetStatus = ParticipantStatus.IN_RACE;
-      } else if (recordType === TimeRecordType.ARRIVAL) {
-        targetStatus = ParticipantStatus.VET_CHECK;
-      } else if (recordType === TimeRecordType.VET_IN) {
-        targetStatus = ParticipantStatus.VET_CHECK;
-        // Verify 20-minute recovery limit
-        const arrivalRecord = await db.getFirstAsync<{ recorded_at: string }>(
-          `SELECT recorded_at FROM timing_records 
-           WHERE entry_id = ? AND stage_id = ? AND record_type = ? AND is_void = 0;`,
-          [entryRow.id, stageId, TimeRecordType.ARRIVAL],
-        );
-        if (arrivalRecord) {
-          const diffMs =
-            new Date(recordedAt).getTime() -
-            new Date(arrivalRecord.recorded_at).getTime();
-          if (diffMs > 20 * 60 * 1000) {
-            const diffMinutes = Math.round(diffMs / (1000 * 60));
-            isApproved = 0;
-            eliminationType = EliminationCode.TIME;
-            eliminationReason = `Fuera de tiempo de recuperación: ${diffMinutes} minutos (Límite: 20 min).`;
-            isLateVetIn = true;
-            targetStatus = ParticipantStatus.DQ;
+        // ── FLUKO 1: INTENTO ONLINE DIRECTO (DESACOPLADO DE SQLITE PREVIO) ──
+        if (isOnline) {
+          try {
+            const directPayload = {
+              competitionId,
+              stageId,
+              bibNumber: bibInt,
+              recordType,
+              recordedAt,
+            };
+            const response = await ApiService.postTimingRecordDirect(directPayload);
+            if (response && response.id) {
+              recordId = response.id;
+            }
+
+            isOnlineSuccess = true;
+            syncStatusMsg = "Tiempo Registrado en Tiempo Real (Online)";
+
+            // Mirror cache into local SQLite DB from server response
+            const serverEntryId =
+              response?.entryId || entryRow?.id || `entry-${bibInt}`;
+            const serverStatus =
+              response?.entryStatus ||
+              (recordType === TimeRecordType.START
+                ? ParticipantStatus.IN_RACE
+                : recordType === TimeRecordType.ARRIVAL ||
+                    recordType === TimeRecordType.VET_IN
+                  ? ParticipantStatus.VET_CHECK
+                  : ParticipantStatus.RESTING);
+
+            await db.runAsync(
+              `INSERT INTO competition_entries (
+                id, tenant_id, competition_id, rider_id, rider_name, horse_id, horse_name,
+                bib_number, status, current_stage_id, ballast_weight, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at;`,
+              [
+                serverEntryId,
+                tenantId,
+                competitionId,
+                entryRow?.rider_id || `rider-${bibInt}`,
+                entryRow?.rider_name || `Jinete ${bibInt}`,
+                entryRow?.horse_id || `horse-${bibInt}`,
+                entryRow?.horse_name || `Equino ${bibInt}`,
+                bibInt,
+                serverStatus,
+                stageId,
+                recordedAt,
+                recordedAt,
+              ],
+            );
+
+            await db.runAsync(
+              `INSERT INTO timing_records (
+                id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, is_void, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET recorded_at = excluded.recorded_at, updated_at = excluded.updated_at;`,
+              [
+                recordId,
+                tenantId,
+                serverEntryId,
+                stageId,
+                recordType,
+                recordedAt,
+                recordedAt,
+                recordedAt,
+              ],
+            );
+
+            if (!mainSyncMsg) mainSyncMsg = syncStatusMsg;
+            successBibs.push(bibInt);
+            continue;
+          } catch (onlineErr: any) {
+            if (!SyncService.isNetworkError(onlineErr)) {
+              // Business error from API (e.g. 400 Bad Request / 404 Not Found)
+              const apiMsg =
+                onlineErr?.response?.data?.message ||
+                onlineErr?.message ||
+                "Error del servidor";
+              failedBibs.push({
+                bib: bibInt,
+                reason: Array.isArray(apiMsg) ? apiMsg.join(", ") : String(apiMsg),
+              });
+              continue;
+            }
+            // Network failure -> Fallback to offline
+            isOnlineSuccess = false;
+            syncStatusMsg =
+              "Conexión no disponible. Registrado en Respaldo Offline (Modo Contingencia)";
           }
         }
-      } else if (recordType === TimeRecordType.VET_OUT) {
-        targetStatus = ParticipantStatus.RESTING;
-      }
 
-      // 1. Transactionally write to SQLite local tables (Source of truth)
-      await db.runAsync(
-        `INSERT INTO timing_records (
-          id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, elimination_type, elimination_reason, is_void, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);`,
-        [
-          recordId,
-          tenantId,
+        // ── FLUJO 2: MODO OFFLINE / RESPALDO CON CONTINGENCIA ──
+        if (!entryRow) {
+          // Competidor no existía localmente: Crear registro provisional en SQLite local
+          const tempEntryId = `temp-entry-${bibInt}-${Date.now()}`;
+          const initialStatus =
+            recordType === TimeRecordType.START
+              ? ParticipantStatus.IN_RACE
+              : ParticipantStatus.VET_CHECK;
+
+          await db.runAsync(
+            `INSERT INTO competition_entries (
+              id, tenant_id, competition_id, rider_id, rider_name, horse_id, horse_name,
+              bib_number, status, current_stage_id, ballast_weight, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);`,
+            [
+              tempEntryId,
+              tenantId,
+              competitionId,
+              `rider-${bibInt}`,
+              `Jinete ${bibInt}`,
+              `horse-${bibInt}`,
+              `Equino ${bibInt}`,
+              bibInt,
+              initialStatus,
+              stageId,
+              recordedAt,
+              recordedAt,
+            ],
+          );
+
+          entryRow = {
+            id: tempEntryId,
+            tenant_id: tenantId,
+            competition_id: competitionId,
+            rider_id: `rider-${bibInt}`,
+            rider_name: `Jinete ${bibInt}`,
+            horse_id: `horse-${bibInt}`,
+            horse_name: `Equino ${bibInt}`,
+            bib_number: bibInt,
+            status: initialStatus,
+            current_stage_id: stageId,
+            ballast_weight: 0,
+            created_at: recordedAt,
+            updated_at: recordedAt,
+          };
+        }
+
+        // Validate local FEU sequence
+        const valResult = await ValidationService.validateTimingRecord(
+          db,
           entryRow.id,
           stageId,
           recordType,
-          recordedAt,
-          isApproved,
-          eliminationType,
-          eliminationReason,
-          recordedAt,
-          recordedAt,
-        ],
-      );
+        );
 
-      await db.runAsync(
-        `UPDATE competition_entries SET status = ?, updated_at = ? WHERE id = ?;`,
-        [targetStatus, recordedAt, entryRow.id],
-      );
+        if (!valResult.isValid) {
+          failedBibs.push({
+            bib: bibInt,
+            reason: valResult.error || "Operación denegada por reglas FEU",
+          });
+          continue;
+        }
 
-      console.log(
-        `[SQLite] Local database updated. Entry: ${entryRow.id}, Status: ${targetStatus}`,
-      );
+        let targetStatus = entryRow.status;
+        let isApproved = 1;
+        let eliminationType: string | null = null;
+        let eliminationReason: string | null = null;
 
-      // 2. Queue actions for Backend Synchronization (Postgres)
-      await SyncService.enqueueAction("CREATE_TIMING", "timing_records", {
-        id: recordId,
-        tenant_id: tenantId,
-        entry_id: entryRow.id,
-        stage_id: stageId,
-        record_type: recordType,
-        recorded_at: recordedAt,
-        is_approved: isApproved,
-        elimination_type: eliminationType || null,
-        elimination_reason: eliminationReason || null,
-        is_void: 0,
-        created_at: recordedAt,
-        updated_at: recordedAt,
-      });
+        if (recordType === TimeRecordType.START) {
+          targetStatus = ParticipantStatus.IN_RACE;
+        } else if (recordType === TimeRecordType.ARRIVAL) {
+          targetStatus = ParticipantStatus.VET_CHECK;
+        } else if (recordType === TimeRecordType.VET_IN) {
+          targetStatus = ParticipantStatus.VET_CHECK;
+          const arrivalRecord = await db.getFirstAsync<{ recorded_at: string }>(
+            `SELECT recorded_at FROM timing_records 
+             WHERE entry_id = ? AND stage_id = ? AND record_type = ? AND is_void = 0;`,
+            [entryRow.id, stageId, TimeRecordType.ARRIVAL],
+          );
+          if (arrivalRecord) {
+            const diffMs =
+              new Date(recordedAt).getTime() -
+              new Date(arrivalRecord.recorded_at).getTime();
+            if (diffMs > 20 * 60 * 1000) {
+              const diffMinutes = Math.round(diffMs / (1000 * 60));
+              isApproved = 0;
+              eliminationType = EliminationCode.TIME;
+              eliminationReason = `Fuera de tiempo de recuperación: ${diffMinutes} minutos (Límite: 20 min).`;
+              hasLateVetIn = true;
+              targetStatus = ParticipantStatus.DQ;
+            }
+          }
+        } else if (recordType === TimeRecordType.VET_OUT) {
+          targetStatus = ParticipantStatus.RESTING;
+        }
 
-      await SyncService.enqueueAction(
-        "UPDATE_ENTRY_STATUS",
-        "competition_entries",
-        {
-          id: entryRow.id,
-          status: targetStatus,
-        },
-      );
+        if (!syncStatusMsg) {
+          syncStatusMsg =
+            "Conexión no disponible. Registrado en Respaldo Offline (Modo Contingencia)";
+        }
+        if (!mainSyncMsg) mainSyncMsg = syncStatusMsg;
 
-      // 3. Success Feedback UI updates
+        await db.runAsync(
+          `INSERT INTO timing_records (
+            id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, elimination_type, elimination_reason, is_void, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);`,
+          [
+            recordId,
+            tenantId,
+            entryRow.id,
+            stageId,
+            recordType,
+            recordedAt,
+            isApproved,
+            eliminationType,
+            eliminationReason,
+            recordedAt,
+            recordedAt,
+          ],
+        );
+
+        await db.runAsync(
+          `UPDATE competition_entries SET status = ?, updated_at = ? WHERE id = ?;`,
+          [targetStatus, recordedAt, entryRow.id],
+        );
+
+        // Enqueue in sync_queue for offline sync
+        await SyncService.enqueueAction("CREATE_TIMING", "timing_records", {
+          id: recordId,
+          tenant_id: tenantId,
+          entry_id: entryRow.id,
+          stage_id: stageId,
+          record_type: recordType,
+          recorded_at: recordedAt,
+          is_approved: isApproved,
+          elimination_type: eliminationType || null,
+          elimination_reason: eliminationReason || null,
+          is_void: 0,
+          created_at: recordedAt,
+          updated_at: recordedAt,
+        });
+
+        await SyncService.enqueueAction(
+          "UPDATE_ENTRY_STATUS",
+          "competition_entries",
+          {
+            id: entryRow.id,
+            status: targetStatus,
+          },
+        );
+
+        successBibs.push(bibInt);
+      }
+
       await loadRecentRecords();
 
-      if (isLateVetIn) {
+      for (const tok of invalidBibTokens) {
+        failedBibs.push({ bib: tok, reason: "Formato de dorsal inválido" });
+      }
+
+      if (successBibs.length > 0) {
+        const timeStr = formattedTime(recordTime);
+        const dorsalsStr = successBibs.map((b) => `#${b}`).join(", ");
+        const toastMsg =
+          successBibs.length === 1
+            ? `Dorsal ${dorsalsStr} registrado a las ${timeStr} (${mainSyncMsg})`
+            : `${successBibs.length} competidores registrados a las ${timeStr} (Dorsales: ${dorsalsStr}) [${mainSyncMsg}]`;
+
+        setLastSaved({
+          bib: successBibs[0],
+          time: timeStr,
+          message: toastMsg,
+        });
+        triggerFlash();
+        setBibNumber("");
+        setTimeout(() => inputRef.current?.focus(), 150);
+      }
+
+      if (hasLateVetIn) {
         setShowDqAlert(true);
+      }
+
+      if (failedBibs.length > 0) {
+        const failMsg = failedBibs
+          .map((f) => `• Dorsal #${f.bib}: ${f.reason}`)
+          .join("\n");
         Alert.alert(
-          "DORSAL EXCEDIDO",
-          "DORSAL EXCEDIDO: ELIMINACIÓN AUTOMÁTICA",
+          "Resumen de Captura en Ráfaga",
+          `Procesados con éxito: ${successBibs.length}\n\nOmitidos / Rechazados:\n${failMsg}`,
           [
             {
               text: "OK",
@@ -424,8 +635,6 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
           ],
         );
       } else {
-        setLastSaved({ bib: bibInt, time: formattedTime(recordTime) });
-        triggerFlash();
         setBibNumber("");
       }
     } catch (error) {
@@ -445,7 +654,6 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
       );
     } finally {
       setIsSubmitting(false);
-      // Keep/Restore focus on the input immediately
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -461,7 +669,11 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
 
   const adjustOffset = (amount: number) => {
     setTimeSource("MANUAL");
-    setManualOffsetSeconds((prev) => prev + amount);
+    if (isClockPaused && frozenTime) {
+      setFrozenTime(new Date(frozenTime.getTime() + amount * 1000));
+    } else {
+      setManualOffsetSeconds((prev) => prev + amount);
+    }
   };
 
   // Interpolate flash animation values for high-visibility visual feedback
@@ -702,24 +914,52 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         {/* Master Chronometer */}
         <View style={styles.chronoContainer}>
           <Text style={styles.chronoTitle}>RELOJ DE COMPETENCIA (OFICIAL)</Text>
-          <Text style={styles.chronoDigits}>
+          <Text
+            style={[
+              styles.chronoDigits,
+              isClockPaused && styles.chronoDigitsPaused,
+            ]}
+          >
             {formattedTime(getTargetTime())}
           </Text>
+
+          {/* Pause / Resume Clock Control */}
+          <TouchableOpacity
+            style={[
+              styles.pauseClockBtn,
+              isClockPaused && styles.pauseClockBtnActive,
+            ]}
+            onPress={isClockPaused ? handleResumeClock : handlePauseClock}
+          >
+            <Text style={styles.pauseClockBtnText}>
+              {isClockPaused
+                ? "▶️ Reactivar / Continuar Reloj"
+                : "⏸️ Pausar / Detener Reloj"}
+            </Text>
+          </TouchableOpacity>
+          {isClockPaused && (
+            <Text style={styles.pausedIndicatorText}>
+              ❄️ MARCA TEMPORAL CONGELADA
+            </Text>
+          )}
+
           <View style={styles.sourceSelector}>
             <TouchableOpacity
               style={[
                 styles.sourceBtn,
-                timeSource === "SYSTEM" && styles.sourceBtnActive,
+                timeSource === "SYSTEM" && !isClockPaused && styles.sourceBtnActive,
               ]}
               onPress={() => {
                 setTimeSource("SYSTEM");
                 setManualOffsetSeconds(0);
+                setIsClockPaused(false);
+                setFrozenTime(null);
               }}
             >
               <Text
                 style={[
                   styles.sourceText,
-                  timeSource === "SYSTEM" && styles.sourceTextActive,
+                  timeSource === "SYSTEM" && !isClockPaused && styles.sourceTextActive,
                 ]}
               >
                 Automática
@@ -728,14 +968,14 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
             <TouchableOpacity
               style={[
                 styles.sourceBtn,
-                timeSource === "MANUAL" && styles.sourceBtnActive,
+                (timeSource === "MANUAL" || isClockPaused) && styles.sourceBtnActive,
               ]}
               onPress={() => setTimeSource("MANUAL")}
             >
               <Text
                 style={[
                   styles.sourceText,
-                  timeSource === "MANUAL" && styles.sourceTextActive,
+                  (timeSource === "MANUAL" || isClockPaused) && styles.sourceTextActive,
                 ]}
               >
                 Ajuste Manual
@@ -792,6 +1032,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
           <View style={styles.successToast}>
             <Text style={styles.successToastText}>
               ✓ Dorsal #{lastSaved.bib} registrado a las {lastSaved.time}
+              {lastSaved.message ? ` (${lastSaved.message})` : ""}
             </Text>
           </View>
         )}
@@ -813,7 +1054,8 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
             style={styles.bigInput}
             value={bibNumber}
             onChangeText={(text) => {
-              setBibNumber(text);
+              const sanitized = text.replace(/[^0-9+]/g, "");
+              setBibNumber(sanitized);
               setShowDqAlert(false);
             }}
             placeholder="000"
@@ -1152,6 +1394,37 @@ const styles = StyleSheet.create({
     color: "#38BDF8", // Cyan light digits
     letterSpacing: 2,
     marginBottom: 12,
+  },
+  chronoDigitsPaused: {
+    color: "#EF4444",
+  },
+  pauseClockBtn: {
+    backgroundColor: "#334155",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#475569",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 6,
+    width: "100%",
+  },
+  pauseClockBtnActive: {
+    backgroundColor: "#991B1B",
+    borderColor: "#EF4444",
+  },
+  pauseClockBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  pausedIndicatorText: {
+    color: "#F87171",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   sourceSelector: {
     flexDirection: "row",

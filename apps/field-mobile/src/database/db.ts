@@ -28,6 +28,15 @@ export async function initDatabase(): Promise<void> {
       await db.execAsync(sql);
     }
 
+    // Auto-migration for existing databases missing vet_inspection_mode column
+    try {
+      await db.execAsync(
+        "ALTER TABLE competition_entries ADD COLUMN vet_inspection_mode TEXT DEFAULT 'SIMPLE';",
+      );
+    } catch (e) {
+      // Column already exists or table was newly created
+    }
+
     console.log("[SQLite] Local database initialized successfully.");
 
     // Seed mock entries if empty
