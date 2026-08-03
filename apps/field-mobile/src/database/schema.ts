@@ -135,4 +135,11 @@ export const SQL_CREATE_TABLES = [
     attempts INTEGER DEFAULT 0,
     error_message TEXT
   );`,
+
+  // 5. Indexes for fast lookups
+  `CREATE INDEX IF NOT EXISTS idx_entries_bib ON competition_entries(bib_number);`,
+  `CREATE INDEX IF NOT EXISTS idx_entries_status ON competition_entries(status);`,
+  `CREATE INDEX IF NOT EXISTS idx_timing_entry_type ON timing_records(entry_id, record_type, is_void);`,
+  `CREATE INDEX IF NOT EXISTS idx_timing_recorded ON timing_records(recorded_at DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_sync_queue_attempts ON sync_queue(attempts);`,
 ];

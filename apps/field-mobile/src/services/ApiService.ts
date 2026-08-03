@@ -293,6 +293,30 @@ class ApiService {
   }
 
   /**
+   * Fetches eligible pending competitors for vet inspection from backend (Online-First)
+   */
+  async fetchPendingVetEntries(
+    competitionId: string,
+    stageNumber?: number,
+  ): Promise<any[]> {
+    await this.validateRole([
+      UserRole.TIMEKEEPER,
+      UserRole.JUDGE,
+      UserRole.VET,
+      UserRole.ADMIN,
+    ]);
+    const params: Record<string, any> = { competitionId };
+    if (stageNumber !== undefined && stageNumber !== null) {
+      params.stageNumber = stageNumber;
+    }
+    const response = await this.client.get("/vet-inspections/pending", {
+      params,
+    });
+    return response.data;
+  }
+
+
+  /**
    * Fetches all competitions from backend
    */
   async fetchCompetitions(): Promise<any[]> {

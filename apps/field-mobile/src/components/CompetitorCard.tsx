@@ -32,7 +32,7 @@ export function getStatusDisplayLabel(status: ParticipantStatus): string {
   }
 }
 
-export const CompetitorCard: React.FC<CompetitorCardProps> = ({
+const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
   entry,
   onPressTiming,
   onPressVet,
@@ -143,6 +143,8 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
     </View>
   );
 };
+
+export const CompetitorCard = React.memo(CompetitorCardComponent);
 
 const styles = StyleSheet.create({
   card: {

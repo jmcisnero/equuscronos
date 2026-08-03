@@ -448,35 +448,47 @@ export default function VetControlPage() {
     if (insp) {
       registeredEntriesWithInspections.push({ entry, inspection: insp });
     } else {
-      // Arrival record for this stage
-      const arrivalRec = entry.timingRecords?.find(
+      // Exigir explícitamente registro VET_IN y estado VET_CHECK para la etapa activa
+      const vetInRec = entry.timingRecords?.find(
         (r) =>
-          r.recordType === "ARRIVAL" &&
+          r.recordType === "VET_IN" &&
           !r.isVoid &&
           r.stage?.stageNumber === currentStageNumber,
       );
 
-      const calcArr = arrivalRec
-        ? formatHHMMSS(arrivalRec.recordedAt)
-        : localNowHHMMSS();
+      const isVetCheckStatus =
+        entry.status === ParticipantStatus.VET_CHECK ||
+        entry.status === "VET_CHECK";
 
-      const nextVetTime = arrivalRec
-        ? addMinutesToHHMMSS(calcArr, 20)
-        : calcArr;
+      if (vetInRec && isVetCheckStatus) {
+        const arrivalRec = entry.timingRecords?.find(
+          (r) =>
+            r.recordType === "ARRIVAL" &&
+            !r.isVoid &&
+            r.stage?.stageNumber === currentStageNumber,
+        );
 
-      const isRecheckActive =
-        !!rowRequiresRecheck[entry.id] ||
-        entry.vetInspections?.some((v) => v.requiresRecheck) ||
-        false;
+        const calcArr = arrivalRec
+          ? formatHHMMSS(arrivalRec.recordedAt)
+          : formatHHMMSS(vetInRec.recordedAt);
 
-      pendingEntriesList.push({
-        entry,
-        calcArrHHMMSS: calcArr,
-        nextVetControlTime: nextVetTime,
-        requiresRecheck: isRecheckActive,
-      });
+        const nextVetTime = formatHHMMSS(vetInRec.recordedAt);
+
+        const isRecheckActive =
+          !!rowRequiresRecheck[entry.id] ||
+          entry.vetInspections?.some((v) => v.requiresRecheck) ||
+          false;
+
+        pendingEntriesList.push({
+          entry,
+          calcArrHHMMSS: calcArr,
+          nextVetControlTime: nextVetTime,
+          requiresRecheck: isRecheckActive,
+        });
+      }
     }
   }
+
 
   // Ordenar Registrados (Atendidos en Mesa): Guardados más recientes primero
   registeredEntriesWithInspections.sort((a, b) => {

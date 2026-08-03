@@ -311,4 +311,77 @@ export class VetInspectionsService {
       );
     }
   }
+
+  async getPendingForVetGate(
+    competitionId: string,
+    stageNumber?: number,
+  ): Promise<CompetitionEntry[]> {
+    if (!competitionId) {
+      throw new BadRequestException("El ID de la competencia es requerido.");
+    }
+
+    const entryRepo = this.dataSource.getRepository(CompetitionEntry);
+
+    const entries = await entryRepo.find({
+      where: {
+        competition: { id: competitionId },
+        status: ParticipantStatus.VET_CHECK,
+      },
+      relations: [
+        "rider",
+        "horse",
+        "horse.owner",
+        "representedTenant",
+        "currentStage",
+        "timingRecords",
+        "timingRecords.stage",
+        "tenant",
+      ],
+      order: { bibNumber: "ASC" },
+    });
+
+    const allVetInspections = await this.vetRepo.find({
+      where: { competition: { id: competitionId } },
+    });
+
+    return entries.filter((entry) => {
+      const activeStageNum = stageNumber ?? entry.currentStage?.stageNumber;
+      if (!activeStageNum) return false;
+
+      // Exigir existencia explícita de TimingRecord de tipo VET_IN en la etapa correspondiente
+      const vetInRecord = entry.timingRecords?.find(
+        (tr) =>
+          tr.recordType === TimeRecordType.VET_IN &&
+          !tr.isVoid &&
+          tr.stage?.stageNumber === activeStageNum,
+      );
+
+      if (!vetInRecord) {
+        // Excluir competidores que sólo tengan ARRIVAL o carezcan de VET_IN
+        return false;
+      }
+
+      // Verificar inspecciones previas en esta etapa
+      const stageInspections = allVetInspections.filter(
+        (vi) =>
+          vi.vetGateNumber === activeStageNum &&
+          vi.riderDorsal === String(entry.bibNumber),
+      );
+
+      if (stageInspections.length > 0) {
+        const lastInsp = stageInspections[stageInspections.length - 1];
+        if (
+          lastInsp.isFinalDecision &&
+          !lastInsp.requiresRecheck &&
+          !lastInsp.isRecheckRequired
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
 }
+
+

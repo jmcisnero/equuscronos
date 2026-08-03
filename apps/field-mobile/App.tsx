@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -491,15 +491,37 @@ function MainApp() {
   });
 
   // Navigation handlers
-  const openTiming = (entry: LocalCompetitionEntry) => {
+  const openTiming = useCallback((entry: LocalCompetitionEntry) => {
     setSelectedEntry(entry);
     setCurrentScreen("TIMING");
-  };
+  }, []);
 
-  const openVet = (entry: LocalCompetitionEntry) => {
+  const openVet = useCallback((entry: LocalCompetitionEntry) => {
     setSelectedEntry(entry);
     setCurrentScreen("VET_GATE");
-  };
+  }, []);
+
+  const renderCompetitorCard = useCallback(
+    ({ item }: { item: LocalCompetitionEntry }) => (
+      <CompetitorCard
+        entry={item}
+        onPressTiming={openTiming}
+        onPressVet={openVet}
+      />
+    ),
+    [openTiming, openVet],
+  );
+
+  const getItemLayout = useCallback(
+    (_data: any, index: number) => ({
+      length: 120,
+      offset: 120 * index,
+      index,
+    }),
+    [],
+  );
+
+  const keyExtractor = useCallback((item: LocalCompetitionEntry) => item.id, []);
 
   const handleBackToList = async () => {
     setSelectedEntry(null);
@@ -895,15 +917,15 @@ function MainApp() {
           {/* Competitors List */}
           <FlatList
             data={filteredEntries}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             contentContainerStyle={styles.listContainer}
-            renderItem={({ item }) => (
-              <CompetitorCard
-                entry={item}
-                onPressTiming={openTiming}
-                onPressVet={openVet}
-              />
-            )}
+            renderItem={renderCompetitorCard}
+            getItemLayout={getItemLayout}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={8}
+            windowSize={5}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>

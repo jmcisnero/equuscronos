@@ -173,7 +173,6 @@ class SyncService {
     }
 
     this.isSyncing = true;
-    console.log("[SyncService] Commencing sync queue verification...");
 
     try {
       const db = await getDatabase();
@@ -184,12 +183,9 @@ class SyncService {
       );
 
       if (pending.length === 0) {
-        console.log("[SyncService] No pending items in sync queue.");
         this.isSyncing = false;
         return;
       }
-
-      console.log(`[SyncService] ${pending.length} pending items found.`);
 
       for (const item of pending) {
         // Exponential backoff check
@@ -361,7 +357,6 @@ class SyncService {
       );
     } finally {
       this.isSyncing = false;
-      console.log("[SyncService] Sync cycle ended.");
     }
   }
 
