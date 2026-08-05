@@ -851,6 +851,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                 onInspectionSuccess();
               }
               loadEntryState();
+              loadSimpleTablesState();
 
               setTimeout(() => {
                 searchInputRef.current?.focus();

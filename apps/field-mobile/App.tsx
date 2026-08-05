@@ -581,12 +581,26 @@ function MainApp() {
     if (!isAllowed) {
       return (
         <PermissionErrorScreen
-          expectedRoles={[UserRole.ADMIN, UserRole.JUDGE, UserRole.TIMEKEEPER, UserRole.VET]}
+          expectedRoles={[
+            UserRole.ADMIN,
+            UserRole.JUDGE,
+            UserRole.TIMEKEEPER,
+            UserRole.VET,
+          ]}
           currentRole={user?.role}
           onBack={handleBackToList}
         />
       );
     }
+    return (
+      <TimingScreen
+        entry={selectedEntry}
+        stationRecordType={stationRecordType}
+        onBack={handleBackToList}
+        onRecordSuccess={reloadEntries}
+        onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
+      />
+    );
   }
 
   if (activeScreen === "VET_GATE") {
@@ -598,12 +612,29 @@ function MainApp() {
     if (!isAllowed) {
       return (
         <PermissionErrorScreen
-          expectedRoles={[UserRole.ADMIN, UserRole.VET, UserRole.TIMEKEEPER, UserRole.JUDGE]}
+          expectedRoles={[
+            UserRole.ADMIN,
+            UserRole.VET,
+            UserRole.TIMEKEEPER,
+            UserRole.JUDGE,
+          ]}
           currentRole={user?.role}
           onBack={handleBackToList}
         />
       );
     }
+    return (
+      <VetGateScreen
+        entry={selectedEntry}
+        onBack={handleBackToList}
+        onInspectionSuccess={reloadEntries}
+        onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
+      />
+    );
+  }
+
+  if (activeScreen === "SYNC_MONITOR") {
+    return <SyncMonitorScreen onBack={handleBackFromSyncMonitor} />;
   }
 
   return (
@@ -648,7 +679,7 @@ function MainApp() {
         </View>
       </View>
 
-      {/* API Configuration bar */}
+      {/* API Configuration bar & Sync Queue Utility (Isolated to Main List Screen) */}
       {user.role === UserRole.ADMIN && (
         <View style={styles.apiConfigBar}>
           <Text style={styles.apiConfigLabel}>Servidor API:</Text>
@@ -671,7 +702,6 @@ function MainApp() {
         </View>
       )}
 
-      {/* 2. SYNC QUEUE UTILITY (Offline-First actions queue indicator) */}
       <View style={styles.syncPanel}>
         <View style={styles.syncInfo}>
           <Text style={styles.syncTitle}>Cola de Sincronización:</Text>
@@ -721,244 +751,231 @@ function MainApp() {
       </View>
 
       {/* 3. SCREEN NAVIGATOR */}
-      {activeScreen === "LIST" && (
-        <View style={styles.mainContent}>
-          {/* Quick Action Buttons for Field Officers */}
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-            <TouchableOpacity
-              style={[styles.quickTimingBtn, { flex: 1, marginBottom: 0 }]}
-              onPress={() => {
-                setSelectedEntry(null);
-                setCurrentScreen("TIMING");
-              }}
-            >
-              <Text style={styles.quickTimingBtnText}>
-                ⏱️ Arribos
-              </Text>
-            </TouchableOpacity>
+      <View style={styles.mainContent}>
+        {/* Quick Action Buttons for Field Officers */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+          <TouchableOpacity
+            style={[styles.quickTimingBtn, { flex: 1, marginBottom: 0 }]}
+            onPress={() => {
+              setSelectedEntry(null);
+              setCurrentScreen("TIMING");
+            }}
+          >
+            <Text style={styles.quickTimingBtnText}>
+              ⏱️ Arribos
+            </Text>
+          </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[
+              styles.quickTimingBtn,
+              { flex: 1, marginBottom: 0, backgroundColor: "#0284C7", borderColor: "#0369A1" },
+            ]}
+            onPress={() => {
+              setSelectedEntry(null);
+              setCurrentScreen("VET_GATE");
+            }}
+          >
+            <Text style={styles.quickTimingBtnText}>
+              🩺 Mesa Vet
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Workstation Config Segment bar */}
+        {(user.role === UserRole.ADMIN ||
+          user.role === UserRole.TIMEKEEPER ||
+          user.role === UserRole.JUDGE) && (
+          <>
+            <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
+            <View style={styles.stationConfigBar}>
+              {(
+                Object.keys(TimeRecordType) as Array<
+                  keyof typeof TimeRecordType
+                >
+              )
+                .filter(
+                  (key) =>
+                    TimeRecordType[key] !== TimeRecordType.START &&
+                    TimeRecordType[key] !== TimeRecordType.VET_OUT,
+                )
+                .map((key) => {
+                  const val = TimeRecordType[key];
+                  const isActive = stationRecordType === val;
+                  return (
+                    <TouchableOpacity
+                      key={val}
+                      style={[
+                        styles.stationBtn,
+                        isActive && styles.stationBtnActive,
+                      ]}
+                      onPress={() => setStationRecordType(val)}
+                    >
+                      <Text
+                        style={[
+                          styles.stationText,
+                          isActive && styles.stationTextActive,
+                        ]}
+                      >
+                        {val === TimeRecordType.ARRIVAL
+                          ? "Meta (Arribo)"
+                          : val === TimeRecordType.VET_IN
+                            ? "Vet In"
+                            : val}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+            </View>
+          </>
+        )}
+
+        {/* Competitor Search Input */}
+        <TextInput
+          style={styles.searchInput}
+          placeholder="🔍 Buscar jinete, caballo o # dorsal..."
+          placeholderTextColor="#64748B"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        {/* Status Filter Tabs */}
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
             <TouchableOpacity
               style={[
-                styles.quickTimingBtn,
-                { flex: 1, marginBottom: 0, backgroundColor: "#0284C7", borderColor: "#0369A1" },
+                styles.filterBtn,
+                activeFilter === "ALL" && styles.filterBtnActive,
               ]}
-              onPress={() => {
-                setSelectedEntry(null);
-                setCurrentScreen("VET_GATE");
-              }}
+              onPress={() => setActiveFilter("ALL")}
             >
-              <Text style={styles.quickTimingBtnText}>
-                🩺 Mesa Vet
+              <Text
+                style={[
+                  styles.filterText,
+                  activeFilter === "ALL" && styles.filterTextActive,
+                ]}
+              >
+                Todos ({entries.length})
               </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Workstation Config Segment bar */}
-          {(user.role === UserRole.ADMIN ||
-            user.role === UserRole.TIMEKEEPER ||
-            user.role === UserRole.JUDGE) && (
-            <>
-              <Text style={styles.sectionLabel}>PUESTO DE TRABAJO ACTIVO</Text>
-              <View style={styles.stationConfigBar}>
-                {(
-                  Object.keys(TimeRecordType) as Array<
-                    keyof typeof TimeRecordType
-                  >
-                )
-                  .filter(
-                    (key) =>
-                      TimeRecordType[key] !== TimeRecordType.START &&
-                      TimeRecordType[key] !== TimeRecordType.VET_OUT,
-                  )
-                  .map((key) => {
-                    const val = TimeRecordType[key];
-                    const isActive = stationRecordType === val;
-                    return (
-                      <TouchableOpacity
-                        key={val}
-                        style={[
-                          styles.stationBtn,
-                          isActive && styles.stationBtnActive,
-                        ]}
-                        onPress={() => setStationRecordType(val)}
-                      >
-                        <Text
-                          style={[
-                            styles.stationText,
-                            isActive && styles.stationTextActive,
-                          ]}
-                        >
-                          {val === "ARRIVAL" ? "🏁 Arribos" : "🩺 Vet In"}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-              </View>
-            </>
-          )}
-
-          {/* Quick Filter Segment bar */}
-          <Text style={styles.sectionLabel}>FILTRAR PARTICIPANTES</Text>
-          <View style={styles.filterBar}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterScroll}
+            <TouchableOpacity
+              style={[
+                styles.filterBtn,
+                activeFilter === ParticipantStatus.IN_RACE &&
+                  styles.filterBtnActive,
+              ]}
+              onPress={() => setActiveFilter(ParticipantStatus.IN_RACE)}
             >
-              <TouchableOpacity
+              <Text
                 style={[
-                  styles.filterBtn,
-                  activeFilter === "ALL" && styles.filterBtnActive,
-                ]}
-                onPress={() => setActiveFilter("ALL")}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === "ALL" && styles.filterTextActive,
-                  ]}
-                >
-                  Todos
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
+                  styles.filterText,
                   activeFilter === ParticipantStatus.IN_RACE &&
-                    styles.filterBtnActive,
+                    styles.filterTextActive,
                 ]}
-                onPress={() => setActiveFilter(ParticipantStatus.IN_RACE)}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === ParticipantStatus.IN_RACE &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  En Carrera
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                En Carrera
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterBtn,
+                activeFilter === ParticipantStatus.VET_CHECK &&
+                  styles.filterBtnActive,
+              ]}
+              onPress={() => setActiveFilter(ParticipantStatus.VET_CHECK)}
+            >
+              <Text
                 style={[
-                  styles.filterBtn,
+                  styles.filterText,
                   activeFilter === ParticipantStatus.VET_CHECK &&
-                    styles.filterBtnActive,
+                    styles.filterTextActive,
                 ]}
-                onPress={() => setActiveFilter(ParticipantStatus.VET_CHECK)}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === ParticipantStatus.VET_CHECK &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  Mesa Vet
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                Vet Gate
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterBtn,
+                activeFilter === ParticipantStatus.RESTING &&
+                  styles.filterBtnActive,
+              ]}
+              onPress={() => setActiveFilter(ParticipantStatus.RESTING)}
+            >
+              <Text
                 style={[
-                  styles.filterBtn,
+                  styles.filterText,
                   activeFilter === ParticipantStatus.RESTING &&
-                    styles.filterBtnActive,
+                    styles.filterTextActive,
                 ]}
-                onPress={() => setActiveFilter(ParticipantStatus.RESTING)}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === ParticipantStatus.RESTING &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  Descanso
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                Descanso
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterBtn,
+                activeFilter === ParticipantStatus.FINISHED &&
+                  styles.filterBtnActive,
+              ]}
+              onPress={() => setActiveFilter(ParticipantStatus.FINISHED)}
+            >
+              <Text
                 style={[
-                  styles.filterBtn,
+                  styles.filterText,
                   activeFilter === ParticipantStatus.FINISHED &&
-                    styles.filterBtnActive,
+                    styles.filterTextActive,
                 ]}
-                onPress={() => setActiveFilter(ParticipantStatus.FINISHED)}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === ParticipantStatus.FINISHED &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  Meta
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                Meta
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterBtn,
+                activeFilter === ParticipantStatus.DQ &&
+                  styles.filterBtnActive,
+              ]}
+              onPress={() => setActiveFilter(ParticipantStatus.DQ)}
+            >
+              <Text
                 style={[
-                  styles.filterBtn,
+                  styles.filterText,
                   activeFilter === ParticipantStatus.DQ &&
                     styles.filterBtnActive,
                 ]}
-                onPress={() => setActiveFilter(ParticipantStatus.DQ)}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeFilter === ParticipantStatus.DQ &&
-                      styles.filterTextActive,
-                  ]}
-                >
-                  DQ
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
-          {/* Competitors List */}
-          <FlatList
-            data={filteredEntries}
-            keyExtractor={keyExtractor}
-            contentContainerStyle={styles.listContainer}
-            renderItem={renderCompetitorCard}
-            getItemLayout={getItemLayout}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={8}
-            windowSize={5}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  Ningún binomio coincide con el filtro.
-                </Text>
-              </View>
-            }
-          />
+                DQ
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-      )}
 
-      {activeScreen === "TIMING" && (
-        <TimingScreen
-          entry={selectedEntry}
-          stationRecordType={stationRecordType}
-          onBack={handleBackToList}
-          onRecordSuccess={handleBackToList}
-          onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
+        {/* Competitors List */}
+        <FlatList
+          data={filteredEntries}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContainer}
+          renderItem={renderCompetitorCard}
+          getItemLayout={getItemLayout}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={8}
+          windowSize={5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                Ningún binomio coincide con el filtro.
+              </Text>
+            </View>
+          }
         />
-      )}
-
-      {activeScreen === "VET_GATE" && (
-        <VetGateScreen
-          entry={selectedEntry}
-          onBack={handleBackToList}
-          onInspectionSuccess={handleBackToList}
-          onNavigateToSyncMonitor={() => setCurrentScreen("SYNC_MONITOR")}
-        />
-      )}
-
-      {activeScreen === "SYNC_MONITOR" && (
-        <SyncMonitorScreen onBack={handleBackFromSyncMonitor} />
-      )}
+      </View>
     </SafeAreaView>
   );
 }

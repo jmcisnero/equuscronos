@@ -36,8 +36,8 @@ const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
   entry,
   onPressTiming,
   onPressVet,
-  showTiming = true,
-  showVet = true,
+  showTiming = false,
+  showVet = false,
 }) => {
   const getStatusBadgeStyle = (
     status: ParticipantStatus,
@@ -80,6 +80,7 @@ const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
   };
 
   const badgeStyle = getStatusBadgeStyle(entry.status);
+  const hasActions = showTiming || showVet;
 
   return (
     <View style={styles.card}>
@@ -97,16 +98,15 @@ const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
             🐴 {entry.horse_name}
           </Text>
         </View>
-
-        <View style={[styles.badge, badgeStyle.bg]}>
-          <Text style={[styles.badgeText, badgeStyle.textStyle]}>
-            {getStatusDisplayLabel(entry.status)}
-          </Text>
-        </View>
       </View>
 
-      {/* Ballast Weight Details */}
-      <View style={styles.detailsRow}>
+      {/* Details Row: Ballast Weight & Status Badge */}
+      <View
+        style={[
+          styles.detailsRow,
+          !hasActions && styles.detailsRowNoActions,
+        ]}
+      >
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>Lastre Req.</Text>
           <Text style={styles.detailValue}>
@@ -115,10 +115,16 @@ const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
               : "Sin Lastre"}
           </Text>
         </View>
+
+        <View style={[styles.badge, badgeStyle.bg]}>
+          <Text style={[styles.badgeText, badgeStyle.textStyle]}>
+            {getStatusDisplayLabel(entry.status)}
+          </Text>
+        </View>
       </View>
 
       {/* Dynamic Action Panel */}
-      {(showTiming || showVet) && (
+      {hasActions && (
         <View style={styles.actionsContainer}>
           {showTiming && (
             <Button
@@ -207,11 +213,16 @@ const styles = StyleSheet.create({
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
     paddingVertical: 10,
     marginBottom: 12,
+  },
+  detailsRowNoActions: {
+    marginBottom: 0,
+    borderBottomWidth: 0,
   },
   detailItem: {
     flex: 1,

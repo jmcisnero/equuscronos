@@ -168,6 +168,16 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   const inputRef = useRef<TextInput>(null);
   const flashAnim = useRef(new Animated.Value(0)).current;
 
+  const animatedBorderColor = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(255, 255, 255, 0.15)", "#10B981"],
+  });
+
+  const animatedBgColor = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(255, 255, 255, 0.05)", "rgba(16, 185, 129, 0.2)"],
+  });
+
   // Focus input on screen mount
   useEffect(() => {
     const focusTimer = setTimeout(() => {
@@ -294,7 +304,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     }
 
     const rawTokens = trimmed
-      .split("+")
+      .split(/[+,\.-]+/)
       .map((s) => s.trim())
       .filter(Boolean);
 
@@ -1086,7 +1096,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
             style={styles.bigInput}
             value={bibNumber}
             onChangeText={(text) => {
-              const sanitized = text.replace(/[^0-9+]/g, "");
+              const sanitized = text.replace(/[^0-9+,\.-]/g, "");
               setBibNumber(sanitized);
               setShowDqAlert(false);
             }}
