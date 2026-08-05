@@ -65,7 +65,7 @@ async function duplicateCompetition() {
       `Duplicating competition: "${sourceComp.name}" -> "${newCompName}"`,
     );
     console.log(`New Competition ID: ${newCompId}`);
-    console.log(`Date: ${todayStr} | Start Time: 12:30:00 | Status: ACTIVE`);
+    console.log(`Date: ${todayStr} | Start Time: 00:00:00 | Status: PLANNED`);
 
     // Insert New Competition
     await client.query(
@@ -78,7 +78,7 @@ async function duplicateCompetition() {
         sourceComp.competition_type_id,
         newCompName,
         todayStr,
-        "12:30:00",
+        "00:00:00",
         sourceComp.location || "San José",
         sourceComp.is_federated ?? true,
         sourceComp.enable_rfid_chips ?? false,
@@ -87,6 +87,8 @@ async function duplicateCompetition() {
         "PLANNED",
       ],
     );
+
+
 
     // 2. Fetch Source Stages
     const stagesRes = await client.query(

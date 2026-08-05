@@ -547,7 +547,7 @@ describe("Vet Gate Flow (e2e)", () => {
       expect(vetRes.status).toBe(201);
     });
 
-    it("Prueba 2: Modalidad con Chip (enableRfidChips = true) - NO autogenera VET_IN silencioso", async () => {
+    it("Prueba 2: Modalidad con Chip (enableRfidChips = true) - NO autogenera VET_IN silencioso y filtra estrictamente en /vet-inspections/pending", async () => {
       const arrTime = new Date("2026-06-10T08:00:00Z");
 
       const response = await request(app.getHttpServer())
@@ -571,8 +571,47 @@ describe("Vet Gate Flow (e2e)", () => {
 
       expect(records.length).toBe(1);
       expect(records[0].record_type).toBe("ARRIVAL");
+
+      // Validar que el binomio con solo ARRIVAL NO aparezca en los pendientes del endpoint /vet-inspections/pending
+      const pendingRes1 = await request(app.getHttpServer())
+        .get(`/vet-inspections/pending?competitionId=${chipCompId}&stageNumber=1`)
+        .set("Authorization", `Bearer ${vetToken}`);
+
+      expect(pendingRes1.status).toBe(200);
+      const matchedBeforeVetIn = pendingRes1.body.find(
+        (e: any) => e.bibNumber === bibChip,
+      );
+      expect(matchedBeforeVetIn).toBeUndefined();
+
+      // Emitir el VET_IN y actualizar status a VET_CHECK
+      await dataSource.query(`
+        UPDATE competition_entries SET status = 'VET_CHECK' WHERE bib_number = ${bibChip};
+      `);
+      await request(app.getHttpServer())
+        .post("/timing/vet-in")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: chipCompId,
+          stageId: chipStage1Id,
+          bibNumber: bibChip,
+          recordType: "VET_IN",
+          recordedAt: new Date("2026-06-10T08:15:00Z").toISOString(),
+        });
+
+      // Validar que ahora SÍ aparezca en /vet-inspections/pending
+      const pendingRes2 = await request(app.getHttpServer())
+        .get(`/vet-inspections/pending?competitionId=${chipCompId}&stageNumber=1`)
+        .set("Authorization", `Bearer ${vetToken}`);
+
+      expect(pendingRes2.status).toBe(200);
+      const matchedAfterVetIn = pendingRes2.body.find(
+        (e: any) => e.bibNumber === bibChip,
+      );
+      expect(matchedAfterVetIn).toBeDefined();
+      expect(matchedAfterVetIn.bibNumber).toBe(bibChip);
     });
   });
+
 
   describe("Parametrización vetInspectionMode (SIMPLE vs DETAILED)", () => {
     let modeCompId: string;

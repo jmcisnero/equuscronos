@@ -226,6 +226,7 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
             error={error}
             isValidating={hookIsValidating}
             isClosed={isClosed}
+            enableRfidChips={currentCompetition?.enableRfidChips}
             onErrorChange={setHasError}
             onValidatingChange={setIsValidating}
           />

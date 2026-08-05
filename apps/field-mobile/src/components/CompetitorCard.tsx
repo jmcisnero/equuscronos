@@ -32,12 +32,12 @@ export function getStatusDisplayLabel(status: ParticipantStatus): string {
   }
 }
 
-export const CompetitorCard: React.FC<CompetitorCardProps> = ({
+const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
   entry,
   onPressTiming,
   onPressVet,
-  showTiming = true,
-  showVet = true,
+  showTiming = false,
+  showVet = false,
 }) => {
   const getStatusBadgeStyle = (
     status: ParticipantStatus,
@@ -80,6 +80,7 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
   };
 
   const badgeStyle = getStatusBadgeStyle(entry.status);
+  const hasActions = showTiming || showVet;
 
   return (
     <View style={styles.card}>
@@ -97,6 +98,23 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
             🐴 {entry.horse_name}
           </Text>
         </View>
+      </View>
+
+      {/* Details Row: Ballast Weight & Status Badge */}
+      <View
+        style={[
+          styles.detailsRow,
+          !hasActions && styles.detailsRowNoActions,
+        ]}
+      >
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Lastre Req.</Text>
+          <Text style={styles.detailValue}>
+            {entry.ballast_weight && Number(entry.ballast_weight) > 0
+              ? `${Number(entry.ballast_weight).toFixed(1)} kg`
+              : "Sin Lastre"}
+          </Text>
+        </View>
 
         <View style={[styles.badge, badgeStyle.bg]}>
           <Text style={[styles.badgeText, badgeStyle.textStyle]}>
@@ -105,20 +123,8 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
         </View>
       </View>
 
-      {/* Ballast Weight Details */}
-      <View style={styles.detailsRow}>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Lastre Req.</Text>
-          <Text style={styles.detailValue}>
-            {entry.ballast_weight > 0
-              ? `${entry.ballast_weight.toFixed(1)} kg`
-              : "Sin Lastre"}
-          </Text>
-        </View>
-      </View>
-
       {/* Dynamic Action Panel */}
-      {(showTiming || showVet) && (
+      {hasActions && (
         <View style={styles.actionsContainer}>
           {showTiming && (
             <Button
@@ -143,6 +149,8 @@ export const CompetitorCard: React.FC<CompetitorCardProps> = ({
     </View>
   );
 };
+
+export const CompetitorCard = React.memo(CompetitorCardComponent);
 
 const styles = StyleSheet.create({
   card: {
@@ -205,11 +213,16 @@ const styles = StyleSheet.create({
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
     paddingVertical: 10,
     marginBottom: 12,
+  },
+  detailsRowNoActions: {
+    marginBottom: 0,
+    borderBottomWidth: 0,
   },
   detailItem: {
     flex: 1,

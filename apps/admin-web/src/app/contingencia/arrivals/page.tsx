@@ -130,7 +130,7 @@ export default function ArribosContingenciaPage() {
     }
 
     const rawTokens = bibNumber
-      .split("+")
+      .split(/[+,\.-]+/)
       .map((s) => s.trim())
       .filter(Boolean);
 

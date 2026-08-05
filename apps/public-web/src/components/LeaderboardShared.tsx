@@ -93,6 +93,33 @@ export const formatHHMMSS = (dateStr?: string) => {
   }
 };
 
+// Formateador condicional del límite de ingreso Vet Gate (solo modalidad RFID / chips)
+export const formatVetLimitTime = (
+  nextVetControlTime?: string,
+  enableRfidChips?: boolean,
+) => {
+  if (enableRfidChips !== true || !nextVetControlTime) return null;
+  return formatHHMMSS(nextVetControlTime);
+};
+
+export const renderVetLimitBadge = (
+  nextVetControlTime?: string,
+  enableRfidChips?: boolean,
+  isClosed?: boolean,
+) => {
+  if (enableRfidChips !== true || !nextVetControlTime || isClosed) return null;
+  const formatted = formatHHMMSS(nextVetControlTime);
+  if (formatted === "--") return null;
+
+  return (
+    <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
+      <span className="inline-flex items-center text-[#AD8F6C] bg-[#AD8F6C]/10 border border-[#AD8F6C]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+        Límite: {formatted}
+      </span>
+    </div>
+  );
+};
+
 // Formateador robusto de tiempos de carrera en formato oficial (HH:mm:ss)
 export const formatTime = (ms: number) => {
   if (ms === undefined || ms === null || isNaN(ms)) return "--";

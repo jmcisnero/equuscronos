@@ -46,6 +46,48 @@ interface SessionRecord {
   entryId: string;
 }
 
+interface DigitalClockProps {
+  timeSource: "SYSTEM" | "MANUAL";
+  isClockPaused: boolean;
+  frozenTime: Date | null;
+  manualOffsetSeconds: number;
+}
+
+const DigitalClock: React.FC<DigitalClockProps> = React.memo(
+  ({ timeSource, isClockPaused, frozenTime, manualOffsetSeconds }) => {
+    const [displayTime, setDisplayTime] = useState<Date>(new Date());
+
+    useEffect(() => {
+      if (isClockPaused) return;
+      const timer = setInterval(() => {
+        setDisplayTime(new Date());
+      }, 250); // 250ms for smooth clock visual update without re-rendering parent screen
+      return () => clearInterval(timer);
+    }, [isClockPaused]);
+
+    const getClockTime = (): Date => {
+      if (isClockPaused && frozenTime) return frozenTime;
+      if (timeSource === "SYSTEM") return displayTime;
+      return new Date(displayTime.getTime() + manualOffsetSeconds * 1000);
+    };
+
+    const hh = String(getClockTime().getHours()).padStart(2, "0");
+    const mm = String(getClockTime().getMinutes()).padStart(2, "0");
+    const ss = String(getClockTime().getSeconds()).padStart(2, "0");
+
+    return (
+      <Text
+        style={[
+          styles.chronoDigits,
+          isClockPaused && styles.chronoDigitsPaused,
+        ]}
+      >
+        {`${hh}:${mm}:${ss}`}
+      </Text>
+    );
+  },
+);
+
 export const TimingScreen: React.FC<TimingScreenProps> = ({
   entry,
   stationRecordType = TimeRecordType.ARRIVAL,
@@ -98,7 +140,6 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   const [timeSource, setTimeSource] = useState<"SYSTEM" | "MANUAL">("MANUAL");
   const [isClockPaused, setIsClockPaused] = useState<boolean>(false);
   const [frozenTime, setFrozenTime] = useState<Date | null>(null);
-  const [systemTime, setSystemTime] = useState<Date>(new Date());
   const [manualOffsetSeconds, setManualOffsetSeconds] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -127,13 +168,15 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
   const inputRef = useRef<TextInput>(null);
   const flashAnim = useRef(new Animated.Value(0)).current;
 
-  // Tick the clock every 50ms for high-precision timekeeping
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSystemTime(new Date());
-    }, 50);
-    return () => clearInterval(timer);
-  }, []);
+  const animatedBorderColor = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(255, 255, 255, 0.15)", "#10B981"],
+  });
+
+  const animatedBgColor = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(255, 255, 255, 0.05)", "rgba(16, 185, 129, 0.2)"],
+  });
 
   // Focus input on screen mount
   useEffect(() => {
@@ -209,8 +252,9 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     if (isClockPaused && frozenTime) {
       return frozenTime;
     }
-    if (timeSource === "SYSTEM") return systemTime;
-    return new Date(systemTime.getTime() + manualOffsetSeconds * 1000);
+    const now = new Date();
+    if (timeSource === "SYSTEM") return now;
+    return new Date(now.getTime() + manualOffsetSeconds * 1000);
   };
 
   const handlePauseClock = () => {
@@ -260,7 +304,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     }
 
     const rawTokens = trimmed
-      .split("+")
+      .split(/[+,\.-]+/)
       .map((s) => s.trim())
       .filter(Boolean);
 
@@ -676,16 +720,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     }
   };
 
-  // Interpolate flash animation values for high-visibility visual feedback
-  const animatedBorderColor = flashAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#334155", "#10B981"], // Slate border to neon-green border
-  });
 
-  const animatedBgColor = flashAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#1E293B", "rgba(16, 185, 129, 0.12)"], // Slate background to soft green glow
-  });
 
   // Action Handlers
   const handleCancelAction = () => {
@@ -914,14 +949,12 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
         {/* Master Chronometer */}
         <View style={styles.chronoContainer}>
           <Text style={styles.chronoTitle}>RELOJ DE COMPETENCIA (OFICIAL)</Text>
-          <Text
-            style={[
-              styles.chronoDigits,
-              isClockPaused && styles.chronoDigitsPaused,
-            ]}
-          >
-            {formattedTime(getTargetTime())}
-          </Text>
+          <DigitalClock
+            timeSource={timeSource}
+            isClockPaused={isClockPaused}
+            frozenTime={frozenTime}
+            manualOffsetSeconds={manualOffsetSeconds}
+          />
 
           {/* Pause / Resume Clock Control */}
           <TouchableOpacity
@@ -1054,7 +1087,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
             style={styles.bigInput}
             value={bibNumber}
             onChangeText={(text) => {
-              const sanitized = text.replace(/[^0-9+]/g, "");
+              const sanitized = text.replace(/[^0-9+,\.-]/g, "");
               setBibNumber(sanitized);
               setShowDqAlert(false);
             }}

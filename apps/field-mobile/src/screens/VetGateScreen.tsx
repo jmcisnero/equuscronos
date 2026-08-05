@@ -73,29 +73,113 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const loadSimpleTablesState = async () => {
     try {
       const db = await getDatabase();
-      const allEntries = await db.getAllAsync<LocalCompetitionEntry>(
+      const initialEntries = await db.getAllAsync<LocalCompetitionEntry>(
         "SELECT * FROM competition_entries ORDER BY bib_number ASC;",
       );
+
+      const compId = initialEntries[0]?.competition_id;
+      const onlineMode = SyncService.isOnline();
+
+      // Intento de refresco/espejo Online-First si hay conectividad
+      if (onlineMode && compId) {
+        try {
+          const apiEntries = await ApiService.fetchLatestEntries(compId);
+          if (Array.isArray(apiEntries) && apiEntries.length > 0) {
+            const now = new Date().toISOString();
+            for (const serverEntry of apiEntries) {
+              await db.runAsync(
+                `UPDATE competition_entries SET status = ?, current_stage_id = ?, updated_at = ? WHERE id = ?;`,
+                [
+                  serverEntry.status,
+                  serverEntry.currentStage?.id || serverEntry.currentStageId || "",
+                  now,
+                  serverEntry.id,
+                ],
+              );
+              // Espejo de timing_records recibidos del servidor
+              if (Array.isArray(serverEntry.timingRecords)) {
+                for (const tr of serverEntry.timingRecords) {
+                  const existingTr = await db.getFirstAsync(
+                    "SELECT id FROM timing_records WHERE id = ?;",
+                    [tr.id],
+                  );
+                  if (!existingTr) {
+                    await db.runAsync(
+                      `INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved, is_void, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+                      [
+                        tr.id,
+                        tr.tenantId || serverEntry.tenantId || "77777777-7777-7777-7777-777777777777",
+                        serverEntry.id,
+                        tr.stage?.id || tr.stageId || "",
+                        tr.recordType,
+                        tr.recordedAt,
+                        tr.isApproved ? 1 : 0,
+                        tr.isVoid ? 1 : 0,
+                        now,
+                        now,
+                      ],
+                    );
+                  }
+                }
+              }
+            }
+          }
+        } catch (apiErr) {
+          console.warn(
+            "[VetGateScreen] Online refresh failed, falling back to local SQLite state:",
+            apiErr,
+          );
+        }
+      }
+
+      const allEntries = await db.getAllAsync<LocalCompetitionEntry>(
+        "SELECT id, tenant_id, competition_id, rider_id, rider_name, horse_id, horse_name, bib_number, status, current_stage_id, ballast_weight, created_at, updated_at, vet_inspection_mode FROM competition_entries ORDER BY bib_number ASC;",
+      );
+
+      // Batch load ARRIVAL records
+      const allArrivals = await db.getAllAsync<{ entry_id: string; recorded_at: string }>(
+        "SELECT entry_id, recorded_at FROM timing_records WHERE record_type = 'ARRIVAL' AND is_void = 0 ORDER BY recorded_at DESC;",
+      );
+      const arrivalMap = new Map<string, string>();
+      for (const arr of allArrivals) {
+        if (!arrivalMap.has(arr.entry_id)) {
+          arrivalMap.set(arr.entry_id, arr.recorded_at);
+        }
+      }
+
+      // Batch load VET_IN records with inspections
+      const allVetIns = await db.getAllAsync<any>(
+        `SELECT tr.entry_id, tr.id as timing_record_id, tr.recorded_at as vet_in_recorded_at, 
+                vi.id as vet_id, vi.heart_rate, vi.attempt_number, vi.is_recheck_required, vi.created_at as vet_created_at
+         FROM timing_records tr
+         INNER JOIN vet_inspections vi ON vi.timing_record_id = tr.id
+         WHERE tr.record_type = 'VET_IN' AND tr.is_void = 0
+         ORDER BY vi.created_at DESC;`,
+      );
+      const vetInMap = new Map<string, any[]>();
+      for (const vet of allVetIns) {
+        const list = vetInMap.get(vet.entry_id) || [];
+        list.push(vet);
+        vetInMap.set(vet.entry_id, list);
+      }
+
+      // Batch load VET_IN timing records without inspection
+      const allPendingVetIns = await db.getAllAsync<{ id: string; entry_id: string; recorded_at: string }>(
+        "SELECT id, entry_id, recorded_at FROM timing_records WHERE record_type = 'VET_IN' AND is_void = 0;",
+      );
+      const pendingVetInMap = new Map<string, { id: string; recorded_at: string }>();
+      for (const p of allPendingVetIns) {
+        pendingVetInMap.set(p.entry_id, p);
+      }
 
       const pending: PendingVetItem[] = [];
       const attended: AttendedVetItem[] = [];
       const nowIso = new Date().toISOString();
 
       for (const entryItem of allEntries) {
-        const arrivalRec = await db.getFirstAsync<any>(
-          "SELECT * FROM timing_records WHERE entry_id = ? AND record_type = 'ARRIVAL' AND is_void = 0 ORDER BY recorded_at DESC;",
-          [entryItem.id],
-        );
-
-        const vetInRecs = await db.getAllAsync<any>(
-          `SELECT tr.id as timing_record_id, tr.recorded_at as vet_in_recorded_at, 
-                  vi.id as vet_id, vi.heart_rate, vi.attempt_number, vi.is_recheck_required, vi.created_at as vet_created_at
-           FROM timing_records tr
-           INNER JOIN vet_inspections vi ON vi.timing_record_id = tr.id
-           WHERE tr.entry_id = ? AND tr.record_type = 'VET_IN' AND tr.is_void = 0
-           ORDER BY vi.created_at DESC;`,
-          [entryItem.id],
-        );
+        const arrivalRecordedAt = arrivalMap.get(entryItem.id);
+        const vetInRecs = vetInMap.get(entryItem.id);
 
         if (vetInRecs && vetInRecs.length > 0) {
           const lastVet = vetInRecs[0];
@@ -124,41 +208,44 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
             savedTimeHHMMSS,
           });
         } else {
-          const arrivalDate = arrivalRec && arrivalRec.recorded_at
-            ? new Date(arrivalRec.recorded_at)
-            : new Date();
+          const pendingVetIn = pendingVetInMap.get(entryItem.id);
 
-          const calcArrHHMMSS = arrivalDate.toLocaleTimeString("es-UY", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          });
-          const nextVetDate = new Date(arrivalDate.getTime() + 20 * 60 * 1000);
-          const nextVetControlTime = nextVetDate.toLocaleTimeString("es-UY", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          });
+          const isVetCheckStatus =
+            (entryItem.status as string) === ParticipantStatus.VET_CHECK ||
+            (entryItem.status as string) === "VET_CHECK";
 
-          const pendingVetIn = await db.getFirstAsync<any>(
-            "SELECT * FROM timing_records WHERE entry_id = ? AND record_type = 'VET_IN' AND is_void = 0;",
-            [entryItem.id],
-          );
+          if (pendingVetIn && isVetCheckStatus) {
+            const vetInDate = new Date(pendingVetIn.recorded_at);
+            const arrivalDate = arrivalRecordedAt
+              ? new Date(arrivalRecordedAt)
+              : vetInDate;
 
-          const isRecheckActive = !!rowRequiresRecheck[entryItem.id];
-          const currentHrInput = rowHeartRate[entryItem.id] || "";
+            const calcArrHHMMSS = arrivalDate.toLocaleTimeString("es-UY", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+            });
+            const nextVetControlTime = vetInDate.toLocaleTimeString("es-UY", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+            });
 
-          pending.push({
-            entry: entryItem,
-            calcArrHHMMSS,
-            nextVetControlTime,
-            arrivalIso: arrivalDate.toISOString(),
-            vetInRecordId: pendingVetIn?.id,
-            heartRateInput: currentHrInput,
-            requiresRecheck: isRecheckActive,
-          });
+            const isRecheckActive = !!rowRequiresRecheck[entryItem.id];
+            const currentHrInput = rowHeartRate[entryItem.id] || "";
+
+            pending.push({
+              entry: entryItem,
+              calcArrHHMMSS,
+              nextVetControlTime,
+              arrivalIso: arrivalDate.toISOString(),
+              vetInRecordId: pendingVetIn.id,
+              heartRateInput: currentHrInput,
+              requiresRecheck: isRecheckActive,
+            });
+          }
         }
       }
 
@@ -186,12 +273,6 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
       console.error("[VetGateScreen] Error loading simple tables state:", e);
     }
   };
-
-  useEffect(() => {
-    if (inspectionMode === "SIMPLE") {
-      loadSimpleTablesState();
-    }
-  }, [inspectionMode, rowRequiresRecheck]);
 
   useEffect(() => {
     const updateCount = async () => {
@@ -245,6 +326,12 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requiresRecheck, setRequiresRecheck] = useState(false);
   const [inspectionMode, setInspectionMode] = useState<"SIMPLE" | "DETAILED">("SIMPLE");
+
+  useEffect(() => {
+    if (inspectionMode === "SIMPLE") {
+      loadSimpleTablesState();
+    }
+  }, [inspectionMode, rowRequiresRecheck]);
 
   // States for logical sequence and read-only inspection history
   const [loading, setLoading] = useState(false);
@@ -763,6 +850,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                 onInspectionSuccess();
               }
               loadEntryState();
+              loadSimpleTablesState();
 
               setTimeout(() => {
                 searchInputRef.current?.focus();

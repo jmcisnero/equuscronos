@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useCompetitions } from "../hooks/useCompetitions";
 import {
   useLiveLeaderboard,
   LeaderboardEntry,
@@ -11,6 +12,7 @@ import {
   formatTime,
   formatGap,
   renderStatusBadge,
+  renderVetLimitBadge,
   StageHistoryMobile,
   StageHistoryTable,
 } from "./LeaderboardShared";
@@ -26,6 +28,7 @@ interface LeaderboardTableProps {
   error?: any;
   isValidating?: boolean;
   isClosed?: boolean;
+  enableRfidChips?: boolean;
 }
 
 export default function LeaderboardTable({
@@ -38,9 +41,18 @@ export default function LeaderboardTable({
   error: propsError,
   isValidating: propsIsValidating,
   isClosed: propsIsClosed,
+  enableRfidChips: propsEnableRfidChips,
 }: LeaderboardTableProps) {
   // Consumir el hook si no se proveen las propiedades por parámetro
   const hookData = useLiveLeaderboard(competitionId);
+  const { competitions } = useCompetitions();
+
+  const currentCompetition = competitions.find((c) => c.id === competitionId);
+  const enableRfidChips =
+    propsEnableRfidChips !== undefined
+      ? propsEnableRfidChips
+      : currentCompetition?.enableRfidChips;
+  const isRfidMode = enableRfidChips === true;
 
   const leaderboard = propsLeaderboard !== undefined ? propsLeaderboard : hookData.leaderboard;
   const isLoading = propsIsLoading !== undefined ? propsIsLoading : hookData.isLoading;
@@ -326,7 +338,7 @@ export default function LeaderboardTable({
                       </span>
                     </div>
                   )}
-                  {entry.nextVetControlTime && !isClosed && (
+                  {isRfidMode && entry.nextVetControlTime && !isClosed && (
                     <div>
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">
                         Límite Vet Gate
@@ -547,7 +559,7 @@ export default function LeaderboardTable({
                             <span className="font-sans tabular-nums text-slate-950 text-sm whitespace-nowrap">
                               {formatHHMMSS(entry.vetInTime)}
                             </span>
-                            {entry.nextVetControlTime && !isClosed && (
+                            {isRfidMode && entry.nextVetControlTime && !isClosed && (
                               <div className="flex mt-1 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap">
                                 <span className="inline-flex items-center text-[#AD8F6C] bg-[#AD8F6C]/10 border border-[#AD8F6C]/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                                   Límite:{" "}

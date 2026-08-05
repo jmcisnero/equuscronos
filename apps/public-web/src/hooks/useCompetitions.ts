@@ -36,6 +36,7 @@ export interface Competition {
   startTime: string;
   location: string;
   isFederated: boolean;
+  enableRfidChips?: boolean;
   maxHeartRate: number;
   status: CompetitionStatus;
   stages: Stage[];
@@ -73,6 +74,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     startTime: "07:00:00",
     location: "Tupambaé, Cerro Largo",
     isFederated: true,
+    enableRfidChips: false,
     maxHeartRate: 60,
     status: "ACTIVE",
     stages: [
@@ -93,6 +95,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     startTime: "08:00:00",
     location: "Cardona, Soriano",
     isFederated: true,
+    enableRfidChips: true,
     maxHeartRate: 64,
     status: "PLANNED",
     stages: [

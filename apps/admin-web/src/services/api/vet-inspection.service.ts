@@ -41,4 +41,23 @@ export const VetInspectionService = {
     }
     return response.json();
   },
+
+  async getPending(competitionId: string, stageNumber?: number): Promise<any[]> {
+    const queryParams = new URLSearchParams({ competitionId });
+    if (stageNumber !== undefined && stageNumber !== null) {
+      queryParams.append("stageNumber", String(stageNumber));
+    }
+    const response = await fetch(`${API_BASE}/vet-inspections/pending?${queryParams.toString()}`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(
+        err.message || "Error al obtener competidores pendientes para el control veterinario.",
+      );
+    }
+    return response.json();
+  },
 };
+
