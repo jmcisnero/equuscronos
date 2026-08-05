@@ -58,7 +58,8 @@ function MainApp() {
   const [isForceSyncing, setIsForceSyncing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Filtering state
+  // Filtering and Search state
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"ALL" | ParticipantStatus>(
     "ALL",
   );
@@ -484,10 +485,17 @@ function MainApp() {
     );
   };
 
-  // Filter local cache according to Judge filters
+  // Filter local cache according to Judge filters & search query
   const filteredEntries = entries.filter((entry) => {
-    if (activeFilter === "ALL") return true;
-    return entry.status === activeFilter;
+    const matchesFilter =
+      activeFilter === "ALL" || entry.status === activeFilter;
+    const query = searchQuery.trim().toLowerCase();
+    const matchesQuery =
+      !query ||
+      entry.rider_name.toLowerCase().includes(query) ||
+      entry.horse_name.toLowerCase().includes(query) ||
+      entry.bib_number.toString().includes(query);
+    return matchesFilter && matchesQuery;
   });
 
   // Navigation handlers
@@ -961,7 +969,6 @@ function MainApp() {
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContainer}
           renderItem={renderCompetitorCard}
-          getItemLayout={getItemLayout}
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           updateCellsBatchingPeriod={50}
@@ -1112,6 +1119,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     letterSpacing: 1.5,
     marginBottom: 8,
+  },
+  searchInput: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.equusText,
+    marginBottom: 12,
   },
   filterBar: {
     marginBottom: 10,

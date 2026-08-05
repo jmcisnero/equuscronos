@@ -211,8 +211,8 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
           const pendingVetIn = pendingVetInMap.get(entryItem.id);
 
           const isVetCheckStatus =
-            entryItem.status === ParticipantStatus.VET_CHECK ||
-            entryItem.status === "VET_CHECK";
+            (entryItem.status as string) === ParticipantStatus.VET_CHECK ||
+            (entryItem.status as string) === "VET_CHECK";
 
           if (pendingVetIn && isVetCheckStatus) {
             const vetInDate = new Date(pendingVetIn.recorded_at);
@@ -274,13 +274,6 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
     }
   };
 
-
-  useEffect(() => {
-    if (inspectionMode === "SIMPLE") {
-      loadSimpleTablesState();
-    }
-  }, [inspectionMode, rowRequiresRecheck]);
-
   useEffect(() => {
     const updateCount = async () => {
       const size = await SyncService.getQueueSize();
@@ -333,6 +326,12 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requiresRecheck, setRequiresRecheck] = useState(false);
   const [inspectionMode, setInspectionMode] = useState<"SIMPLE" | "DETAILED">("SIMPLE");
+
+  useEffect(() => {
+    if (inspectionMode === "SIMPLE") {
+      loadSimpleTablesState();
+    }
+  }, [inspectionMode, rowRequiresRecheck]);
 
   // States for logical sequence and read-only inspection history
   const [loading, setLoading] = useState(false);

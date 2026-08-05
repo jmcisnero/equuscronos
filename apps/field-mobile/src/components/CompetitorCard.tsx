@@ -110,8 +110,8 @@ const CompetitorCardComponent: React.FC<CompetitorCardProps> = ({
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>Lastre Req.</Text>
           <Text style={styles.detailValue}>
-            {entry.ballast_weight > 0
-              ? `${entry.ballast_weight.toFixed(1)} kg`
+            {entry.ballast_weight && Number(entry.ballast_weight) > 0
+              ? `${Number(entry.ballast_weight).toFixed(1)} kg`
               : "Sin Lastre"}
           </Text>
         </View>

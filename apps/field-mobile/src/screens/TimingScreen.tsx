@@ -720,16 +720,7 @@ export const TimingScreen: React.FC<TimingScreenProps> = ({
     }
   };
 
-  // Interpolate flash animation values for high-visibility visual feedback
-  const animatedBorderColor = flashAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#334155", "#10B981"], // Slate border to neon-green border
-  });
 
-  const animatedBgColor = flashAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#1E293B", "rgba(16, 185, 129, 0.12)"], // Slate background to soft green glow
-  });
 
   // Action Handlers
   const handleCancelAction = () => {
