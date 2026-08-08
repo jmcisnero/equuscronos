@@ -1,7 +1,7 @@
 export interface Rider {
   id: string;
   name: string;
-  nationalId: string;
+  nationalId?: string | null;
   feuId?: string;
   isFeuActive: boolean;
   birthDate?: string;
@@ -11,7 +11,7 @@ export interface Rider {
 
 export interface CreateRiderDto {
   name: string;
-  nationalId: string;
+  nationalId?: string;
   feuId?: string;
   isFeuActive?: boolean;
   birthDate?: string;
