@@ -6,10 +6,24 @@ import { useParams, useRouter } from "next/navigation";
 import { Rider } from "@/types/rider";
 import { RiderService } from "@/services/api/rider.service";
 
-export default function RiderDetailPage() {
-  const params = useParams();
+export default function RiderDetailPage({
+  params,
+}: {
+  params?: Promise<{ id: string }>;
+}) {
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = React.use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback
+    }
+  }
+  const id = routeId || unwrappedId;
   const router = useRouter();
-  const id = params.id as string;
 
   const [rider, setRider] = useState<Rider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,7 +165,11 @@ export default function RiderDetailPage() {
                 Cédula de Identidad (CI)
               </span>
               <span className="text-sm font-bold font-sans tabular-nums text-slate-800">
-                {rider.nationalId}
+                {rider.nationalId || (
+                  <span className="text-slate-400 font-normal italic">
+                    Sin Registrar
+                  </span>
+                )}
               </span>
             </div>
 

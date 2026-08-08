@@ -37,8 +37,11 @@ export const RiderService = {
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Error al registrar el nuevo jinete");
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message)
+        ? err.message.join(". ")
+        : err.message || "Error al registrar el nuevo jinete";
+      throw new Error(message);
     }
     return response.json();
   },
@@ -53,8 +56,11 @@ export const RiderService = {
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Error al actualizar el jinete");
+      const err = await response.json().catch(() => ({}));
+      const message = Array.isArray(err.message)
+        ? err.message.join(". ")
+        : err.message || "Error al actualizar el jinete";
+      throw new Error(message);
     }
     return response.json();
   },

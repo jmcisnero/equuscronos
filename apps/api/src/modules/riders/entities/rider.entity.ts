@@ -13,8 +13,14 @@ export class Rider {
   @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ name: "national_id", type: "varchar", length: 50, unique: true })
-  nationalId: string;
+  @Column({
+    name: "national_id",
+    type: "varchar",
+    length: 50,
+    unique: true,
+    nullable: true,
+  })
+  nationalId: string | null;
 
   @Column({
     name: "feu_id",

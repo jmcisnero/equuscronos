@@ -45,9 +45,23 @@ const entrySchema = z.object({
 
 type EntryFormValues = z.infer<typeof entrySchema>;
 
-export default function StartListPage() {
-  const params = useParams();
-  const competitionId = params.id as string;
+export default function StartListPage({
+  params,
+}: {
+  params?: Promise<{ id: string }>;
+}) {
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = React.use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback
+    }
+  }
+  const competitionId = routeId || unwrappedId;
   const queryClient = useQueryClient();
 
   // Estados de control para el Modal y Autocompletes
@@ -348,7 +362,7 @@ export default function StartListPage() {
   const filteredRiders = riders.filter(
     (r) =>
       r.name.toLowerCase().includes(riderSearch.toLowerCase()) ||
-      r.nationalId.includes(riderSearch),
+      (r.nationalId && r.nationalId.includes(riderSearch)),
   );
 
   // Filtrar caballos
@@ -755,13 +769,29 @@ export default function StartListPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {entries.map((entry) => {
-                  const isRiderActive = entry.rider?.isFeuActive;
-                  const isHorseActive = entry.horse?.isFeuActive;
-                  const qualifies =
-                    isRiderActive &&
-                    isHorseActive &&
-                    Number(entry.ballastWeight) >= minWeight &&
-                    !!entry.sealNumber;
+                  const isRiderActive = entry.rider ? entry.rider.isFeuActive !== false : true;
+                  const isHorseActive = entry.horse ? entry.horse.isFeuActive !== false : true;
+                  const hasBallast =
+                    entry.ballastWeight !== undefined &&
+                    entry.ballastWeight !== null &&
+                    Number(entry.ballastWeight) > 0;
+                  const isWeightValid =
+                    !hasBallast || Number(entry.ballastWeight) >= minWeight;
+                  const qualifies = isRiderActive && isHorseActive && isWeightValid;
+
+                  const observationReasons: string[] = [];
+                  if (entry.rider?.isFeuActive === false)
+                    observationReasons.push("Jinete inactivo");
+                  if (entry.horse?.isFeuActive === false)
+                    observationReasons.push("Equino inactivo");
+                  if (hasBallast && Number(entry.ballastWeight) < minWeight) {
+                    observationReasons.push(
+                      `Falta de peso: ${Number(entry.ballastWeight).toFixed(1)}kg < ${minWeight}kg`,
+                    );
+                  }
+                  const tooltipText = qualifies
+                    ? "Habilitado para competir"
+                    : `Observado: ${observationReasons.join(" | ")}`;
 
                   return (
                     <tr
@@ -861,10 +891,11 @@ export default function StartListPage() {
                       {/* Habilitación FEU */}
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                          title={tooltipText}
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold border cursor-help ${
                             qualifies
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200/50"
-                              : "bg-rose-50 text-rose-700 border-rose-200/50"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
                           }`}
                         >
                           {qualifies ? "Habilitado" : "Observado"}

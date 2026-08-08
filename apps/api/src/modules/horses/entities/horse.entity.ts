@@ -38,7 +38,7 @@ export class Horse {
   })
   chipId: string;
 
-  @Column({ name: "is_feu_active", type: "boolean", default: false })
+  @Column({ name: "is_feu_active", type: "boolean", default: true })
   isFeuActive: boolean;
 
   @Column({

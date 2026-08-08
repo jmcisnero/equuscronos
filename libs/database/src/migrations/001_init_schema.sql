@@ -72,7 +72,7 @@ CREATE TABLE horses (
     name VARCHAR(255) NOT NULL,
     feu_id VARCHAR(50) UNIQUE,
     chip_id VARCHAR(100) UNIQUE,
-    is_feu_active BOOLEAN DEFAULT FALSE,
+    is_feu_active BOOLEAN DEFAULT TRUE,
     health_records_expiration DATE, -- Sanidad MGAP
     birth_date DATE, -- Fecha de Nacimiento
     image_url VARCHAR(550), -- URL de la foto oficial
@@ -82,9 +82,9 @@ CREATE TABLE horses (
 CREATE TABLE riders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    national_id VARCHAR(50) NOT NULL UNIQUE,
+    national_id VARCHAR(50) UNIQUE,
     feu_id VARCHAR(50) UNIQUE,
-    is_feu_active BOOLEAN DEFAULT FALSE,
+    is_feu_active BOOLEAN DEFAULT TRUE,
     birth_date DATE, -- Fecha de Nacimiento (inmutable para evitar bugs de zona horaria)
     medical_card_expiration DATE, -- Carnet de Salud / Ficha Médica	
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

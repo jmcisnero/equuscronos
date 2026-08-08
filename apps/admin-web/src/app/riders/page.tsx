@@ -96,7 +96,7 @@ export default function RidersPage() {
     setEditingRider(rider);
     setFormData({
       name: rider.name.toUpperCase(),
-      nationalId: rider.nationalId,
+      nationalId: rider.nationalId || "",
       feuId: rider.feuId || "",
       isFeuActive: rider.isFeuActive,
       // Las fechas se leen directamente como strings 'YYYY-MM-DD' de la entidad
@@ -127,28 +127,30 @@ export default function RidersPage() {
       setIsSaving(false);
       return;
     }
-    if (!formData.nationalId.trim()) {
-      setFormError(
-        "La Cédula de Identidad es obligatoria para el control de identidad.",
-      );
-      setIsSaving(false);
-      return;
-    }
+
+    const cleanedPayload: CreateRiderDto = {
+      name: formData.name.trim().toUpperCase(),
+      nationalId: formData.nationalId?.trim() || undefined,
+      feuId: formData.feuId?.trim() || undefined,
+      isFeuActive: formData.isFeuActive,
+      birthDate: formData.birthDate?.trim() || undefined,
+      medicalCardExpiration: formData.medicalCardExpiration?.trim() || undefined,
+    };
 
     try {
       if (editingRider) {
         // Ejecutar actualización
-        await RiderService.update(editingRider.id, formData);
+        await RiderService.update(editingRider.id, cleanedPayload);
       } else {
         // Ejecutar creación
-        await RiderService.create(formData);
+        await RiderService.create(cleanedPayload);
       }
       setIsModalOpen(false);
       resetForm();
       loadRiders(searchQuery);
     } catch (err: any) {
       // Capturar conflicto 409 (duplicados de Cédula o FEU) y otros errores
-      setFormError(err.message || "Error al procesar la solicitud.");
+      setFormError(err.message || "Ocurrió un error al procesar la solicitud.");
     } finally {
       setIsSaving(false);
     }
@@ -372,7 +374,11 @@ export default function RidersPage() {
                         </Link>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 font-sans tabular-nums">
-                        {rider.nationalId}
+                        {rider.nationalId || (
+                          <span className="text-slate-400 italic">
+                            Sin Registrar
+                          </span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold font-sans tabular-nums text-slate-700">
                         {rider.feuId ? (
@@ -562,40 +568,20 @@ export default function RidersPage() {
                 />
               </div>
 
-              {/* Fila de Documentos y Licencia */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Cédula de Identidad */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Cédula de Identidad *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nationalId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nationalId: e.target.value })
-                    }
-                    placeholder="Ej: 3.123.456-7"
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
-                  />
-                </div>
-
-                {/* Nro Licencia FEU */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Licencia FEU
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.feuId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, feuId: e.target.value })
-                    }
-                    placeholder="Ej: FEU-R-201"
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
-                  />
-                </div>
+              {/* Cédula de Identidad */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Cédula de Identidad
+                </label>
+                <input
+                  type="text"
+                  value={formData.nationalId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nationalId: e.target.value })
+                  }
+                  placeholder="Ej: 3.123.456-7"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm font-sans tabular-nums"
+                />
               </div>
 
               {/* Fila de Fechas - Manejadas de forma inmutable como string YYYY-MM-DD */}

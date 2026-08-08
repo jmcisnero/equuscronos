@@ -7,10 +7,24 @@ import { User } from "@/types/user";
 import { UserService } from "@/services/api/user.service";
 import { UserRole } from "@equuscronos/shared";
 
-export default function UserDetailPage() {
-  const params = useParams();
+export default function UserDetailPage({
+  params,
+}: {
+  params?: Promise<{ id: string }>;
+}) {
+  const routeParams = useParams();
+  const routeId = routeParams?.id as string;
+  let unwrappedId = "";
+  if (params) {
+    try {
+      const resolved = React.use(params);
+      unwrappedId = resolved?.id || "";
+    } catch (e) {
+      // Fallback
+    }
+  }
+  const id = routeId || unwrappedId;
   const router = useRouter();
-  const id = params.id as string;
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);

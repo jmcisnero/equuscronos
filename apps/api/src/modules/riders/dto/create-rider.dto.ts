@@ -10,17 +10,13 @@ export class CreateRiderDto {
   @IsNotEmpty({ message: "El nombre completo es obligatorio." })
   name: string;
 
-  @ApiProperty({
-    description:
-      "Cédula de Identidad (Requerido para validación anti-duplicados)",
+  @ApiPropertyOptional({
+    description: "Cédula de Identidad",
     example: "4.234.567-8",
   })
+  @IsOptional()
   @IsString({ message: "La cédula de identidad debe ser un texto válido." })
-  @IsNotEmpty({
-    message:
-      "La cédula de identidad es obligatoria para el control anti-duplicados.",
-  })
-  nationalId: string;
+  nationalId?: string;
 
   @ApiPropertyOptional({
     description: "Carnet de la federación (FEU)",

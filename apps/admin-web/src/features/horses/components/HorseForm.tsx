@@ -45,7 +45,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
     name: "",
     feuId: "",
     chipId: "",
-    isFeuActive: false,
+    isFeuActive: true,
     healthRecordsExpiration: "",
     birthDate: "",
     imageUrl: "",
@@ -510,7 +510,7 @@ export const HorseForm: React.FC<HorseFormProps> = ({
               <input
                 type="checkbox"
                 name="isFeuActive"
-                checked={formData.isFeuActive || false}
+                checked={formData.isFeuActive ?? true}
                 onChange={handleChange}
                 className="sr-only peer"
               />
