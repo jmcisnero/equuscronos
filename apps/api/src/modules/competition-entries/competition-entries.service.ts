@@ -14,6 +14,7 @@ import { Rider } from "../riders/entities/rider.entity";
 import { Horse } from "../horses/entities/horse.entity";
 import { Tenant } from "../tenants/entities/tenant.entity";
 import { WeightControl } from "../weight-controls/entities/weight-control.entity";
+import { VetInspection } from "../vet-inspections/entities/vet-inspection.entity";
 import { CompetitionStatus, ParticipantStatus } from "@equuscronos/shared";
 
 @Injectable()
@@ -28,6 +29,8 @@ export class CompetitionEntriesService {
     @InjectRepository(Tenant) private readonly tenantRepo: Repository<Tenant>,
     @InjectRepository(WeightControl)
     private readonly weightRepo: Repository<WeightControl>,
+    @InjectRepository(VetInspection)
+    private readonly vetRepo: Repository<VetInspection>,
   ) {}
 
   async create(dto: CreateCompetitionEntryDto): Promise<CompetitionEntry> {
@@ -185,7 +188,7 @@ export class CompetitionEntriesService {
   async findAllByCompetition(
     competitionId: string,
   ): Promise<CompetitionEntry[]> {
-    return await this.entryRepo.find({
+    const entries = await this.entryRepo.find({
       where: { competition: { id: competitionId } },
       relations: [
         "rider",
@@ -198,6 +201,18 @@ export class CompetitionEntriesService {
       ],
       order: { bibNumber: "ASC" },
     });
+
+    const vetInspections = await this.vetRepo.find({
+      where: { competition: { id: competitionId } },
+      order: { createdAt: "ASC" },
+    });
+
+    return entries.map((entry) => ({
+      ...entry,
+      vetInspections: vetInspections.filter(
+        (vi) => vi.riderDorsal === String(entry.bibNumber),
+      ),
+    })) as CompetitionEntry[];
   }
 
   async findOne(id: string): Promise<CompetitionEntry> {

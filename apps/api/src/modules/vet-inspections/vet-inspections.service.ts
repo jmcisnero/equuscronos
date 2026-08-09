@@ -108,21 +108,7 @@ export class VetInspectionsService {
         );
       }
 
-      // 4. Calcular diferencia de tiempo de recuperación (Tolerancia)
-      const arrivalTime = new Date(dto.arrivalTime);
-      const vetInTime = new Date(dto.vetInTime);
-      const diffMs = vetInTime.getTime() - arrivalTime.getTime();
-
-      if (isNaN(diffMs) || diffMs < 0) {
-        throw new BadRequestException(
-          "Las fechas de llegada o ingreso al área veterinaria son inválidas.",
-        );
-      }
-
-      const recoveryMinutes = diffMs / (1000 * 60);
-      const isRecoveryTimeExceeded = diffMs > 20 * 60 * 1000;
-
-      // 5. Garantizar registros de tiempos (TimingRecords) de contingencia
+      // 4. Garantizar registros de tiempos (TimingRecords) de contingencia
       let arrivalRecord = await manager.findOne(TimingRecord, {
         where: {
           entry: { id: entry.id },
@@ -132,13 +118,16 @@ export class VetInspectionsService {
         },
       });
 
+      const arrivalTimeInput = new Date(dto.arrivalTime);
+      const vetInTimeInput = new Date(dto.vetInTime);
+
       if (!arrivalRecord) {
         arrivalRecord = manager.create(TimingRecord, {
           tenant: entry.tenant,
           entry,
           stage,
           recordType: TimeRecordType.ARRIVAL,
-          recordedAt: arrivalTime,
+          recordedAt: arrivalTimeInput,
           isApproved: true,
         });
         arrivalRecord = await manager.save(TimingRecord, arrivalRecord);
@@ -151,7 +140,7 @@ export class VetInspectionsService {
           recordType: TimeRecordType.VET_IN,
           isVoid: false,
         },
-        order: { recordedAt: "DESC" },
+        order: { recordedAt: "ASC" },
       });
 
       let vetInRecord = vetInRecords[0];
@@ -162,11 +151,29 @@ export class VetInspectionsService {
           entry,
           stage,
           recordType: TimeRecordType.VET_IN,
-          recordedAt: vetInTime,
+          recordedAt: vetInTimeInput,
           isApproved: true,
         });
         vetInRecord = await manager.save(TimingRecord, vetInRecord);
       }
+
+      // 5. Calcular diferencia de tiempo de recuperación (Tolerancia de 20 min)
+      // REGLA CRÍTICA DE NEGOCIO:
+      // Si el binomio ya cuenta con un registro VET_IN previo válido (vetInRecord),
+      // el timestamp a comparar contra arrivalRecord debe ser el del hito VET_IN original (vetInRecord.recordedAt)
+      // en el que el caballo ingresó físicamente a la zona veterinaria, y NO el timestamp de envío del formulario de pulso/rechequeo.
+      const effectiveArrivalDate = new Date(arrivalRecord.recordedAt);
+      const effectiveVetInDate = new Date(vetInRecord.recordedAt);
+      const diffMs = effectiveVetInDate.getTime() - effectiveArrivalDate.getTime();
+
+      if (isNaN(diffMs) || diffMs < 0) {
+        throw new BadRequestException(
+          "Las fechas de llegada o ingreso al área veterinaria son inválidas.",
+        );
+      }
+
+      const recoveryMinutes = diffMs / (1000 * 60);
+      const isRecoveryTimeExceeded = diffMs > 20 * 60 * 1000;
 
       // Buscar inspecciones previas de la misma etapa
       const previousInspections = await manager.find(VetInspection, {
@@ -255,7 +262,7 @@ export class VetInspectionsService {
         if (dto.nextCheckTime) {
           nextCheckDate = new Date(dto.nextCheckTime);
         } else {
-          nextCheckDate = new Date(vetInTime.getTime() + 20 * 60 * 1000); // 20 minutes after vet_in
+          nextCheckDate = new Date(effectiveVetInDate.getTime() + 20 * 60 * 1000); // 20 minutes after vet_in
         }
       }
 
@@ -265,8 +272,8 @@ export class VetInspectionsService {
         competition: entry.competition,
         vetGateNumber: dto.vetGateNumber,
         riderDorsal: dto.riderDorsal,
-        arrivalTime,
-        vetInTime,
+        arrivalTime: effectiveArrivalDate,
+        vetInTime: effectiveVetInDate,
         heartRate: dto.heartRate,
         gaitStatus: dto.gaitStatus,
         inspectionType: dto.inspectionType,
