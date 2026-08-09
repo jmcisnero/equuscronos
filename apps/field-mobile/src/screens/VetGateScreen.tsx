@@ -1161,7 +1161,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#F59E0B" }} />
                   <Text style={styles.simpleSectionTitle}>
-                    SECCIÓN SUPERIOR: Pendientes de Registro ({pendingList.filter((item) => !bibSearch.trim() || String(item.entry.bib_number).includes(bibSearch.trim())).length})
+                    Pendientes de Registro ({pendingList.filter((item) => !bibSearch.trim() || String(item.entry.bib_number).includes(bibSearch.trim())).length})
                   </Text>
                 </View>
                 <Text style={styles.simpleSectionSubtitle}>
@@ -1276,7 +1276,7 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#10B981" }} />
                   <Text style={styles.simpleSectionTitle}>
-                    SECCIÓN INFERIOR: Atendidos en Mesa ({attendedList.filter((item) => !bibSearch.trim() || String(item.entry.bib_number).includes(bibSearch.trim())).length})
+                    Atendidos en Mesa ({attendedList.filter((item) => !bibSearch.trim() || String(item.entry.bib_number).includes(bibSearch.trim())).length})
                   </Text>
                 </View>
                 <Text style={styles.simpleSectionSubtitle}>

@@ -8,6 +8,7 @@ import { Rider } from "../riders/entities/rider.entity";
 import { Horse } from "../horses/entities/horse.entity";
 import { Tenant } from "../tenants/entities/tenant.entity";
 import { WeightControl } from "../weight-controls/entities/weight-control.entity";
+import { VetInspection } from "../vet-inspections/entities/vet-inspection.entity";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WeightControl } from "../weight-controls/entities/weight-control.entity
       Horse,
       Tenant,
       WeightControl,
+      VetInspection,
     ]),
   ],
   controllers: [CompetitionEntriesController],

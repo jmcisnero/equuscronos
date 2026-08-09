@@ -70,6 +70,7 @@ export default function ArribosContingenciaPage() {
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<LastResult | null>(null);
+  const [lastBib, setLastBib] = useState<number | null>(null);
 
   const selectedComp = competitions.find((c) => c.id === competitionId);
   const stages: Stage[] = selectedComp?.stages ?? [];
@@ -182,6 +183,7 @@ export default function ArribosContingenciaPage() {
 
       if (successList.length > 0) {
         setLastResult(lastResObj);
+        setLastBib(successList[successList.length - 1]);
         setStatus("success");
         setBibNumber("");
         setArrivalTime(localNowHHMMSS());
@@ -542,8 +544,8 @@ export default function ArribosContingenciaPage() {
                     {multiSummary}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-emerald-600 mt-0.5 font-mono">
-                    ID: {lastResult.id.substring(0, 8)}… ·{" "}
+                  <p className="text-[11px] text-emerald-600 mt-0.5 font-mono font-bold">
+                    Dorsal: #{lastBib} ·{" "}
                     {new Date(lastResult.recordedAt).toLocaleTimeString("es-UY")}
                   </p>
                 )}

@@ -208,6 +208,8 @@ export default function VetControlPage() {
   useEffect(() => {
     if (selectedComp?.vetInspectionMode) {
       setViewMode(selectedComp.vetInspectionMode);
+    } else {
+      setViewMode("SIMPLE");
     }
   }, [competitionId, selectedComp]);
 
@@ -265,9 +267,20 @@ export default function VetControlPage() {
   }, [matchedEntry, stageId, selectedStage]);
 
   // Real-time calculations for visual warnings
+  const matchedVetInRecord = matchedEntry?.timingRecords?.find(
+    (r) =>
+      r.recordType === "VET_IN" &&
+      !r.isVoid &&
+      r.stage?.stageNumber === selectedStage?.stageNumber,
+  );
+
+  const effectiveVetInHHMMSS = matchedVetInRecord
+    ? formatHHMMSS(matchedVetInRecord.recordedAt)
+    : vetInTime;
+
   const recoveryDiffMinutes =
-    selectedStage && arrivalTime && vetInTime
-      ? getMinutesDiff(arrivalTime, vetInTime)
+    selectedStage && arrivalTime && effectiveVetInHHMMSS
+      ? getMinutesDiff(arrivalTime, effectiveVetInHHMMSS)
       : 0;
 
   const isRecoveryWarning = recoveryDiffMinutes > 20;
@@ -441,26 +454,46 @@ export default function VetControlPage() {
   }[] = [];
 
   for (const entry of entries) {
-    const insp = entry.vetInspections?.find(
-      (v) => v.vetGateNumber === currentStageNumber,
-    );
-
-    if (insp) {
-      registeredEntriesWithInspections.push({ entry, inspection: insp });
-    } else {
-      // Exigir explícitamente registro VET_IN y estado VET_CHECK para la etapa activa
-      const vetInRec = entry.timingRecords?.find(
-        (r) =>
-          r.recordType === "VET_IN" &&
-          !r.isVoid &&
-          r.stage?.stageNumber === currentStageNumber,
+    const stageInspections = (entry.vetInspections || [])
+      .filter((v) => v.vetGateNumber === currentStageNumber)
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt || a.vetInTime).getTime() -
+          new Date(b.createdAt || b.vetInTime).getTime(),
       );
 
-      const isVetCheckStatus =
-        entry.status === ParticipantStatus.VET_CHECK ||
-        entry.status === "VET_CHECK";
+    const latestInsp =
+      stageInspections.length > 0
+        ? stageInspections[stageInspections.length - 1]
+        : null;
 
-      if (vetInRec && isVetCheckStatus) {
+    if (latestInsp) {
+      registeredEntriesWithInspections.push({
+        entry,
+        inspection: latestInsp,
+      });
+    }
+
+    // Exigir explícitamente registro VET_IN y estado VET_CHECK / IN_RACE para la etapa activa
+    const vetInRec = entry.timingRecords?.find(
+      (r) =>
+        r.recordType === "VET_IN" &&
+        !r.isVoid &&
+        r.stage?.stageNumber === currentStageNumber,
+    );
+
+    const isVetCheckStatus =
+      entry.status === ParticipantStatus.VET_CHECK ||
+      entry.status === "VET_CHECK" ||
+      entry.status === ParticipantStatus.IN_RACE ||
+      entry.status === "IN_RACE";
+
+    if (vetInRec && isVetCheckStatus) {
+      // Un binomio está pendiente si NO tiene inspección guardada para esta etapa,
+      // O SI su última inspección guardada exige rechequeo (requiresRecheck === true)
+      const isPending = !latestInsp || latestInsp.requiresRecheck;
+
+      if (isPending) {
         const arrivalRec = entry.timingRecords?.find(
           (r) =>
             r.recordType === "ARRIVAL" &&
@@ -474,10 +507,9 @@ export default function VetControlPage() {
 
         const nextVetTime = formatHHMMSS(vetInRec.recordedAt);
 
-        const isRecheckActive =
-          !!rowRequiresRecheck[entry.id] ||
-          entry.vetInspections?.some((v) => v.requiresRecheck) ||
-          false;
+        // RECHEQUEO RULE: El orden de rechequeo (al final de la lista) se basa EXCLUSIVAMENTE
+        // en la inspección guardada (latestInsp.requiresRecheck), no en el estado del checkbox no guardado en la UI (rowRequiresRecheck).
+        const isRecheckActive = latestInsp ? latestInsp.requiresRecheck : false;
 
         pendingEntriesList.push({
           entry,
@@ -592,11 +624,21 @@ export default function VetControlPage() {
             </button>
             <button
               type="button"
+              disabled={(selectedComp?.vetInspectionMode ?? "SIMPLE") === "SIMPLE"}
               onClick={() => setViewMode("DETAILED")}
+              title={
+                (selectedComp?.vetInspectionMode ?? "SIMPLE") === "SIMPLE"
+                  ? "El modo de control veterinario está definido como SIMPLE a nivel de competencia"
+                  : ""
+              }
               className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
                 viewMode === "DETAILED"
                   ? "bg-emerald-600 text-white shadow-md"
                   : "text-slate-400 hover:text-slate-200"
+              } ${
+                (selectedComp?.vetInspectionMode ?? "SIMPLE") === "SIMPLE"
+                  ? "opacity-40 cursor-not-allowed"
+                  : ""
               }`}
             >
               📋 Extendido (DETAILED)
@@ -662,7 +704,7 @@ export default function VetControlPage() {
               <div className="flex items-center gap-3">
                 <span className="w-3 h-3 rounded-full bg-amber-400 animate-pulse" />
                 <h2 className="text-base font-extrabold text-slate-200">
-                  SECCIÓN SUPERIOR: Pendientes de Registro en Mesa ({sortedPendingList.length})
+                  Pendientes de Registro en Mesa ({sortedPendingList.length})
                 </h2>
               </div>
               <span className="text-xs text-slate-400 font-semibold">
@@ -804,7 +846,7 @@ export default function VetControlPage() {
               <div className="flex items-center gap-3">
                 <span className="w-3 h-3 rounded-full bg-emerald-500" />
                 <h2 className="text-base font-extrabold text-slate-200">
-                  SECCIÓN INFERIOR: Registrados y Atendidos en Mesa ({registeredEntriesWithInspections.length})
+                  Registrados y Atendidos en Mesa ({registeredEntriesWithInspections.length})
                 </h2>
               </div>
               <span className="text-xs text-slate-400 font-semibold">
