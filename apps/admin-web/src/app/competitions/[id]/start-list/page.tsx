@@ -777,7 +777,10 @@ export default function StartListPage({
                     Number(entry.ballastWeight) > 0;
                   const isWeightValid =
                     !hasBallast || Number(entry.ballastWeight) >= minWeight;
-                  const qualifies = isRiderActive && isHorseActive && isWeightValid;
+                  const qualifies =
+                    isRiderActive &&
+                    isHorseActive &&
+                    Number(entry.ballastWeight) >= minWeight;
 
                   const observationReasons: string[] = [];
                   if (entry.rider?.isFeuActive === false)
@@ -1414,7 +1417,7 @@ export default function StartListPage({
                 {/* sealedItems */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700">
-                    Elementos Precintados
+                    Elementos Precintados (opcional)
                   </label>
                   <div className="flex flex-wrap gap-4 p-3 bg-white border border-slate-200 rounded-xl">
                     {["Jergón", "Mandil", "Montura"].map((item) => (
@@ -1439,7 +1442,7 @@ export default function StartListPage({
                 {/* sealNumbers (Input text para números de precinto, separado por comas) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center">
-                    🔗 Números de Precinto (Separados por comas)
+                    🔗 Números de Precinto (opcional, separados por comas)
                   </label>
                   <input
                     type="text"

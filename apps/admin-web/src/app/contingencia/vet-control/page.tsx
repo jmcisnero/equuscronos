@@ -101,8 +101,17 @@ function addMinutesToHHMMSS(hhmmss: string, mins: number): string {
 }
 
 function buildIsoFromTimeInput(hhmmss: string): string {
-  const today = new Date().toISOString().substring(0, 10);
-  return new Date(`${today}T${hhmmss}`).toISOString();
+  if (!hhmmss || !/^\d{2}:\d{2}(:\d{2})?$/.test(hhmmss)) {
+    return new Date().toISOString();
+  }
+  const parts = hhmmss.split(":");
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  const s = parseInt(parts[2] || "0", 10) || 0;
+
+  const d = new Date();
+  d.setHours(h, m, s, 0);
+  return d.toISOString();
 }
 
 function getMinutesDiff(time1: string, time2: string): number {
@@ -159,12 +168,109 @@ export default function VetControlPage() {
   const [rowRequiresRecheck, setRowRequiresRecheck] = useState<Record<string, boolean>>({});
   const [rowSavingId, setRowSavingId] = useState<string | null>(null);
 
+  // State: Recheck Modal
+  const [recheckModalEntry, setRecheckModalEntry] = useState<{
+    entry: CompetitionEntry;
+    calcArrHHMMSS: string;
+    latestInsp: VetInspectionItem;
+  } | null>(null);
+  const [recheckHeartRate, setRecheckHeartRate] = useState("");
+  const [recheckGaitStatus, setRecheckGaitStatus] = useState<GaitStatus>(GaitStatus.APPROVED);
+  const [recheckRequiresRecheck, setRecheckRequiresRecheck] = useState(false);
+  const [recheckNotes, setRecheckNotes] = useState("");
+  const [isSavingRecheckModal, setIsSavingRecheckModal] = useState(false);
+
+  // State: Delete Confirmation Modal
+  const [deleteModalItem, setDeleteModalItem] = useState<{
+    entry: CompetitionEntry;
+    inspection: VetInspectionItem;
+  } | null>(null);
+  const [isDeletingInspection, setIsDeletingInspection] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
   // State: UI Feedback
   const [loadingComps, setLoadingComps] = useState(true);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<any>(null);
+
+  // Confirm Delete Last Inspection Handler
+  const handleConfirmDeleteInspection = async () => {
+    if (!deleteModalItem) return;
+    setIsDeletingInspection(true);
+    try {
+      await VetInspectionService.delete(deleteModalItem.inspection.id);
+      setToastMessage({
+        text: `Se eliminó el último registro del dorsal #${deleteModalItem.entry.bibNumber}. El binomio reapareció en la lista de pendientes.`,
+        type: "success",
+      });
+      setDeleteModalItem(null);
+      await refreshEntries();
+    } catch (err: any) {
+      alert(`Error al eliminar la inspección: ${err.message}`);
+    } finally {
+      setIsDeletingInspection(false);
+    }
+  };
+
+  // Open Recheck Modal helper
+  const openRecheckModal = (
+    entry: CompetitionEntry,
+    calcArrHHMMSS: string,
+    latestInsp: VetInspectionItem,
+  ) => {
+    setRecheckModalEntry({ entry, calcArrHHMMSS, latestInsp });
+    // Precarga por defecto del pulso de la 1ª toma (Reglamento FEU)
+    setRecheckHeartRate(latestInsp?.heartRate ? String(latestInsp.heartRate) : "");
+    setRecheckGaitStatus(GaitStatus.APPROVED);
+    setRecheckRequiresRecheck(false);
+    setRecheckNotes("");
+  };
+
+  // Submit Handler for Recheck Modal
+  const handleSaveRecheckModal = async () => {
+    if (!recheckModalEntry || !selectedStage) return;
+    let hrVal = parseInt(recheckHeartRate, 10);
+    if (isNaN(hrVal) || hrVal <= 0) {
+      if (recheckModalEntry.latestInsp?.heartRate) {
+        hrVal = recheckModalEntry.latestInsp.heartRate;
+      }
+    }
+
+    if (isNaN(hrVal) || hrVal <= 0) {
+      alert("Debe ingresar una frecuencia cardíaca válida para el rechequeo.");
+      return;
+    }
+
+    setIsSavingRecheckModal(true);
+    try {
+      const nowHHMMSS = localNowHHMMSS();
+      await VetInspectionService.create({
+        competitionId,
+        vetGateNumber: selectedStage.stageNumber,
+        riderDorsal: String(recheckModalEntry.entry.bibNumber),
+        arrivalTime: buildIsoFromTimeInput(recheckModalEntry.calcArrHHMMSS || nowHHMMSS),
+        vetInTime: buildIsoFromTimeInput(nowHHMMSS),
+        heartRate: hrVal,
+        gaitStatus: recheckGaitStatus,
+        inspectionType: InspectionType.RE_INSPECTION_REQUESTED,
+        requiresRecheck: false, // Forzado a false: Prohibición estricta de 3er rechequeo (FEU Art. 21 y 31)
+        notes: recheckNotes.trim() || undefined,
+      });
+
+      setRecheckModalEntry(null);
+      setRecheckHeartRate("");
+      setRecheckGaitStatus(GaitStatus.APPROVED);
+      setRecheckRequiresRecheck(false);
+      setRecheckNotes("");
+      await refreshEntries();
+    } catch (err: any) {
+      alert(`Error al guardar el rechequeo: ${err.message}`);
+    } finally {
+      setIsSavingRecheckModal(false);
+    }
+  };
 
   // Derived state
   const selectedComp = competitions.find((c) => c.id === competitionId);
@@ -266,6 +372,25 @@ export default function VetControlPage() {
     }
   }, [matchedEntry, stageId, selectedStage]);
 
+  // Detector de rechequeo activo para el binomio seleccionado en modo extendido
+  const matchedStageInsps = (matchedEntry?.vetInspections || []).filter(
+    (v) => v.vetGateNumber === selectedStage?.stageNumber,
+  );
+  const isMatchedEntryRecheck =
+    matchedStageInsps.length === 1 &&
+    (matchedStageInsps[0].requiresRecheck || (matchedStageInsps[0] as any).isRecheckRequired);
+
+  // Sincronizar precarga de rechequeo en modo extendido
+  useEffect(() => {
+    if (!matchedEntry || !selectedStage) return;
+    if (isMatchedEntryRecheck && matchedStageInsps[0]) {
+      const firstInsp = matchedStageInsps[0];
+      setHeartRate((prev) => (prev ? prev : firstInsp.heartRate ? String(firstInsp.heartRate) : ""));
+      setInspectionType(InspectionType.RE_INSPECTION_REQUESTED);
+      setRequiresRecheck(false);
+    }
+  }, [matchedEntry, selectedStage, isMatchedEntryRecheck]);
+
   // Real-time calculations for visual warnings
   const matchedVetInRecord = matchedEntry?.timingRecords?.find(
     (r) =>
@@ -283,8 +408,9 @@ export default function VetControlPage() {
       ? getMinutesDiff(arrivalTime, effectiveVetInHHMMSS)
       : 0;
 
+  const maxHeartRate = (selectedComp as any)?.maxHeartRate ?? 65;
   const isRecoveryWarning = recoveryDiffMinutes > 20;
-  const isPulseWarning = heartRate ? parseInt(heartRate, 10) > 65 : false;
+  const isPulseWarning = heartRate ? parseInt(heartRate, 10) > maxHeartRate : false;
 
   // Clear form helper
   const clearForm = (resetBib = true) => {
@@ -348,6 +474,7 @@ export default function VetControlPage() {
 
     setStatus("loading");
     try {
+      const finalRequiresRecheck = isMatchedEntryRecheck ? false : requiresRecheck;
       const result = await VetInspectionService.create({
         competitionId,
         vetGateNumber: selectedStage.stageNumber,
@@ -356,8 +483,8 @@ export default function VetControlPage() {
         vetInTime: buildIsoFromTimeInput(vetInTime),
         heartRate: parseInt(heartRate, 10),
         gaitStatus,
-        inspectionType,
-        requiresRecheck,
+        inspectionType: isMatchedEntryRecheck ? InspectionType.RE_INSPECTION_REQUESTED : inspectionType,
+        requiresRecheck: finalRequiresRecheck,
         notes: notes.trim() || undefined,
       });
 
@@ -374,20 +501,42 @@ export default function VetControlPage() {
   };
 
   // Submit Handler for Simple Fast-Entry Table Row
-  const handleSaveRowSimple = async (entry: CompetitionEntry, calcArrHHMMSS: string) => {
+  const handleSaveRowSimple = async (
+    entry: CompetitionEntry,
+    calcArrHHMMSS: string,
+    isRecheckPendingItem?: boolean,
+  ) => {
     if (!selectedStage) return;
+    const stageInsps = (entry.vetInspections || []).filter(
+      (v) => v.vetGateNumber === selectedStage.stageNumber,
+    );
+    const firstInsp = stageInsps[0];
+
     const hrStr = rowHeartRate[entry.id];
-    const hrVal = parseInt(hrStr || "", 10);
+    let hrVal = parseInt(hrStr || "", 10);
+
+    // Precarga automática / Herencia de pulso de 1ª toma si viene vacío
+    if ((isNaN(hrVal) || hrVal <= 0) && (isRecheckPendingItem || stageInsps.length > 0)) {
+      if (firstInsp?.heartRate) {
+        hrVal = firstInsp.heartRate;
+      }
+    }
 
     if (isNaN(hrVal) || hrVal <= 0) {
       alert(`Debe ingresar una frecuencia cardíaca válida para el dorsal #${entry.bibNumber}.`);
       return;
     }
 
-    const isRecheck = !!rowRequiresRecheck[entry.id];
+    const isRecheckRequested = isRecheckPendingItem ? false : !!rowRequiresRecheck[entry.id];
     const nowHHMMSS = localNowHHMMSS();
     setRowSavingId(entry.id);
     setErrorMsg(null);
+
+    const inspType = isRecheckPendingItem
+      ? InspectionType.RE_INSPECTION_REQUESTED
+      : isRecheckRequested
+        ? InspectionType.RE_INSPECTION_MANDATORY
+        : InspectionType.STANDARD;
 
     try {
       await VetInspectionService.create({
@@ -398,8 +547,8 @@ export default function VetControlPage() {
         vetInTime: buildIsoFromTimeInput(nowHHMMSS),
         heartRate: hrVal,
         gaitStatus: GaitStatus.APPROVED,
-        inspectionType: isRecheck ? InspectionType.RE_INSPECTION_MANDATORY : InspectionType.STANDARD,
-        requiresRecheck: isRecheck,
+        inspectionType: inspType,
+        requiresRecheck: isRecheckRequested,
       });
 
       // Clear row input state & refresh
@@ -451,6 +600,7 @@ export default function VetControlPage() {
     calcArrHHMMSS: string;
     nextVetControlTime: string;
     requiresRecheck: boolean;
+    previousInspection?: VetInspectionItem;
   }[] = [];
 
   for (const entry of entries) {
@@ -467,14 +617,19 @@ export default function VetControlPage() {
         ? stageInspections[stageInspections.length - 1]
         : null;
 
-    if (latestInsp) {
+    const isLatestInspRecheckPending =
+      latestInsp &&
+      (latestInsp.requiresRecheck ||
+        (latestInsp as any).isRecheckRequired ||
+        (latestInsp as any).isFinalDecision === false);
+
+    if (latestInsp && !isLatestInspRecheckPending) {
       registeredEntriesWithInspections.push({
         entry,
         inspection: latestInsp,
       });
     }
 
-    // Exigir explícitamente registro VET_IN y estado VET_CHECK / IN_RACE para la etapa activa
     const vetInRec = entry.timingRecords?.find(
       (r) =>
         r.recordType === "VET_IN" &&
@@ -482,16 +637,29 @@ export default function VetControlPage() {
         r.stage?.stageNumber === currentStageNumber,
     );
 
+    const isEliminated =
+      entry.status?.startsWith("ELIMINATED") ||
+      entry.status === ParticipantStatus.DQ ||
+      entry.status === ParticipantStatus.DNF ||
+      entry.status === ParticipantStatus.WD;
+
     const isVetCheckStatus =
-      entry.status === ParticipantStatus.VET_CHECK ||
-      entry.status === "VET_CHECK" ||
-      entry.status === ParticipantStatus.IN_RACE ||
-      entry.status === "IN_RACE";
+      !isEliminated &&
+      (entry.status === ParticipantStatus.VET_CHECK ||
+        entry.status === "VET_CHECK" ||
+        entry.status === ParticipantStatus.IN_RACE ||
+        entry.status === "IN_RACE" ||
+        entry.status === ParticipantStatus.RESTING ||
+        entry.status === "RESTING");
 
     if (vetInRec && isVetCheckStatus) {
       // Un binomio está pendiente si NO tiene inspección guardada para esta etapa,
-      // O SI su última inspección guardada exige rechequeo (requiresRecheck === true)
-      const isPending = !latestInsp || latestInsp.requiresRecheck;
+      // O SI tiene una inspección previa en esta etapa que exige rechequeo
+      const isRecheckActive =
+        stageInspections.length > 0 &&
+        !!isLatestInspRecheckPending;
+
+      const isPending = stageInspections.length === 0 || isRecheckActive;
 
       if (isPending) {
         const arrivalRec = entry.timingRecords?.find(
@@ -507,15 +675,12 @@ export default function VetControlPage() {
 
         const nextVetTime = formatHHMMSS(vetInRec.recordedAt);
 
-        // RECHEQUEO RULE: El orden de rechequeo (al final de la lista) se basa EXCLUSIVAMENTE
-        // en la inspección guardada (latestInsp.requiresRecheck), no en el estado del checkbox no guardado en la UI (rowRequiresRecheck).
-        const isRecheckActive = latestInsp ? latestInsp.requiresRecheck : false;
-
         pendingEntriesList.push({
           entry,
           calcArrHHMMSS: calcArr,
           nextVetControlTime: nextVetTime,
           requiresRecheck: isRecheckActive,
+          previousInspection: stageInspections[0] || undefined,
         });
       }
     }
@@ -736,27 +901,39 @@ export default function VetControlPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {sortedPendingList.map(({ entry, calcArrHHMMSS, nextVetControlTime, requiresRecheck: isRecheckItem }) => {
+                    {sortedPendingList.map(({ entry, calcArrHHMMSS, nextVetControlTime, requiresRecheck: isRecheckItem, previousInspection }) => {
                       const isSavingThis = rowSavingId === entry.id;
                       const hrVal = rowHeartRate[entry.id] ?? "";
-                      const checkVal = rowRequiresRecheck[entry.id] ?? isRecheckItem;
+                      const checkVal = rowRequiresRecheck[entry.id] ?? false;
 
                       return (
                         <tr
                           key={entry.id}
                           className={`transition-colors ${
-                            checkVal
+                            isRecheckItem
                               ? "bg-amber-950/40 hover:bg-amber-950/60 text-amber-100 border-l-4 border-l-amber-400"
                               : "hover:bg-slate-850/50 text-slate-200"
                           }`}
                         >
                           {/* Dorsal */}
                           <td className="px-4 py-3 font-mono font-black text-emerald-400 text-base">
-                            #{entry.bibNumber}
+                            <div className="flex items-center gap-2">
+                              <span>#{entry.bibNumber}</span>
+                              {isRecheckItem && (
+                                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                                  RECHEQUEO PENDIENTE
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {/* Equino */}
                           <td className="px-4 py-3 font-bold text-slate-100">
-                            {entry.horse?.name || "Sin nombre"}
+                            <div>{entry.horse?.name || "Sin nombre"}</div>
+                            {previousInspection && (
+                              <div className="text-[10px] text-amber-300 font-mono font-bold">
+                                1ª Toma: {previousInspection.heartRate} ppm
+                              </div>
+                            )}
                           </td>
                           {/* Jinete */}
                           <td className="px-4 py-3 text-slate-300">
@@ -776,7 +953,7 @@ export default function VetControlPage() {
                               type="number"
                               min={30}
                               max={150}
-                              placeholder="Ej. 60"
+                              placeholder={isRecheckItem && previousInspection ? String(previousInspection.heartRate) : "Ej. 60"}
                               value={hrVal}
                               onChange={(e) =>
                                 setRowHeartRate((prev) => ({
@@ -789,47 +966,64 @@ export default function VetControlPage() {
                           </td>
                           {/* Rechequeo (Checkbox) */}
                           <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={checkVal}
-                              onChange={(e) =>
-                                setRowRequiresRecheck((prev) => ({
-                                  ...prev,
-                                  [entry.id]: e.target.checked,
-                                }))
-                              }
-                              className="w-4 h-4 text-amber-500 border-slate-700 bg-slate-950 rounded focus:ring-amber-500/40"
-                            />
+                            {isRecheckItem ? (
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                N/A (Definitivo)
+                              </span>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={checkVal}
+                                onChange={(e) =>
+                                  setRowRequiresRecheck((prev) => ({
+                                    ...prev,
+                                    [entry.id]: e.target.checked,
+                                  }))
+                                }
+                                className="w-4 h-4 text-amber-500 border-slate-700 bg-slate-950 rounded focus:ring-amber-500/40"
+                              />
+                            )}
                           </td>
-                          {/* Acción: Guardar */}
+                          {/* Acción: Guardar o Abrir Rechequeo */}
                           <td className="px-4 py-3 text-right">
-                            <button
-                              type="button"
-                              disabled={isSavingThis}
-                              onClick={() => handleSaveRowSimple(entry, calcArrHHMMSS)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition-all disabled:opacity-50"
-                            >
-                              {isSavingThis ? (
-                                <span className="animate-spin text-xs">⏳</span>
-                              ) : (
-                                <>
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                  Guardar
-                                </>
+                            <div className="flex items-center justify-end gap-2">
+                              {isRecheckItem && previousInspection && (
+                                <button
+                                  type="button"
+                                  onClick={() => openRecheckModal(entry, calcArrHHMMSS, previousInspection)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow transition-all"
+                                >
+                                  📋 Rechequear
+                                </button>
                               )}
-                            </button>
+                              <button
+                                type="button"
+                                disabled={isSavingThis}
+                                onClick={() => handleSaveRowSimple(entry, calcArrHHMMSS, isRecheckItem)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition-all disabled:opacity-50"
+                              >
+                                {isSavingThis ? (
+                                  <span className="animate-spin text-xs">⏳</span>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                      strokeWidth={2.5}
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    Guardar
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -870,42 +1064,117 @@ export default function VetControlPage() {
                       <th className="px-4 py-3 text-center">Rechequeo</th>
                       <th className="px-4 py-3 text-center">Hora Guardado</th>
                       <th className="px-4 py-3 text-right">Estado</th>
+                      <th className="px-4 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {registeredEntriesWithInspections.map(({ entry, inspection }) => (
-                      <tr key={inspection.id} className="hover:bg-slate-850/50 text-slate-200">
-                        <td className="px-4 py-3 font-mono font-black text-emerald-400 text-base">
-                          #{entry.bibNumber}
-                        </td>
-                        <td className="px-4 py-3 font-bold text-slate-100">
-                          {entry.horse?.name || "Sin nombre"}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">
-                          {entry.rider?.name || "Sin nombre"}
-                        </td>
-                        <td className="px-4 py-3 text-center font-mono font-bold text-emerald-300">
-                          {inspection.heartRate} ppm
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {inspection.requiresRecheck ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-500/30">
-                              SÍ (RECHEQUEO)
+                    {registeredEntriesWithInspections.map(({ entry, inspection }) => {
+                      const isHighPulse = inspection.heartRate > maxHeartRate;
+                      const isEliminatedPP = isHighPulse && !inspection.requiresRecheck;
+                      const isEliminatedGait = inspection.gaitStatus === GaitStatus.LAMENESS_ELIMINATED;
+                      const isEliminated =
+                        isEliminatedPP ||
+                        isEliminatedGait ||
+                        entry.status?.startsWith("ELIMINATED") ||
+                        entry.status === ParticipantStatus.DQ;
+
+                      const stageInsps = (entry.vetInspections || []).filter(
+                        (v) => v.vetGateNumber === currentStageNumber,
+                      );
+                      const isRecheckPassed =
+                        stageInsps.length > 1 ||
+                        inspection.inspectionType === InspectionType.RE_INSPECTION_REQUESTED ||
+                        inspection.inspectionType === InspectionType.RE_INSPECTION_MANDATORY;
+
+                      const isObserved =
+                        inspection.notes?.toLowerCase().includes("observad") ||
+                        inspection.notes?.toLowerCase().includes("observac");
+
+                      let badgeText = "✓ ATENDIDO";
+                      let badgeClass = "bg-emerald-950 text-emerald-400 border-emerald-500/30";
+
+                      if (isEliminatedPP || entry.status === ParticipantStatus.ELIMINATED_PP) {
+                        badgeText = "🛑 ELIMINADO F.C.A.";
+                        badgeClass = "bg-red-950 text-red-300 border-red-500/50 animate-pulse";
+                      } else if (isEliminatedGait || entry.status === ParticipantStatus.ELIMINATED_GAIT) {
+                        badgeText = "🛑 ELIMINADO COJERA";
+                        badgeClass = "bg-red-950 text-red-300 border-red-500/50 animate-pulse";
+                      } else if (entry.status === ParticipantStatus.ELIMINATED_TR) {
+                        badgeText = "🛑 ELIMINADO TIEMPO REC.";
+                        badgeClass = "bg-red-950 text-red-300 border-red-500/50 animate-pulse";
+                      } else if (isEliminated) {
+                        badgeText = "🛑 DESCALIFICADO";
+                        badgeClass = "bg-red-950 text-red-300 border-red-500/50 animate-pulse";
+                      } else if (inspection.requiresRecheck) {
+                        badgeText = "⚠️ A RECHEQUEO";
+                        badgeClass = "bg-amber-950 text-amber-300 border-amber-500/50 animate-pulse";
+                      } else if (isRecheckPassed && isObserved) {
+                        badgeText = "✓ ATENDIDO (RECH. OBSERVADO)";
+                        badgeClass = "bg-amber-950 text-amber-300 border-amber-500/40 font-black";
+                      } else if (isRecheckPassed) {
+                        badgeText = "✓ ATENDIDO (RECH. APROBADO)";
+                        badgeClass = "bg-emerald-950 text-emerald-300 border-emerald-500/40 font-black";
+                      }
+
+                      return (
+                        <tr key={inspection.id} className="hover:bg-slate-850/50 text-slate-200">
+                          <td className="px-4 py-3 font-mono font-black text-emerald-400 text-base">
+                            #{entry.bibNumber}
+                          </td>
+                          <td className="px-4 py-3 font-bold text-slate-100">
+                            {entry.horse?.name || "Sin nombre"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {entry.rider?.name || "Sin nombre"}
+                          </td>
+                          <td className={`px-4 py-3 text-center font-mono font-bold ${
+                            isHighPulse ? "text-red-400 font-extrabold" : "text-emerald-300"
+                          }`}>
+                            {inspection.heartRate} ppm
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {inspection.requiresRecheck ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-500/30">
+                                SÍ (RECHEQUEO)
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-xs">No</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-slate-400 text-xs">
+                            {formatHHMMSS(inspection.createdAt || inspection.vetInTime)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-extrabold border ${badgeClass}`}>
+                              {badgeText}
                             </span>
-                          ) : (
-                            <span className="text-slate-500 text-xs">No</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center font-mono text-slate-400 text-xs">
-                          {formatHHMMSS(inspection.createdAt || inspection.vetInTime)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-extrabold bg-emerald-950 text-emerald-400 border border-emerald-500/30">
-                            ✓ ATENDIDO
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setDeleteModalItem({ entry, inspection })}
+                              title="Eliminar último registro"
+                              aria-label="Eliminar último registro"
+                              className="inline-flex items-center justify-center p-2 bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-500/40 rounded-xl transition-all shadow hover:shadow-red-900/40"
+                            >
+                              <svg
+                                className="w-4 h-4 text-red-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1125,21 +1394,30 @@ export default function VetControlPage() {
             </div>
 
             {/* Checkbox: requiresRecheck */}
-            <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <input
-                id="requiresRecheck"
-                type="checkbox"
-                checked={requiresRecheck}
-                onChange={(e) => setRequiresRecheck(e.target.checked)}
-                className="w-5 h-5 text-emerald-500 border-slate-800 bg-slate-950 rounded focus:ring-emerald-500/30 focus:ring-2"
-              />
-              <label
-                htmlFor="requiresRecheck"
-                className="text-xs font-bold text-slate-300 select-none cursor-pointer"
-              >
-                Exigir Rechequeo Obligatorio antes de la Salida de Etapa
-              </label>
-            </div>
+            {isMatchedEntryRecheck ? (
+              <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-500/30 flex items-center justify-between text-xs text-amber-300 font-bold">
+                <span>📋 Rechequeo en Curso (2ª Toma)</span>
+                <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40 font-black uppercase">
+                  Resolución Definitiva (FEU)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <input
+                  id="requiresRecheck"
+                  type="checkbox"
+                  checked={requiresRecheck}
+                  onChange={(e) => setRequiresRecheck(e.target.checked)}
+                  className="w-5 h-5 text-emerald-500 border-slate-800 bg-slate-950 rounded focus:ring-emerald-500/30 focus:ring-2"
+                />
+                <label
+                  htmlFor="requiresRecheck"
+                  className="text-xs font-bold text-slate-300 select-none cursor-pointer"
+                >
+                  Exigir Rechequeo Obligatorio antes de la Salida de Etapa
+                </label>
+              </div>
+            )}
 
             {/* Notes */}
             <div>
@@ -1282,6 +1560,209 @@ export default function VetControlPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* ── MODAL DE RECHEQUEO VETERINARIO ──────────────────────────────── */}
+      {recheckModalEntry && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-xl bg-amber-950 border border-amber-500/30 text-amber-400 font-mono font-black text-lg">
+                  #{recheckModalEntry.entry.bibNumber}
+                </span>
+                <div>
+                  <h3 className="text-lg font-black text-slate-100">
+                    Registrar Rechequeo - Dorsal #{recheckModalEntry.entry.bibNumber}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {recheckModalEntry.entry.horse?.name} — Jinete: {recheckModalEntry.entry.rider?.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRecheckModalEntry(null)}
+                className="text-slate-400 hover:text-slate-200 text-xl font-bold px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Banner de Pulso 1ª Toma */}
+            <div className="bg-amber-950/50 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between">
+              <div>
+                <span className="font-extrabold text-amber-300 block text-xs">
+                  Pulso 1ª Toma Registrada
+                </span>
+                <span className="text-amber-200/80 font-mono text-[11px]">
+                  Hora: {formatHHMMSS(recheckModalEntry.latestInsp.createdAt || recheckModalEntry.latestInsp.vetInTime)}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black font-mono text-amber-300">
+                  {recheckModalEntry.latestInsp.heartRate} ppm
+                </span>
+                <span className="block text-[10px] text-amber-400 font-black uppercase">
+                  Rechequeo Solicitado
+                </span>
+              </div>
+            </div>
+
+            {/* Form Fields for Recheck */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-300 mb-1">
+                  Pulso 2ª Toma / Rechequeo (PPM) *
+                </label>
+                <input
+                  type="number"
+                  min={30}
+                  max={150}
+                  autoFocus
+                  value={recheckHeartRate}
+                  onChange={(e) => setRecheckHeartRate(e.target.value)}
+                  placeholder="Ej. 58"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-emerald-400 font-mono text-xl font-black focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-300 mb-1">
+                  Estado de Marcha / Trote Locomotor (Reglamento FEU Art. 31) *
+                </label>
+                <select
+                  value={recheckGaitStatus}
+                  onChange={(e) => setRecheckGaitStatus(e.target.value as GaitStatus)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  <option value={GaitStatus.APPROVED}>🟢 Apto / Continúa en Carrera (APPROVED)</option>
+                  <option value={GaitStatus.OBSERVATION}>🟡 Continúa Observado (OBSERVATION)</option>
+                  <option value={GaitStatus.LAMENESS_ELIMINATED}>🔴 Descalificado por Cojera (LAMENESS_ELIMINATED)</option>
+                </select>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs text-slate-300 font-bold">
+                <span>Resolución del Rechequeo (2ª Toma):</span>
+                <span className="text-amber-400 font-black text-[11px] uppercase tracking-wider bg-amber-950 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                  Fallo Definitivo (Sin 3er Rechequeo)
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-300 mb-1">
+                  Observaciones Clínicas del Rechequeo
+                </label>
+                <textarea
+                  value={recheckNotes}
+                  onChange={(e) => setRecheckNotes(e.target.value)}
+                  placeholder="Observaciones clínicas adicionales..."
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setRecheckModalEntry(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingRecheckModal}
+                onClick={handleSaveRecheckModal}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSavingRecheckModal ? "Guardando..." : "Guardar Rechequeo Definitivo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de Confirmación de Eliminación / Deshacer Control ───── */}
+      {deleteModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="w-10 h-10 rounded-full bg-red-950/80 border border-red-500/40 flex items-center justify-center text-red-400">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-100">
+                  Deshacer Último Control Veterinario
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Confirmación de reversión de estado
+                </p>
+              </div>
+            </div>
+
+            <div className="text-sm text-slate-300 space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800 font-medium">
+              <p>
+                ¿Está seguro de eliminar el último registro del{" "}
+                <strong className="text-emerald-400 font-black">
+                  Dorsal #{deleteModalItem.entry.bibNumber} (
+                  {deleteModalItem.entry.horse?.name || "Sin Nombre"})
+                </strong>
+                ?
+              </p>
+              <ul className="text-xs text-amber-300 list-disc list-inside space-y-1 font-semibold">
+                <li>El registro clínico será eliminado del sistema.</li>
+                <li>
+                  El binomio volverá al estado previo (
+                  <strong className="text-amber-200">Pendiente de Registro / Rechequeo</strong>
+                  ) y reaparecerá en la lista superior.
+                </li>
+                <li>La hora física de llegada a la meta permanecerá intacta.</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingInspection}
+                onClick={() => setDeleteModalItem(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingInspection}
+                onClick={handleConfirmDeleteInspection}
+                className="px-4 py-2 text-xs font-extrabold text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeletingInspection ? (
+                  <span className="animate-spin">⏳ Eliminando…</span>
+                ) : (
+                  <>🗑️ Eliminar y Revertir Estado</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast Message Banner ────────────────────────────────────────── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-emerald-950 border border-emerald-500/40 text-emerald-200 rounded-2xl shadow-2xl animate-bounce">
+          <span className="text-lg">✅</span>
+          <span className="text-xs font-extrabold">{toastMessage.text}</span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="ml-2 text-emerald-400 hover:text-white text-xs font-bold"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}

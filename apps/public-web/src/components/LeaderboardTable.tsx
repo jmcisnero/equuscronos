@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { isTerminalStatus } from "@equuscronos/shared";
 import { useCompetitions } from "../hooks/useCompetitions";
 import {
   useLiveLeaderboard,
@@ -13,6 +14,7 @@ import {
   formatGap,
   renderStatusBadge,
   renderVetLimitBadge,
+  HeartPulseBadge,
   StageHistoryMobile,
   StageHistoryTable,
 } from "./LeaderboardShared";
@@ -29,6 +31,7 @@ interface LeaderboardTableProps {
   isValidating?: boolean;
   isClosed?: boolean;
   enableRfidChips?: boolean;
+  maxHeartRate?: number;
 }
 
 export default function LeaderboardTable({
@@ -42,6 +45,7 @@ export default function LeaderboardTable({
   isValidating: propsIsValidating,
   isClosed: propsIsClosed,
   enableRfidChips: propsEnableRfidChips,
+  maxHeartRate: propsMaxHeartRate,
 }: LeaderboardTableProps) {
   // Consumir el hook si no se proveen las propiedades por parámetro
   const hookData = useLiveLeaderboard(competitionId);
@@ -53,6 +57,10 @@ export default function LeaderboardTable({
       ? propsEnableRfidChips
       : currentCompetition?.enableRfidChips;
   const isRfidMode = enableRfidChips === true;
+  const maxHeartRate =
+    propsMaxHeartRate !== undefined
+      ? propsMaxHeartRate
+      : (currentCompetition?.maxHeartRate || 64);
 
   const leaderboard = propsLeaderboard !== undefined ? propsLeaderboard : hookData.leaderboard;
   const isLoading = propsIsLoading !== undefined ? propsIsLoading : hookData.isLoading;
@@ -206,6 +214,7 @@ export default function LeaderboardTable({
                     ? "bg-orange-100 text-orange-950 border-orange-300"
                     : "bg-slate-50 text-slate-700 border-slate-200";
 
+            const isOut = isTerminalStatus(entry.status);
             const previousStages = (entry.stages || []).filter(
               (s) =>
                 s.stageNumber < entry.currentStage ||
@@ -220,7 +229,7 @@ export default function LeaderboardTable({
                     expandedRowId === entry.bibNumber ? null : entry.bibNumber,
                   )
                 }
-                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${entry.status === "DQ" ? "opacity-65 bg-slate-50/50" : ""
+                className={`bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4 transition-all cursor-pointer hover:border-slate-300 hover:shadow-md ${isOut ? "bg-rose-50/20" : ""
                   } ${expandedRowId === entry.bibNumber ? "ring-2 ring-slate-900/5 border-slate-350" : ""}`}
               >
                 {/* Cabecera de la Tarjeta del Binomio */}
@@ -240,14 +249,14 @@ export default function LeaderboardTable({
                         d="M19 9l-7 7-7-7"
                       />
                     </svg>
-                    {entry.rank ? (
+                    {entry.rank && !isOut ? (
                       <span
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankBg}`}
                       >
                         {entry.rank}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center justify-center w-8 h-8 text-slate-400 font-sans tabular-nums text-sm">
+                      <span className="inline-flex items-center justify-center w-8 h-8 text-slate-400 font-sans tabular-nums text-sm font-bold">
                         --
                       </span>
                     )}
@@ -350,21 +359,19 @@ export default function LeaderboardTable({
                   )}
 
                   {/* Frecuencia cardíaca (Pulso) conforme límites FEU */}
-                  {entry.heartRate && (
+                  {entry.heartRate ? (
                     <div className="col-span-2 pt-2 border-t border-dashed border-slate-100 flex justify-between items-center">
                       <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">
-                        Pulsaciones (Límite 60/64 FEU)
+                        Pulso Control Veterinario
                       </span>
-                      <span
-                        className={`font-sans tabular-nums font-black px-2.5 py-1 rounded-lg text-xs ${entry.heartRate > 64
-                            ? "bg-rose-100 text-rose-900 border border-rose-200"
-                            : "bg-slate-100 text-slate-900 border border-slate-200"
-                          }`}
-                      >
-                        {entry.heartRate} ppm
-                      </span>
+                      <HeartPulseBadge
+                        pulse={entry.heartRate}
+                        maxHeartRate={maxHeartRate}
+                        isRecheck={entry.isRecheck}
+                        recheckStatus={entry.recheckStatus}
+                      />
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Historial de Etapas Anteriores (Bitácora Móvil) */}
@@ -437,6 +444,7 @@ export default function LeaderboardTable({
                           ? "bg-orange-100 text-orange-950 border-orange-300"
                           : "bg-slate-50 text-slate-700 border-slate-200";
 
+                  const isOut = isTerminalStatus(entry.status);
                   const previousStages = (entry.stages || []).filter(
                     (s) =>
                       s.stageNumber < entry.currentStage ||
@@ -456,7 +464,7 @@ export default function LeaderboardTable({
                         className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${expandedRowId === entry.bibNumber
                             ? "bg-slate-50/70"
                             : ""
-                          } ${entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
+                          } ${isOut ? "bg-rose-50/20" : ""
                           }`}
                       >
                         {/* PUESTO */}
@@ -478,14 +486,14 @@ export default function LeaderboardTable({
                                 d="M19 9l-7 7-7-7"
                               />
                             </svg>
-                            {entry.rank ? (
+                            {entry.rank && !isOut ? (
                               <span
                                 className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
                               >
                                 {entry.rank}
                               </span>
                             ) : (
-                              <span className="text-slate-400 font-sans tabular-nums text-sm">
+                              <span className="text-slate-400 font-sans tabular-nums text-sm font-bold">
                                 --
                               </span>
                             )}
@@ -572,18 +580,12 @@ export default function LeaderboardTable({
 
                         {/* PULSO */}
                         <td className="py-4.5 px-2 text-center">
-                          {entry.heartRate ? (
-                            <span
-                              className={`inline-block font-sans tabular-nums font-extrabold text-xs px-2 py-1 rounded-lg whitespace-nowrap ${entry.heartRate > 64
-                                  ? "bg-rose-100 text-rose-900 border border-rose-200"
-                                  : "bg-slate-100 text-slate-900 border border-slate-200"
-                                }`}
-                            >
-                              {entry.heartRate} ppm
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">--</span>
-                          )}
+                          <HeartPulseBadge
+                            pulse={entry.heartRate}
+                            maxHeartRate={maxHeartRate}
+                            isRecheck={entry.isRecheck}
+                            recheckStatus={entry.recheckStatus}
+                          />
                         </td>
 
                         {/* ESTADO */}

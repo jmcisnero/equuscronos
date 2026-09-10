@@ -447,12 +447,8 @@ export class CompetitionsService {
       for (const entry of activeEntries) {
         const reasons: string[] = [];
 
-        if (
-          !entry.weighInAt ||
-          !entry.sealNumber ||
-          entry.sealNumber.trim() === ""
-        ) {
-          reasons.push("Falta marcación de pesaje o número de precinto.");
+        if (!entry.weighInAt) {
+          reasons.push("Falta marcación de pesaje.");
         }
 
         // Si es una competencia federada, también exigimos que jinete y caballo estén activos/habilitados por la FEU y cumplan con el peso

@@ -1,11 +1,110 @@
 import React, { useState } from "react";
-import { getEliminationDisplayLabel } from "@equuscronos/shared";
+import { getEliminationDisplayLabel, isTerminalStatus } from "@equuscronos/shared";
 import {
   useLiveLeaderboard,
   LeaderboardEntry,
 } from "@/hooks/useLiveLeaderboard";
 import { useAuthStore } from "@/store/auth.store";
 import { ContingencyService } from "@/services/api/contingency.service";
+
+const renderRecheckBadge = (
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null,
+  isRecheck?: boolean,
+) => {
+  const status = recheckStatus || (isRecheck ? "PENDING" : null);
+  if (!status) return null;
+
+  if (status === "PENDING") {
+    return (
+      <span
+        title="Rechequeo Solicitado / Pendiente de Evaluación (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-[#C58A41]/15 border border-[#C58A41]/40 text-[#966324] dark:text-amber-400 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R)
+      </span>
+    );
+  }
+
+  if (status === "PASSED") {
+    return (
+      <span
+        title="Rechequeo Exitoso / Aprobado (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) ✓
+      </span>
+    );
+  }
+
+  if (status === "OBSERVED") {
+    return (
+      <span
+        title="Larga Observado con Firma (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-amber-100/70 border border-amber-300 text-amber-900 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) Obs.
+      </span>
+    );
+  }
+
+  if (status === "FAILED") {
+    return (
+      <span
+        title="Descalificado en Rechequeo (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-rose-50 border border-rose-200 text-rose-700 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) ✕
+      </span>
+    );
+  }
+
+  return null;
+};
+
+const HeartPulseBadge = ({
+  pulse,
+  maxHeartRate = 65,
+  isRecheck = false,
+  recheckStatus = null,
+}: {
+  pulse?: number | null;
+  maxHeartRate?: number;
+  isRecheck?: boolean;
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
+}) => {
+  if (pulse === undefined || pulse === null || isNaN(Number(pulse))) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        <span className="text-slate-400 font-sans tabular-nums font-bold">--</span>
+        {renderRecheckBadge(recheckStatus, isRecheck)}
+      </div>
+    );
+  }
+
+  const pulseNum = Number(pulse);
+  const isHigh = pulseNum > maxHeartRate;
+  const heartColorClass = isHigh
+    ? "text-rose-600 fill-rose-600"
+    : "text-[#1C4F38] fill-[#1C4F38]";
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-0.5">
+      <div className="relative inline-flex items-center justify-center w-8 h-8 group">
+        <svg
+          className={`w-8 h-8 ${heartColorClass} fill-current transition-colors drop-shadow-sm`}
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white font-sans tabular-nums select-none mt-[-1px]">
+          {pulseNum}
+        </span>
+      </div>
+      {renderRecheckBadge(recheckStatus, isRecheck)}
+    </div>
+  );
+};
 
 interface Props {
   competitionId: string;
@@ -320,20 +419,21 @@ export default function LiveLeaderboardContingency({
                   <th className="py-3 px-4">Etapa</th>
                   <th className="py-3 px-4 text-right">Vel. Prom</th>
                   <th className="py-3 px-4 text-right">T. Neto</th>
-                  <th className="py-3 px-4 text-right">Pulsaciones</th>
+                  <th className="py-3 px-4 text-center">Pulso</th>
                   <th className="py-3 px-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
                 {leaderboard.map((entry: any, index: number) => {
                   const isExpanded = expandedEntryId === entry.entryId;
+                  const isOut = isTerminalStatus(entry.status);
                   return (
                     <React.Fragment key={entry.entryId || index}>
                       <tr
-                        className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? "bg-slate-50/30" : ""}`}
+                        className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? "bg-slate-50/30" : ""} ${isOut ? "bg-rose-50/20" : ""}`}
                       >
                         <td className="py-4 px-4 font-extrabold text-slate-800 font-sans tabular-nums">
-                          {entry.rank !== null ? `#${entry.rank}` : "-"}
+                          {entry.rank !== null && !isOut ? `#${entry.rank}` : <span className="text-slate-400 font-bold">--</span>}
                         </td>
                         <td className="py-4 px-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-xs font-bold font-sans tabular-nums">
@@ -350,6 +450,24 @@ export default function LiveLeaderboardContingency({
                         </td>
                         <td className="py-4 px-4">
                           {(() => {
+                            if (isOut) {
+                              const info = getEliminationDisplayLabel(entry.status);
+                              const icon =
+                                entry.status === "NO_COMPLETED"
+                                  ? "❌"
+                                  : ["DNF", "RET", "WD", "FAIL_WEIGHT"].includes(entry.status)
+                                    ? "⚠️"
+                                    : "🛑";
+                              return (
+                                <span
+                                  title={`${info.label} (${info.feiLabel})`}
+                                  className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 text-rose-700 border-rose-200/80 cursor-help shadow-sm whitespace-nowrap"
+                                >
+                                  {icon} {info.code}
+                                </span>
+                              );
+                            }
+
                             if (entry.status === "IN_RACE") {
                               return (
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-50 text-emerald-700 border-emerald-100">
@@ -408,16 +526,8 @@ export default function LiveLeaderboardContingency({
                         <td className="py-4 px-4 text-right font-sans tabular-nums text-slate-800">
                           {formatTimeMs(entry.totalRaceTimeMs)}
                         </td>
-                        <td className="py-4 px-4 text-right font-sans tabular-nums font-bold">
-                          {entry.heartRate ? (
-                            <span
-                              className={`font-sans tabular-nums ${entry.heartRate > 65 ? "text-rose-600 animate-pulse" : "text-emerald-600"}`}
-                            >
-                              {entry.heartRate} ppm
-                            </span>
-                          ) : (
-                            "-"
-                          )}
+                        <td className="py-4 px-4 text-center font-sans tabular-nums">
+                          <HeartPulseBadge pulse={entry.heartRate} maxHeartRate={65} isRecheck={entry.isRecheck} recheckStatus={entry.recheckStatus} />
                         </td>
                         <td className="py-4 px-4 text-center">
                           <button

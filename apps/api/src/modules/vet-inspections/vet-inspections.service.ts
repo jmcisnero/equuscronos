@@ -173,7 +173,6 @@ export class VetInspectionsService {
       }
 
       const recoveryMinutes = diffMs / (1000 * 60);
-      const isRecoveryTimeExceeded = diffMs > 20 * 60 * 1000;
 
       // Buscar inspecciones previas de la misma etapa
       const previousInspections = await manager.find(VetInspection, {
@@ -183,6 +182,32 @@ export class VetInspectionsService {
           riderDorsal: dto.riderDorsal,
         },
       });
+
+      // Es rechequeo (2ª toma) SI Y SOLO SI ya existe una inspección previa registrada en esta etapa
+      const isRecheck = previousInspections.length > 0;
+
+      // REGLA FEU (Art. 21 y 31): Prohibición estricta de 3er rechequeo.
+      // Si la inspección es un rechequeo (2ª toma), no se puede exigir otro rechequeo.
+      if (isRecheck) {
+        dto.requiresRecheck = false;
+      }
+
+      // Herencia de pulso: si el payload no incluye un nuevo heartRate (o viene <= 0),
+      // heredar el heartRate de la 1ª inspección registrada para esta etapa.
+      if (!dto.heartRate || isNaN(dto.heartRate) || dto.heartRate <= 0) {
+        if (previousInspections.length > 0 && previousInspections[0].heartRate > 0) {
+          dto.heartRate = previousInspections[0].heartRate;
+        }
+      }
+
+      // El tiempo de recuperación inicial (20 min) sólo se exige en la primera inspección,
+      // ya que los rechequeos ocurren en los 15 min previos a la salida de etapa.
+      const isRecoveryTimeExceeded = !isRecheck && diffMs > 20 * 60 * 1000;
+
+      const effectiveMaxHr =
+        entry.competition?.maxHeartRate ??
+        (entry.competition?.competitionType as any)?.defaultRules?.max_heart_rate ??
+        65;
 
       let targetStatus = ParticipantStatus.RESTING;
       let shouldDisqualify = false;
@@ -203,34 +228,47 @@ export class VetInspectionsService {
         shouldDisqualify = true;
         eliminationCode = EliminationCode.GAIT;
         reason = "Claudicación / Cojera detectada.";
-      } else if (dto.heartRate > 65) {
-        // Regla 3: Pulso alto (> 65 ppm)
-        // Si ya tiene un intento previo o el tipo de inspección es RE_INSPECTION_REQUESTED,
-        // o si simplemente expira el tiempo. Pero en la mesa de control de contingencia,
-        // si ya tiene registros previos fallidos, descalificar.
+      } else if ((dto.heartRate ?? 0) > effectiveMaxHr) {
+        // Regla 3: Pulso alto (> effectiveMaxHr ppm)
         const hadPriorPulseFailures = previousInspections.some(
-          (ins) => ins.heartRate > 65 && ins.isFinalDecision === false,
+          (ins) => ins.heartRate > effectiveMaxHr && ins.isFinalDecision === false,
         );
 
         if (
+          isRecheck ||
           hadPriorPulseFailures ||
-          dto.inspectionType === InspectionType.RE_INSPECTION_REQUESTED
+          dto.requiresRecheck === false
         ) {
-          // Ya es el segundo intento fallido -> ELIMINATED_PP
+          // Eliminación definitiva por pulso alto si no se concedió rechequeo -> ELIMINATED_PP
           targetStatus = ParticipantStatus.ELIMINATED_PP;
           shouldDisqualify = true;
           eliminationCode = EliminationCode.METABOLIC;
-          reason = `F.C.A. - Frecuencia Cardíaca Alta: Pulso excedido en rechequeo (${dto.heartRate} ppm). Failed to Qualify – Metabolic.`;
+          reason = `F.C.A. - Frecuencia Cardíaca Alta: Pulso excedido (${dto.heartRate} ppm, Máx: ${effectiveMaxHr} ppm). Failed to Qualify – Metabolic.`;
         } else {
           // Primer intento fallido -> Aún tiene tiempo de recuperarse (VET_CHECK)
           targetStatus = ParticipantStatus.VET_CHECK;
           isFinalDecision = false;
-          reason = `Requiere re-inspección: Pulso alto (${dto.heartRate} ppm).`;
+          reason = `Requiere re-inspección: Pulso alto (${dto.heartRate} ppm, Máx: ${effectiveMaxHr} ppm).`;
         }
+      } else if (
+        !isRecheck && (
+          dto.requiresRecheck ||
+          dto.inspectionType === InspectionType.RE_INSPECTION_REQUESTED ||
+          dto.inspectionType === InspectionType.RE_INSPECTION_MANDATORY
+        )
+      ) {
+        // Regla 4 (Reglamento FEU Art. 21 y 31):
+        // Primera toma con pulso y trote normales pero con bandera de Rechequeo marcada (trote dudoso / observación clínica).
+        // Marcar un rechequeo en la 1ª toma NO aprueba al equino; se mantiene en VET_CHECK (Pendiente de Rechequeo).
+        targetStatus = ParticipantStatus.VET_CHECK;
+        isFinalDecision = false;
+        reason = dto.notes
+          ? `Rechequeo solicitado: ${dto.notes}`
+          : "Requiere rechequeo veterinario (trote dudoso / observación clínica).";
       }
 
       // Consolidar estado final:
-      // "Al ingresar un rechequeo aprobado o una descalificación definitiva, el servicio debe actualizar automáticamente los estados de las inspecciones previas del mismo binomio en esa etapa a 'is_final_decision = false'."
+      // Al ingresar un rechequeo o decisión final, actualizar las inspecciones previas a is_final_decision = false.
       if (isFinalDecision) {
         await manager.update(
           VetInspection,
@@ -255,7 +293,11 @@ export class VetInspectionsService {
       await manager.save(TimingRecord, vetInRecord);
 
       const attemptNum = previousInspections.length + 1;
-      const isRecheckRequired = !isFinalDecision || dto.requiresRecheck;
+      const isRecheckRequired = isRecheck
+        ? false
+        : shouldDisqualify
+          ? false
+          : !isFinalDecision || !!dto.requiresRecheck;
 
       let nextCheckDate: Date | null = null;
       if (isRecheckRequired) {
@@ -330,10 +372,10 @@ export class VetInspectionsService {
     const entryRepo = this.dataSource.getRepository(CompetitionEntry);
 
     const entries = await entryRepo.find({
-      where: {
-        competition: { id: competitionId },
-        status: ParticipantStatus.VET_CHECK,
-      },
+      where: [
+        { competition: { id: competitionId }, status: ParticipantStatus.VET_CHECK },
+        { competition: { id: competitionId }, status: ParticipantStatus.IN_RACE },
+      ],
       relations: [
         "rider",
         "horse",
@@ -387,6 +429,207 @@ export class VetInspectionsService {
       }
 
       return true;
+    });
+  }
+
+  async deleteLastInspection(id: string): Promise<any> {
+    if (!id) {
+      throw new BadRequestException("El ID de la inspección es requerido.");
+    }
+
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      // 1. Cargar inspección a eliminar con bloqueo pesimista
+      const inspectionToLock = await manager.findOne(VetInspection, {
+        where: { id },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!inspectionToLock) {
+        throw new NotFoundException(
+          `Inspección veterinaria con ID ${id} no encontrada.`,
+        );
+      }
+
+      const inspection = await manager.findOne(VetInspection, {
+        where: { id: inspectionToLock.id },
+        relations: ["competition", "competition.tenant", "tenant"],
+      });
+
+      if (!inspection) {
+        throw new NotFoundException(
+          `Inspección veterinaria con ID ${id} no encontrada.`,
+        );
+      }
+
+      const bibNum = parseInt(inspection.riderDorsal, 10);
+      if (isNaN(bibNum)) {
+        throw new BadRequestException("Dorsal de jinete inválido.");
+      }
+
+      // 2. Buscar y bloquear la inscripción (CompetitionEntry)
+      const entryToLock = await manager.findOne(CompetitionEntry, {
+        where: {
+          competition: { id: inspection.competition.id },
+          bibNumber: bibNum,
+        },
+      });
+
+      if (!entryToLock) {
+        throw new NotFoundException(
+          `Binomio con dorsal #${inspection.riderDorsal} no encontrado en la competencia.`,
+        );
+      }
+
+      const lockedEntry = await manager.findOne(CompetitionEntry, {
+        where: { id: entryToLock.id },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      const entry = await manager.findOne(CompetitionEntry, {
+        where: { id: lockedEntry.id },
+        relations: [
+          "competition",
+          "competition.tenant",
+          "tenant",
+          "currentStage",
+          "timingRecords",
+          "timingRecords.stage",
+        ],
+      });
+
+      if (!entry) {
+        throw new NotFoundException("Inscripción no encontrada.");
+      }
+
+      // 3. Validar que la inspección a eliminar sea efectivamente la última realizada para dicho competidor en esta etapa
+      const stageInspections = await manager.find(VetInspection, {
+        where: {
+          competition: { id: inspection.competition.id },
+          vetGateNumber: inspection.vetGateNumber,
+          riderDorsal: inspection.riderDorsal,
+        },
+        order: { createdAt: "DESC" },
+      });
+
+      if (stageInspections.length === 0 || stageInspections[0].id !== id) {
+        throw new BadRequestException(
+          "Acción denegada: Solo se permite eliminar el último registro veterinario ingresado para este competidor en esta etapa.",
+        );
+      }
+
+      // 4. Validar condiciones de guardia: si el competidor ya largó o registró tiempos en etapas posteriores o avanzó en la carrera
+      const allTimingRecords = await manager.find(TimingRecord, {
+        where: {
+          entry: { id: entry.id },
+          isVoid: false,
+        },
+        relations: ["stage"],
+      });
+
+      const hasSubsequentRecords = allTimingRecords.some(
+        (tr) =>
+          (tr.stage?.stageNumber ?? 0) > inspection.vetGateNumber ||
+          (tr.stage?.stageNumber === inspection.vetGateNumber &&
+            tr.recordType === TimeRecordType.VET_OUT),
+      );
+
+      if (hasSubsequentRecords) {
+        throw new BadRequestException(
+          "No se puede eliminar el control: el competidor ya largó la siguiente etapa o registró eventos posteriores.",
+        );
+      }
+
+      // 5. Restablecer tiempos e hitos de neutralización/largada si existieran
+      // a) Limpiar scheduledDepartureTime en el registro ARRIVAL de la etapa actual
+      const arrivalRecord = allTimingRecords.find(
+        (tr) =>
+          tr.stage?.stageNumber === inspection.vetGateNumber &&
+          tr.recordType === TimeRecordType.ARRIVAL,
+      );
+
+      if (arrivalRecord) {
+        arrivalRecord.scheduledDepartureTime = null;
+        await manager.save(TimingRecord, arrivalRecord);
+      }
+
+      // b) Eliminar cualquier registro de START automático creado en la siguiente etapa (N+1)
+      const nextStageNum = inspection.vetGateNumber + 1;
+      const nextStageStart = allTimingRecords.find(
+        (tr) =>
+          tr.stage?.stageNumber === nextStageNum &&
+          tr.recordType === TimeRecordType.START,
+      );
+
+      if (nextStageStart) {
+        await manager.remove(TimingRecord, nextStageStart);
+      }
+
+      // c) Revertir estado del hito VET_IN en la etapa actual
+      const vetInRecord = allTimingRecords.find(
+        (tr) =>
+          tr.stage?.stageNumber === inspection.vetGateNumber &&
+          tr.recordType === TimeRecordType.VET_IN,
+      );
+
+      if (vetInRecord) {
+        vetInRecord.isApproved = false;
+        vetInRecord.eliminationType = null;
+        vetInRecord.eliminationReason = null;
+        await manager.save(TimingRecord, vetInRecord);
+      }
+
+      // 6. Eliminar el registro en vet_inspections (dispara automáticamente AuditSubscriber.afterRemove)
+      await manager.remove(VetInspection, inspection);
+
+      // 7. Reevaluar y restaurar el estado del CompetitionEntry
+      const remainingInspections = stageInspections.filter(
+        (vi) => vi.id !== id,
+      );
+
+      if (remainingInspections.length > 0) {
+        // Quedan inspecciones previas (ej. se eliminó la 2ª toma, quedando la 1ª)
+        const prevInsp = remainingInspections[0]; // La más reciente de las previas
+        prevInsp.isFinalDecision = true;
+        await manager.save(VetInspection, prevInsp);
+
+        const effectiveMaxHr =
+          entry.competition?.maxHeartRate ??
+          (entry.competition?.competitionType as any)?.defaultRules?.max_heart_rate ??
+          65;
+
+        if (prevInsp.requiresRecheck || prevInsp.isRecheckRequired) {
+          entry.status = ParticipantStatus.VET_CHECK;
+        } else if (prevInsp.gaitStatus === GaitStatus.LAMENESS_ELIMINATED) {
+          entry.status = ParticipantStatus.ELIMINATED_GAIT;
+        } else if (prevInsp.heartRate > effectiveMaxHr) {
+          entry.status = ParticipantStatus.ELIMINATED_PP;
+        } else {
+          entry.status = ParticipantStatus.RESTING;
+        }
+      } else {
+        // No quedan inspecciones en la etapa -> El binomio vuelve a estar pendiente (VET_CHECK)
+        entry.status = ParticipantStatus.VET_CHECK;
+        const currentStage = await manager.findOne(Stage, {
+          where: {
+            competition: { id: inspection.competition.id },
+            stageNumber: inspection.vetGateNumber,
+          },
+        });
+        if (currentStage) {
+          entry.currentStage = currentStage;
+        }
+      }
+
+      await manager.save(CompetitionEntry, entry);
+
+      // 8. Transmisión reactiva vía WebSockets
+      setTimeout(() => this.broadcastUpdate(inspection.competition.id), 100);
+
+      return {
+        success: true,
+        message: `Inspección veterinaria del dorsal #${inspection.riderDorsal} eliminada correctamente.`,
+        deletedInspectionId: id,
+      };
     });
   }
 }

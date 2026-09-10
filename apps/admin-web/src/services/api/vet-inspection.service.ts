@@ -59,5 +59,19 @@ export const VetInspectionService = {
     }
     return response.json();
   },
+
+  async delete(id: string): Promise<any> {
+    const response = await fetch(`${API_BASE}/vet-inspections/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(
+        err.message || "Error al eliminar el registro de inspección veterinaria.",
+      );
+    }
+    return response.json();
+  },
 };
 

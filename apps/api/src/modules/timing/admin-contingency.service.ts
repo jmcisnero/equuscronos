@@ -61,8 +61,12 @@ export class AdminContingencyService {
     }
 
     // 2. Evaluate FEU disqualification rules (heart rate limits & motricity)
-    const maxHeartRate = entry.competition.maxHeartRate || 65;
+    const effectiveMaxHr =
+      entry.competition.maxHeartRate ??
+      (entry.competition.competitionType as any)?.defaultRules?.max_heart_rate ??
+      65;
     let isDisqualified = false;
+    let eliminationStatus: ParticipantStatus | null = null;
 
     for (const record of activeRecords) {
       if (record.recordType === TimeRecordType.VET_IN) {
@@ -71,15 +75,16 @@ export class AdminContingencyService {
             competition: { id: entry.competition.id },
             vetGateNumber: record.stage.stageNumber,
             riderDorsal: String(entry.bibNumber),
-            isFinalDecision: true,
           },
+          order: { createdAt: "DESC" },
         });
         if (vi) {
-          if (vi.heartRate > maxHeartRate) {
-            isDisqualified = true;
-          }
           if (vi.gaitStatus === GaitStatus.LAMENESS_ELIMINATED) {
             isDisqualified = true;
+            eliminationStatus = ParticipantStatus.ELIMINATED_GAIT;
+          } else if (vi.heartRate > effectiveMaxHr && vi.isFinalDecision) {
+            isDisqualified = true;
+            eliminationStatus = ParticipantStatus.ELIMINATED_PP;
           }
         }
       }
@@ -88,7 +93,7 @@ export class AdminContingencyService {
     // Determine target status
     let targetStatus = entry.status;
     if (isDisqualified) {
-      targetStatus = ParticipantStatus.DQ;
+      targetStatus = eliminationStatus || ParticipantStatus.DQ;
     } else {
       // If was disqualified previously but rules are now satisfied, restore to a valid dynamic status
       if (entry.status === ParticipantStatus.DQ) {

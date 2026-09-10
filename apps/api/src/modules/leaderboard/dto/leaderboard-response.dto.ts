@@ -72,6 +72,18 @@ export class LeaderboardEntryDto {
   heartRate?: number;
 
   @ApiPropertyOptional({
+    description: "Indica si el binomio fue enviado a rechequeo veterinario",
+    example: true,
+  })
+  isRecheck?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Estado del rechequeo (PENDING, PASSED, OBSERVED, FAILED)",
+    example: "PASSED",
+  })
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
+
+  @ApiPropertyOptional({
     description:
       "Hora oficial calculada para largar la SIGUIENTE etapa. Solo visible durante la neutralización.",
     example: "2026-03-15T09:13:19Z",

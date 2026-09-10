@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { isTerminalStatus } from "@equuscronos/shared";
 import {
   useLiveLeaderboard,
   LeaderboardEntry,
@@ -11,6 +12,7 @@ import {
   formatTime,
   formatGap,
   renderStatusBadge,
+  HeartPulseBadge,
   StageHistoryMobile,
   StageHistoryTable,
 } from "./LeaderboardShared";
@@ -138,45 +140,16 @@ export default function FinalResultsTable({
     const stage1 = entry.stages?.find((s) => s.stageNumber === 1);
     const pulse = stage1?.heartRate;
 
-    if (pulse === undefined || pulse === null) {
-      return <span className="text-slate-400 font-bold">—</span>;
-    }
-
     const isWinner = entry.bibNumber === feuTrophyWinnerBib;
-    const isHigh = pulse > maxHeartRate;
-
-    let heartColorClass = "";
-    if (isWinner) {
-      heartColorClass = "text-amber-500 hover:text-amber-600"; // Oro / Dorado
-    } else if (isHigh) {
-      heartColorClass = "text-rose-500 hover:text-rose-600"; // Rojo (Peligro)
-    } else {
-      heartColorClass = "text-equus-green hover:text-[#153B29]"; // Verde de la paleta de colores de equuscronos (#1C4F38)
-    }
 
     return (
-      <div className="flex items-center justify-center space-x-0.5">
-        {isWinner && (
-          <span
-            title="Ganador del Trofeo FEU (Mejor Pulso de Etapa 1)"
-            className="text-base select-none leading-none z-10"
-          >
-            🏆
-          </span>
-        )}
-        <div className="relative inline-flex items-center justify-center w-10 h-10 group">
-          <svg
-            className={`w-10 h-10 ${heartColorClass} fill-current transition-colors drop-shadow-sm`}
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white select-none mt-[-1px]">
-            {pulse}
-          </span>
-        </div>
-      </div>
+      <HeartPulseBadge
+        pulse={pulse}
+        maxHeartRate={maxHeartRate}
+        isTrophyWinner={isWinner}
+        isRecheck={entry.isRecheck}
+        recheckStatus={entry.recheckStatus}
+      />
     );
   };
 
@@ -489,6 +462,8 @@ export default function FinalResultsTable({
                           ? "bg-orange-100 text-orange-950 border-orange-300"
                           : "bg-slate-50 text-slate-700 border-slate-200";
 
+                  const isOut = isTerminalStatus(entry.status);
+
                   return (
                     <React.Fragment key={entry.bibNumber}>
                       <tr
@@ -502,7 +477,7 @@ export default function FinalResultsTable({
                         className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${expandedRowId === entry.bibNumber
                             ? "bg-slate-50/70"
                             : ""
-                          } ${entry.status === "DQ" ? "opacity-60 bg-red-50/10" : ""
+                          } ${isOut ? "bg-rose-50/20" : ""
                           }`}
                       >
                         {/* PUESTO */}
@@ -524,14 +499,14 @@ export default function FinalResultsTable({
                                 d="M19 9l-7 7-7-7"
                               />
                             </svg>
-                            {entry.rank ? (
+                            {entry.rank && !isOut ? (
                               <span
                                 className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-black ${rankColors}`}
                               >
                                 {entry.rank}
                               </span>
                             ) : (
-                              <span className="text-slate-400 font-sans tabular-nums text-sm">
+                              <span className="text-slate-400 font-sans tabular-nums text-sm font-bold">
                                 --
                               </span>
                             )}

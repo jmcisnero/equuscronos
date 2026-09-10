@@ -51,12 +51,33 @@ export class LeaderboardService {
       .where("entry.competition_id = :competitionId", { competitionId })
       .getMany();
 
+    const allVetInspections = await this.entryRepository.manager.find(
+      VetInspection,
+      {
+        where: { competition: { id: competitionId } },
+        order: { createdAt: "ASC" },
+      },
+    );
+
     let shouldBroadcastWS = false;
 
     // 2. Procesamiento Matemático por Competidor
     const leaderboard: LeaderboardEntryDto[] = [];
 
     for (const entry of entries) {
+      // Mapear manualmente la última VetInspection por etapa y dorsal para garantizar que se refleje incluso si es desaprobatoria o no final
+      for (const rec of entry.timingRecords || []) {
+        if (rec.recordType === TimeRecordType.VET_IN) {
+          const matching = allVetInspections.filter(
+            (vi) =>
+              vi.vetGateNumber === (rec.stage?.stageNumber || 1) &&
+              vi.riderDorsal === String(entry.bibNumber),
+          );
+          if (matching.length > 0) {
+            rec.vetInspection = matching[matching.length - 1];
+          }
+        }
+      }
       const stats = this.calculateCompetitorStats(entry.timingRecords);
       const activeRecords = (entry.timingRecords || []).filter(
         (r) => !r.isVoid,
@@ -185,16 +206,16 @@ export class LeaderboardService {
           );
 
           if (!hasApprovedInspection) {
-            // Expirado! Mutamos a DQ en la base de datos
+            // Expirado! Mutamos a ELIMINATED_TR en la base de datos
             console.log(
-              `[LeaderboardService] Competidor ${entry.bibNumber} superó tiempo de neutralización sin inspección aprobada. Mutando a DQ.`,
+              `[LeaderboardService] Competidor ${entry.bibNumber} superó tiempo de neutralización sin inspección aprobada. Mutando a ELIMINATED_TR.`,
             );
             await this.entryRepository.update(
               { id: entry.id },
-              { status: ParticipantStatus.DQ },
+              { status: ParticipantStatus.ELIMINATED_TR },
             );
-            entry.status = ParticipantStatus.DQ;
-            competitorStatus = ParticipantStatus.DQ;
+            entry.status = ParticipantStatus.ELIMINATED_TR;
+            competitorStatus = ParticipantStatus.ELIMINATED_TR;
             shouldBroadcastWS = true;
           }
         }
@@ -240,25 +261,31 @@ export class LeaderboardService {
 
             if (vetInRecord && vetInRecord.vetInspection) {
               const vi = vetInRecord.vetInspection;
-              const maxHR = entry.competition?.maxHeartRate ?? 65;
+              const maxHR =
+                entry.competition?.maxHeartRate ??
+                (entry.competition?.competitionType as any)?.defaultRules?.max_heart_rate ??
+                65;
 
               if (vi.gaitStatus === GaitStatus.LAMENESS_ELIMINATED) {
                 competitorStatus = ParticipantStatus.ELIMINATED_GAIT;
               } else if (vi.heartRate > maxHR) {
-                // Pulso excedido: verificar si aún está a tiempo de rechequear
-                const timeSinceArrival = arrivalTime
-                  ? new Date().getTime() - new Date(arrivalTime).getTime()
-                  : null;
-                const isWithinRecovery =
-                  timeSinceArrival !== null &&
-                  timeSinceArrival <= 20 * 60 * 1000;
-
-                if (isWithinRecovery) {
-                  competitorStatus = ParticipantStatus.VET_CHECK; // Rechequeo permitido
+                if (vi.isFinalDecision || vi.requiresRecheck === false || !vi.isRecheckRequired) {
+                  competitorStatus = ParticipantStatus.ELIMINATED_PP;
                 } else {
-                  competitorStatus = ParticipantStatus.ELIMINATED_PP; // Fuera de recuperación
+                  const timeSinceArrival = arrivalTime
+                    ? new Date().getTime() - new Date(arrivalTime).getTime()
+                    : null;
+                  const isWithinRecovery =
+                    timeSinceArrival !== null &&
+                    timeSinceArrival <= 20 * 60 * 1000;
+
+                  if (isWithinRecovery) {
+                    competitorStatus = ParticipantStatus.VET_CHECK;
+                  } else {
+                    competitorStatus = ParticipantStatus.ELIMINATED_PP;
+                  }
                 }
-              } else if (!vi.isFinalDecision) {
+              } else if (!vi.isFinalDecision || vi.isRecheckRequired) {
                 competitorStatus = ParticipantStatus.VET_CHECK;
               } else {
                 if (calculatedCurrentStage >= totalStagesCount) {
@@ -274,9 +301,14 @@ export class LeaderboardService {
         }
       }
 
-      const latestHeartRate = this.extractLatestHeartRate(
+      const effectiveMaxHr = entry.competition?.maxHeartRate ?? 65;
+      const latestVetInfo = this.extractLatestVetInfo(
         entry.timingRecords,
         calculatedCurrentStage,
+        allVetInspections,
+        String(entry.bibNumber),
+        entry.status,
+        effectiveMaxHr,
       );
 
       // Extraemos la última hora de llegada registrada
@@ -332,6 +364,7 @@ export class LeaderboardService {
           motricity?: string;
           metabolic?: string;
           heartRate?: number;
+          isRecheck?: boolean;
         }
       >();
 
@@ -356,10 +389,18 @@ export class LeaderboardService {
           stageObj.vetInTime = new Date(rec.recordedAt);
           stageObj.vetInTimeRecordId = rec.id;
           if (rec.vetInspection) {
-            stageObj.vetInspectionId = rec.vetInspection.id;
-            stageObj.heartRate = rec.vetInspection.heartRate;
-            stageObj.motricity = rec.vetInspection.gaitStatus;
-            stageObj.metabolic = rec.vetInspection.inspectionType;
+            const vi = rec.vetInspection;
+            stageObj.vetInspectionId = vi.id;
+            stageObj.heartRate = vi.heartRate;
+            stageObj.motricity = vi.gaitStatus;
+            stageObj.metabolic = vi.inspectionType;
+            stageObj.isRecheck =
+              vi.requiresRecheck === true ||
+              vi.isRecheckRequired === true ||
+              (typeof vi.attemptNumber === "number" && vi.attemptNumber > 1) ||
+              vi.gaitStatus === GaitStatus.OBSERVATION ||
+              vi.gaitStatus === "OBSERVATION" ||
+              vi.inspectionType === "RECHECK";
           }
         }
       }
@@ -397,6 +438,14 @@ export class LeaderboardService {
               );
             }
           }
+          const stageVetInfo = this.extractLatestVetInfo(
+            entry.timingRecords,
+            stageObj.stageNumber,
+            allVetInspections,
+            String(entry.bibNumber),
+            entry.status,
+            effectiveMaxHr,
+          );
           return {
             stageNumber: stageObj.stageNumber,
             distanceKm: stageObj.distanceKm,
@@ -411,6 +460,8 @@ export class LeaderboardService {
             heartRate: stageObj.heartRate,
             motricity: stageObj.motricity,
             metabolic: stageObj.metabolic,
+            isRecheck: stageVetInfo.isRecheck,
+            recheckStatus: stageVetInfo.recheckStatus,
             netTimeMs,
             averageSpeed,
           };
@@ -427,7 +478,9 @@ export class LeaderboardService {
         nextVetControlTime: nextVetControlTime,
         totalRaceTimeMs: stats.totalTimeMs,
         averageSpeed: stats.averageSpeed,
-        heartRate: latestHeartRate,
+        heartRate: latestVetInfo.heartRate,
+        isRecheck: latestVetInfo.isRecheck,
+        recheckStatus: latestVetInfo.recheckStatus,
         rank: 0,
         gapToLeaderMs: 0,
         nextStageDepartureTime: nextStageDepartureTime,
@@ -581,13 +634,21 @@ export class LeaderboardService {
   }
 
   /**
-   * Busca el último registro VET_IN válido de la etapa actual y extrae el pulso de la clínica.
+   * Busca el último registro VET_IN válido de la etapa actual y extrae la información del control veterinario (pulso y rechequeo multiestado FEU).
    */
-  private extractLatestHeartRate(
+  private extractLatestVetInfo(
     records: any[],
     currentStageNumber: number,
-  ): number | null {
-    if (!records) return null;
+    allVetInspections?: VetInspection[],
+    riderDorsal?: string,
+    entryStatus?: string,
+    maxHR: number = 65,
+  ): {
+    heartRate: number | null;
+    isRecheck: boolean;
+    recheckStatus: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
+  } {
+    if (!records) return { heartRate: null, isRecheck: false, recheckStatus: null };
 
     // Ordenar de más reciente a más antiguo
     const sortedRecords = [...records].sort(
@@ -595,7 +656,7 @@ export class LeaderboardService {
         new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
 
-    // Buscar el VET_IN de la etapa actual (currentStageNumber) que tenga una inspección veterinaria asociada y no esté anulado
+    // Buscar el VET_IN de la etapa actual que tenga una inspección veterinaria asociada
     const currentStageVetRecord = sortedRecords.find(
       (r) =>
         !r.isVoid &&
@@ -604,9 +665,91 @@ export class LeaderboardService {
         r.vetInspection != null,
     );
 
-    return currentStageVetRecord
-      ? currentStageVetRecord.vetInspection.heartRate
-      : null;
+    const vi = currentStageVetRecord?.vetInspection;
+    const hr = vi ? vi.heartRate ?? null : null;
+
+    if (allVetInspections && riderDorsal) {
+      const stageInsps = allVetInspections
+        .filter(
+          (v) =>
+            v.vetGateNumber === currentStageNumber &&
+            v.riderDorsal === riderDorsal,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt || a.vetInTime).getTime() -
+            new Date(b.createdAt || b.vetInTime).getTime(),
+        );
+
+      if (stageInsps.length === 0) {
+        return { heartRate: hr, isRecheck: false, recheckStatus: null };
+      }
+
+      if (stageInsps.length === 1) {
+        const firstInsp = stageInsps[0];
+        if (firstInsp.requiresRecheck || (firstInsp as any).isRecheckRequired) {
+          return { heartRate: hr, isRecheck: true, recheckStatus: "PENDING" };
+        }
+        return { heartRate: hr, isRecheck: false, recheckStatus: null };
+      }
+
+      // stageInsps.length >= 2 (2ª toma / Rechequeo registrado)
+      const recheckInsp = stageInsps[stageInsps.length - 1];
+      const recheckGaitStr = String(recheckInsp.gaitStatus || "");
+      const isHighPulse = (recheckInsp.heartRate ?? 0) > maxHR;
+      const isGaitFailed =
+        recheckGaitStr === GaitStatus.LAMENESS_ELIMINATED ||
+        recheckGaitStr === "LAMENESS_ELIMINATED";
+      const isEliminated =
+        isGaitFailed ||
+        isHighPulse ||
+        (entryStatus && (entryStatus.startsWith("ELIMINATED") || entryStatus === ParticipantStatus.DQ));
+
+      if (isEliminated) {
+        return { heartRate: recheckInsp.heartRate ?? hr, isRecheck: true, recheckStatus: "FAILED" };
+      }
+
+      if (
+        recheckGaitStr === GaitStatus.OBSERVATION ||
+        recheckGaitStr === "OBSERVATION"
+      ) {
+        return { heartRate: recheckInsp.heartRate ?? hr, isRecheck: true, recheckStatus: "OBSERVED" };
+      }
+
+      return { heartRate: recheckInsp.heartRate ?? hr, isRecheck: true, recheckStatus: "PASSED" };
+    }
+
+    if (!vi) {
+      return { heartRate: null, isRecheck: false, recheckStatus: null };
+    }
+
+    const viGaitStr = String(vi.gaitStatus || "");
+    const isRecheck =
+      vi.requiresRecheck === true ||
+      vi.isRecheckRequired === true ||
+      (typeof vi.attemptNumber === "number" && vi.attemptNumber > 1) ||
+      viGaitStr === GaitStatus.OBSERVATION ||
+      viGaitStr === "OBSERVATION" ||
+      vi.inspectionType === "RECHECK";
+
+    let recheckStatus: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null = null;
+    if (isRecheck) {
+      if (vi.requiresRecheck || vi.isRecheckRequired) {
+        recheckStatus = "PENDING";
+      } else if (viGaitStr === GaitStatus.OBSERVATION || viGaitStr === "OBSERVATION") {
+        recheckStatus = "OBSERVED";
+      } else if (viGaitStr === GaitStatus.LAMENESS_ELIMINATED || (vi.heartRate && vi.heartRate > maxHR)) {
+        recheckStatus = "FAILED";
+      } else {
+        recheckStatus = "PASSED";
+      }
+    }
+
+    return {
+      heartRate: hr,
+      isRecheck,
+      recheckStatus,
+    };
   }
 
   private getProgressScore(entry: LeaderboardEntryDto): number {
