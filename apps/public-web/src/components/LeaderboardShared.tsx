@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getEliminationDisplayLabel } from "@equuscronos/shared";
+import { getEliminationDisplayLabel, isTerminalStatus } from "@equuscronos/shared";
 import { LeaderboardEntry } from "../hooks/useLiveLeaderboard";
 
 export const FallbackJersey = ({
@@ -146,8 +146,150 @@ export const formatGap = (gapMs: number, totalRaceTimeMs: number) => {
   return `+${minutes}m ${seconds.toString().padStart(2, "0")}s`;
 };
 
+// Componente visual unificado de pulso (Corazón con número adentro + Indicador de Rechequeo)
+export interface HeartPulseBadgeProps {
+  pulse?: number | null;
+  maxHeartRate?: number;
+  isTrophyWinner?: boolean;
+  isRecheck?: boolean;
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
+  className?: string;
+}
+
+export const renderRecheckStatusBadge = (
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null,
+  isRecheck?: boolean,
+) => {
+  const status = recheckStatus || (isRecheck ? "PENDING" : null);
+  if (!status) return null;
+
+  if (status === "PENDING") {
+    return (
+      <span
+        title="Rechequeo Solicitado / Pendiente de Evaluación (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-[#C58A41]/15 border border-[#C58A41]/40 text-[#966324] dark:text-amber-400 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R)
+      </span>
+    );
+  }
+
+  if (status === "PASSED") {
+    return (
+      <span
+        title="Rechequeo Exitoso / Aprobado (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) ✓
+      </span>
+    );
+  }
+
+  if (status === "OBSERVED") {
+    return (
+      <span
+        title="Larga Observado con Firma (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-amber-100/70 border border-amber-300 text-amber-900 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) Obs.
+      </span>
+    );
+  }
+
+  if (status === "FAILED") {
+    return (
+      <span
+        title="Descalificado en Rechequeo (FEU Art. 21/31)"
+        className="inline-flex items-center px-1.5 py-0.2 bg-rose-50 border border-rose-200 text-rose-700 text-[9px] font-black tracking-tight rounded select-none whitespace-nowrap"
+      >
+        (R) ✕
+      </span>
+    );
+  }
+
+  return null;
+};
+
+export const HeartPulseBadge = ({
+  pulse,
+  maxHeartRate = 64,
+  isTrophyWinner = false,
+  isRecheck = false,
+  recheckStatus = null,
+  className = "",
+}: HeartPulseBadgeProps) => {
+  if (pulse === undefined || pulse === null || isNaN(Number(pulse))) {
+    return (
+      <div className={`flex flex-col items-center justify-center gap-0.5 ${className}`}>
+        <span className="text-slate-400 font-sans tabular-nums font-bold">--</span>
+        {renderRecheckStatusBadge(recheckStatus, isRecheck)}
+      </div>
+    );
+  }
+
+  const pulseNum = Number(pulse);
+  const isHigh = pulseNum > maxHeartRate;
+
+  let heartColorClass = "";
+  if (isTrophyWinner) {
+    heartColorClass = "text-amber-500 hover:text-amber-600";
+  } else if (isHigh) {
+    heartColorClass = "text-rose-600 fill-rose-600";
+  } else {
+    heartColorClass = "text-[#1C4F38] fill-[#1C4F38]";
+  }
+
+  return (
+    <div className={`flex flex-col items-center justify-center gap-0.5 ${className}`}>
+      <div className="flex items-center justify-center space-x-0.5">
+        {isTrophyWinner && (
+          <span
+            title="Ganador del Trofeo FEU (Mejor Pulso de Etapa 1)"
+            className="text-base select-none leading-none z-10"
+          >
+            🏆
+          </span>
+        )}
+        <div className="relative inline-flex items-center justify-center w-8 h-8 group">
+          <svg
+            className={`w-8 h-8 ${heartColorClass} fill-current transition-colors drop-shadow-sm`}
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-[10px] sm:text-[11px] font-black text-white font-sans tabular-nums select-none mt-[-1px]">
+            {pulseNum}
+          </span>
+        </div>
+      </div>
+
+      {renderRecheckStatusBadge(recheckStatus, isRecheck)}
+    </div>
+  );
+};
+
 // Generador estético de badges de estado bajo el reglamento de la FEU
 export const renderStatusBadge = (status: string) => {
+  if (isTerminalStatus(status)) {
+    const info = getEliminationDisplayLabel(status);
+    const icon =
+      status === "NO_COMPLETED"
+        ? "❌"
+        : ["DNF", "RET", "WD", "FAIL_WEIGHT"].includes(status)
+          ? "⚠️"
+          : "🛑";
+
+    return (
+      <span
+        title={`${info.label} (${info.feiLabel})`}
+        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-rose-50 text-rose-700 border border-rose-200/80 cursor-help shadow-sm whitespace-nowrap"
+      >
+        {icon} {info.code}
+      </span>
+    );
+  }
+
   switch (status) {
     case "IN_RACE":
       return (
@@ -183,98 +325,6 @@ export const renderStatusBadge = (status: string) => {
           🏁 Fin
         </span>
       );
-    case "ELIMINATED_PP":
-    case "METABOLIC": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
-        >
-          🛑 {info.code}
-        </span>
-      );
-    }
-    case "ELIMINATED_GAIT":
-    case "GAIT": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
-        >
-          🛑 {info.code}
-        </span>
-      );
-    }
-    case "ELIMINATED_TR":
-    case "TIME": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
-        >
-          🛑 {info.code}
-        </span>
-      );
-    }
-    case "RET":
-    case "DNF": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
-        >
-          ⚠️ {info.code}
-        </span>
-      );
-    }
-    case "FAIL_WEIGHT": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
-        >
-          ⚠️ {info.code}
-        </span>
-      );
-    }
-    case "NO_COMPLETED": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
-        >
-          ❌ {info.code}
-        </span>
-      );
-    }
-    case "WD": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap cursor-help"
-        >
-          ⚠️ {info.code}
-        </span>
-      );
-    }
-    case "DQ": {
-      const info = getEliminationDisplayLabel(status);
-      return (
-        <span
-          title={`${info.label} (${info.feiLabel})`}
-          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-950 border border-rose-300 whitespace-nowrap cursor-help"
-        >
-          🛑 {info.code}
-        </span>
-      );
-    }
     default: {
       const info = getEliminationDisplayLabel(status);
       return (

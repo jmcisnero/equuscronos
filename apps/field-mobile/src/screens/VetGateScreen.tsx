@@ -181,7 +181,12 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
         const arrivalRecordedAt = arrivalMap.get(entryItem.id);
         const vetInRecs = vetInMap.get(entryItem.id);
 
-        if (vetInRecs && vetInRecs.length > 0) {
+        const isRecheckPending =
+          vetInRecs &&
+          vetInRecs.length > 0 &&
+          (vetInRecs[0].is_recheck_required === 1 || vetInRecs[0].requires_recheck === 1 || vetInRecs[0].is_final_decision === 0);
+
+        if (vetInRecs && vetInRecs.length > 0 && !isRecheckPending) {
           const lastVet = vetInRecs[0];
           const savedDate = new Date(lastVet.vet_created_at || lastVet.vet_in_recorded_at);
           const savedTimeHHMMSS = savedDate.toLocaleTimeString("es-UY", {
@@ -212,7 +217,8 @@ export const VetGateScreen: React.FC<VetGateScreenProps> = ({
 
           const isVetCheckStatus =
             (entryItem.status as string) === ParticipantStatus.VET_CHECK ||
-            (entryItem.status as string) === "VET_CHECK";
+            (entryItem.status as string) === "VET_CHECK" ||
+            !!isRecheckPending;
 
           if (pendingVetIn && isVetCheckStatus) {
             const vetInDate = new Date(pendingVetIn.recorded_at);

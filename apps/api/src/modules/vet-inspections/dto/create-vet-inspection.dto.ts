@@ -34,12 +34,13 @@ export class CreateVetInspectionDto {
   @IsNotEmpty()
   vetInTime: string;
 
-  @ApiProperty({
-    description: "Pulsaciones por minuto registradas",
+  @ApiPropertyOptional({
+    description: "Pulsaciones por minuto registradas (opcional en rechequeos para heredar 1ª toma)",
     example: 64,
   })
+  @IsOptional()
   @IsInt()
-  heartRate: number;
+  heartRate?: number;
 
   @ApiProperty({
     description: "Estado de la marcha (trote)",

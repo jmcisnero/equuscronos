@@ -9,6 +9,8 @@ export interface LeaderboardStage {
   arrivalTime?: string;
   vetInTime?: string;
   heartRate?: number;
+  isRecheck?: boolean;
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
   netTimeMs?: number;
   averageSpeed?: number;
   motricity?: string;
@@ -38,6 +40,8 @@ export interface LeaderboardEntry {
   gapToLeaderMs: number;
   averageSpeed: number;
   heartRate?: number;
+  isRecheck?: boolean;
+  recheckStatus?: "PENDING" | "PASSED" | "OBSERVED" | "FAILED" | null;
   nextStageDepartureTime?: string;
   startTime?: string;
   arrivalTime?: string;

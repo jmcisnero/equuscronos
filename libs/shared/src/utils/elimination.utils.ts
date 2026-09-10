@@ -84,3 +84,13 @@ export function getEliminationDisplayLabel(
       };
   }
 }
+
+export function isTerminalStatus(status?: string | null): boolean {
+  if (!status) return false;
+  const s = String(status).toUpperCase();
+  return (
+    ["DQ", "DNF", "WD", "NO_COMPLETED", "FAIL_WEIGHT", "RET", "GAIT", "METABOLIC", "TIME", "FTQ"].includes(s) ||
+    s.startsWith("ELIMINATED")
+  );
+}
+
