@@ -5,39 +5,43 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Limpiar base de datos si ya existe el esquema
-DROP TABLE IF EXISTS audit_logs, penalties, vet_inspections, timing_records, weight_controls, 
-                     competition_entries, stages, competitions, competition_types, 
-                     riders, horses, owners, users, tenants CASCADE;
-
-DROP TYPE IF EXISTS user_role, owner_type, comp_status, clinical_status, motricity_status, audit_action, participant_status, time_record_type, elimination_code, gait_status_enum, inspection_type_enum CASCADE;
-
 -- ==========================================================
 -- 1. TIPOS ENUMERADOS (Gobernanza de Datos)
 -- ==========================================================
-CREATE TYPE user_role AS ENUM ('ADMIN', 'JUDGE', 'VET', 'SPECTATOR', 'CLUB_ADMIN', 'TIMEKEEPER', 'USER');
-CREATE TYPE owner_type AS ENUM ('PERSON', 'STUD', 'HARAS');
-CREATE TYPE comp_status AS ENUM ('PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'OFFICIAL', 'CANCELLED');
-CREATE TYPE clinical_status AS ENUM ('NORMAL', 'DEHYDRATED', 'OBSERVED', 'FAILED');
-CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
-CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
-
--- Estados de la Inscripción y Tiempos (Core Logic)
-CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD', 'NO_COMPLETED', 'ELIMINATED_TR', 'ELIMINATED_PP', 'ELIMINATED_GAIT', 'FINISHED_PROVISIONAL');
-CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT', 'OLYMPIC_PRESENTATION');
-CREATE TYPE elimination_code AS ENUM (
-    'GAIT',          -- Cojera/Claudicación
-    'METABOLIC',     -- Pulso alto / Deshidratación
-    'TIME',          -- Fuera de tiempo límite
-    'RET',           -- Retiro voluntario (Retired)
-    'DISQ',          -- Descalificación reglamentaria
-    'FAIL_WEIGHT'    -- No dio el peso mínimo
-);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE user_role AS ENUM ('ADMIN', 'JUDGE', 'VET', 'SPECTATOR', 'CLUB_ADMIN', 'TIMEKEEPER', 'USER');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'owner_type') THEN
+        CREATE TYPE owner_type AS ENUM ('PERSON', 'STUD', 'HARAS');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'comp_status') THEN
+        CREATE TYPE comp_status AS ENUM ('PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'OFFICIAL', 'CANCELLED');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'clinical_status') THEN
+        CREATE TYPE clinical_status AS ENUM ('NORMAL', 'DEHYDRATED', 'OBSERVED', 'FAILED');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motricity_status') THEN
+        CREATE TYPE motricity_status AS ENUM ('APTO', 'NOT_APTO', 'OBSERVED');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audit_action') THEN
+        CREATE TYPE audit_action AS ENUM ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SECURITY_ALERT');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'participant_status') THEN
+        CREATE TYPE participant_status AS ENUM ('IN_RACE', 'VET_CHECK', 'RESTING', 'PENDING_OLYMPIC', 'FINISHED', 'DQ', 'DNF', 'WD', 'NO_COMPLETED', 'ELIMINATED_TR', 'ELIMINATED_PP', 'ELIMINATED_GAIT', 'FINISHED_PROVISIONAL');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'time_record_type') THEN
+        CREATE TYPE time_record_type AS ENUM ('START', 'ARRIVAL', 'VET_IN', 'VET_OUT', 'OLYMPIC_PRESENTATION');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'elimination_code') THEN
+        CREATE TYPE elimination_code AS ENUM ('GAIT', 'METABOLIC', 'TIME', 'RET', 'DISQ', 'FAIL_WEIGHT');
+    END IF;
+END $$;
 
 -- ==========================================================
 -- 2. ENTIDADES MAESTRAS (Infraestructura y Actores)
 -- ==========================================================
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL UNIQUE,
     location VARCHAR(255),
@@ -46,7 +50,7 @@ CREATE TABLE tenants (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE owners (
+CREATE TABLE IF NOT EXISTS owners (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     type owner_type NOT NULL DEFAULT 'PERSON',
@@ -54,7 +58,7 @@ CREATE TABLE owners (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE RESTRICT,
     name VARCHAR(255) NOT NULL,
@@ -66,7 +70,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE horses (
+CREATE TABLE IF NOT EXISTS horses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     owner_id UUID REFERENCES owners(id) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
@@ -79,7 +83,7 @@ CREATE TABLE horses (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE riders (
+CREATE TABLE IF NOT EXISTS riders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     national_id VARCHAR(50) UNIQUE,
@@ -93,7 +97,7 @@ CREATE TABLE riders (
 -- ==========================================================
 -- 3. CONFIGURACIÓN DE COMPETENCIA
 -- ==========================================================
-CREATE TABLE competition_types (
+CREATE TABLE IF NOT EXISTS competition_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL UNIQUE,
     default_rules JSONB, 
@@ -101,7 +105,7 @@ CREATE TABLE competition_types (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE competitions (
+CREATE TABLE IF NOT EXISTS competitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_type_id UUID NOT NULL REFERENCES competition_types(id),
@@ -118,7 +122,7 @@ CREATE TABLE competitions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE stages (
+CREATE TABLE IF NOT EXISTS stages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
@@ -132,7 +136,7 @@ CREATE TABLE stages (
 -- 4. OPERACIÓN: INSCRIPCIONES Y CRONOMETRAJE (El "Motor")
 -- ==========================================================
 -- Tabla Única de Inscripción
-CREATE TABLE competition_entries (
+CREATE TABLE IF NOT EXISTS competition_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competition_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
@@ -144,6 +148,9 @@ CREATE TABLE competition_entries (
     status participant_status DEFAULT 'IN_RACE',
     qualifies_for_points BOOLEAN DEFAULT FALSE,
     final_position INT, -- Se llena al finalizar la carrera
+    disqualification_reason VARCHAR(50),
+    disqualification_notes TEXT,
+    disqualified_at_stage INT,
     
     ballast_weight DECIMAL(5, 2) DEFAULT 0.00,    
     rider_weight DECIMAL(5, 2),
@@ -160,7 +167,7 @@ CREATE TABLE competition_entries (
 );
 
 -- Auditoría de Pesajes Dinámicos (Sorteos y Final)
-CREATE TABLE weight_controls (
+CREATE TABLE IF NOT EXISTS weight_controls (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
     stage_id UUID REFERENCES stages(id) ON DELETE CASCADE,
@@ -171,7 +178,7 @@ CREATE TABLE weight_controls (
 );
 
 -- Log Transaccional de Tiempos
-CREATE TABLE timing_records (
+CREATE TABLE IF NOT EXISTS timing_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
@@ -196,11 +203,17 @@ CREATE TABLE timing_records (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TYPE gait_status_enum AS ENUM ('APPROVED', 'LAMENESS_ELIMINATED', 'OBSERVATION');
-CREATE TYPE inspection_type_enum AS ENUM ('STANDARD', 'RE_INSPECTION_MANDATORY', 'RE_INSPECTION_REQUESTED');
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gait_status_enum') THEN
+        CREATE TYPE gait_status_enum AS ENUM ('APPROVED', 'LAMENESS_ELIMINATED', 'OBSERVATION');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'inspection_type_enum') THEN
+        CREATE TYPE inspection_type_enum AS ENUM ('STANDARD', 'RE_INSPECTION_MANDATORY', 'RE_INSPECTION_REQUESTED');
+    END IF;
+END $$;
 
 -- Detalle Clínico Veterinario 
-CREATE TABLE vet_inspections (
+CREATE TABLE IF NOT EXISTS vet_inspections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     competence_id UUID NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
@@ -220,7 +233,7 @@ CREATE TABLE vet_inspections (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE penalties (
+CREATE TABLE IF NOT EXISTS penalties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     entry_id UUID NOT NULL REFERENCES competition_entries(id) ON DELETE CASCADE,
@@ -233,7 +246,7 @@ CREATE TABLE penalties (
 -- ==========================================================
 -- 5. CAJA NEGRA (Auditoría Global)
 -- ==========================================================
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,

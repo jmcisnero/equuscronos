@@ -31,6 +31,17 @@ try {
 }
 
 async function runInit() {
+  // CRITICAL SECURITY CHECKS
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL SECURITY ALERT: Destructive database reset is BLOCKED in PRODUCTION environment!');
+    process.exit(1);
+  }
+  if (process.env.CONFIRM_DESTRUCTIVE_RESET !== 'yes') {
+    console.error('⚠️ SAFETY BLOCK: Destructive operation requires CONFIRM_DESTRUCTIVE_RESET=yes environment variable.');
+    console.error('Usage: CONFIRM_DESTRUCTIVE_RESET=yes node libs/database/src/seeds/run_init.js');
+    process.exit(1);
+  }
+
   const client = new Client(dbConfig);
   try {
     console.log(`Conectando a la base de datos ${dbConfig.database}...`);
@@ -44,12 +55,17 @@ async function runInit() {
       GRANT ALL ON SCHEMA public TO public;
     `);
 
-    const sqlPath = path.join(__dirname, '../migrations/001_init_schema.sql');
-    console.log(`Leyendo inicializador de esquema en: ${sqlPath}`);
-    const sql = fs.readFileSync(sqlPath, 'utf8');
+    const migrationsDir = path.join(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort();
 
-    console.log('Ejecutando inicialización de esquema...');
-    await client.query(sql);
+    for (const file of migrationFiles) {
+      const sqlPath = path.join(migrationsDir, file);
+      console.log(`Ejecutando migración: ${file}`);
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      await client.query(sql);
+    }
     console.log('¡Base de datos inicializada exitosamente!');
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);

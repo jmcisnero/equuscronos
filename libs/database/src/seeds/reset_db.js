@@ -33,6 +33,17 @@ try {
 }
 
 async function main() {
+  // CRITICAL SECURITY CHECKS
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL SECURITY ALERT: Destructive database reset is BLOCKED in PRODUCTION environment!');
+    process.exit(1);
+  }
+  if (process.env.CONFIRM_DESTRUCTIVE_RESET !== 'yes') {
+    console.error('⚠️ SAFETY BLOCK: Destructive reset requires CONFIRM_DESTRUCTIVE_RESET=yes environment variable.');
+    console.error('Usage: CONFIRM_DESTRUCTIVE_RESET=yes node libs/database/src/seeds/reset_db.js');
+    process.exit(1);
+  }
+
   console.log('=== Database Clean Reset Script ===');
   console.log(`Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
   
@@ -49,11 +60,18 @@ async function main() {
     await client.query('GRANT ALL ON SCHEMA public TO public;');
     console.log('Public schema dropped and recreated successfully!');
 
-    // 2. Read and execute migrations/001_init_schema.sql
-    console.log('\nStep 2: Executing migrations/001_init_schema.sql...');
-    const migrationPath = path.join(__dirname, '../migrations/001_init_schema.sql');
-    const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-    await client.query(migrationSql);
+    // 2. Read and execute all migrations in migrations/ directory
+    console.log('\nStep 2: Executing migrations...');
+    const migrationsDir = path.join(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort();
+
+    for (const file of migrationFiles) {
+      console.log(`Executing migration: ${file}`);
+      const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      await client.query(migrationSql);
+    }
     console.log('Migrations executed successfully!');
 
     // 3. Read and execute seeds/01_initial_seed.sql

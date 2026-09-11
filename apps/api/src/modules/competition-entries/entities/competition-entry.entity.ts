@@ -60,6 +60,20 @@ export class CompetitionEntry {
   @Column({ name: "final_position", type: "int", nullable: true })
   finalPosition: number;
 
+  @Column({
+    name: "disqualification_reason",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
+  disqualificationReason?: string;
+
+  @Column({ name: "disqualification_notes", type: "text", nullable: true })
+  disqualificationNotes?: string;
+
+  @Column({ name: "disqualified_at_stage", type: "int", nullable: true })
+  disqualifiedAtStage?: number;
+
   // Único peso estático permitido (Lastre)
   @Column({
     name: "ballast_weight",

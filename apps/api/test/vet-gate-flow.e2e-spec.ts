@@ -658,4 +658,193 @@ describe("Vet Gate Flow (e2e)", () => {
       expect(dbRes[0].vet_inspection_mode).toBe("DETAILED");
     });
   });
+
+  describe("FEU Recheck Flow & Protection Against False ELIMINATED_TR", () => {
+    let recheckCompId: string;
+    let stage1Id: string;
+    let stage2Id: string;
+    let entryId: string;
+    let horseId: string;
+    let riderId: string;
+    let ownerId: string;
+    const bibNumber = 944;
+    const tenantId = "a1000000-0000-0000-0000-000000000001";
+
+    beforeEach(async () => {
+      // Clean up previous runs
+      await dataSource.query(
+        `DELETE FROM competition_entries WHERE bib_number = ${bibNumber};`,
+      );
+      await dataSource.query(
+        `DELETE FROM horses WHERE feu_id = 'FEU-H-${bibNumber}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM riders WHERE feu_id = 'FEU-R-${bibNumber}';`,
+      );
+
+      recheckCompId = randomUUID();
+      stage1Id = randomUUID();
+      stage2Id = randomUUID();
+      horseId = randomUUID();
+      riderId = randomUUID();
+      entryId = randomUUID();
+      ownerId = randomUUID();
+
+      await dataSource.query(`
+        INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips, max_heart_rate)
+        VALUES ('${recheckCompId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Recheck Protection Competition', 'ACTIVE', 'Melo', '2026-06-10', FALSE, 65);
+      `);
+
+      await dataSource.query(`
+        INSERT INTO stages (id, tenant_id, competition_id, stage_number, distance_km, neutralization_minutes)
+        VALUES 
+          ('${stage1Id}', '${tenantId}', '${recheckCompId}', 1, 30.00, 60),
+          ('${stage2Id}', '${tenantId}', '${recheckCompId}', 2, 20.00, 0);
+      `);
+
+      await dataSource.query(`
+        INSERT INTO owners (id, name, type) VALUES ('${ownerId}', 'Owner Recheck E2E', 'PERSON');
+      `);
+
+      await dataSource.query(`
+        INSERT INTO horses (id, name, feu_id, chip_id, is_feu_active, owner_id)
+        VALUES ('${horseId}', 'CONTRINCANTE REY', 'FEU-H-${bibNumber}', 'CHIP-${bibNumber}', TRUE, '${ownerId}');
+      `);
+
+      await dataSource.query(`
+        INSERT INTO riders (id, name, national_id, feu_id, is_feu_active)
+        VALUES ('${riderId}', 'FREDDY TECHERA MIRANDA', '8.888.888-8', 'FEU-R-${bibNumber}', TRUE);
+      `);
+
+      await dataSource.query(`
+        INSERT INTO competition_entries (id, tenant_id, competition_id, rider_id, horse_id, bib_number, status, current_stage_id)
+        VALUES ('${entryId}', '${tenantId}', '${recheckCompId}', '${riderId}', '${horseId}', ${bibNumber}, 'IN_RACE', '${stage1Id}');
+      `);
+    });
+
+    afterEach(async () => {
+      await dataSource.query(
+        `DELETE FROM vet_inspections WHERE competence_id = '${recheckCompId}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM timing_records WHERE entry_id = '${entryId}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM competition_entries WHERE competition_id = '${recheckCompId}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM stages WHERE competition_id = '${recheckCompId}';`,
+      );
+      await dataSource.query(
+        `DELETE FROM competitions WHERE id = '${recheckCompId}';`,
+      );
+      await dataSource.query(`DELETE FROM horses WHERE id = '${horseId}';`);
+      await dataSource.query(`DELETE FROM riders WHERE id = '${riderId}';`);
+      await dataSource.query(`DELETE FROM owners WHERE id = '${ownerId}';`);
+    });
+
+    it("should keep competitor in RESTING status and NOT disqualify as ELIMINATED_TR when recheck is approved", async () => {
+      const baseTime = new Date("2026-06-10T11:25:56.000Z");
+
+      // a) START record for Stage 1
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES ('${randomUUID()}', '${tenantId}', '${entryId}', '${stage1Id}', 'START', '${new Date(baseTime.getTime() - 120 * 60 * 1000).toISOString()}', TRUE);
+      `);
+
+      // b) Arribo a neutralización (11:25:56)
+      const arrivalRes = await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "ARRIVAL",
+          recordedAt: baseTime.toISOString(),
+        });
+      expect(arrivalRes.status).toBe(201);
+
+      // Record VET_IN milestone at 11:35:00 (min 9)
+      const vetInTime = new Date(baseTime.getTime() + 9 * 60 * 1000);
+      const vetInRes = await request(app.getHttpServer())
+        .post("/timing/vet-in")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "VET_IN",
+          recordedAt: vetInTime.toISOString(),
+        });
+      expect(vetInRes.status).toBe(201);
+
+      // c) 1st Vet Inspection at 11:35:00: Recheck requested
+      const vetInspection1 = await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: recheckCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: baseTime.toISOString(),
+          vetInTime: vetInTime.toISOString(),
+          heartRate: 72,
+          gaitStatus: "APPROVED",
+          inspectionType: "STANDARD",
+          requiresRecheck: true,
+        });
+      expect(vetInspection1.status).toBe(201);
+
+      // Verify entry status is VET_CHECK
+      let entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(entryDb[0].status).toBe("VET_CHECK");
+
+      // d) 2nd Vet Inspection (Recheck) registered and approved at 12:05:05 (min 39) with 58 ppm
+      const recheckTime = new Date(baseTime.getTime() + 39.15 * 60 * 1000);
+      const recheckInspection = await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: recheckCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: baseTime.toISOString(),
+          vetInTime: vetInTime.toISOString(),
+          heartRate: 58,
+          gaitStatus: "APPROVED",
+          inspectionType: "RE_INSPECTION_MANDATORY",
+          requiresRecheck: false,
+        });
+      expect(recheckInspection.status).toBe(201);
+
+      // Verify entry status is now RESTING
+      entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(entryDb[0].status).toBe("RESTING");
+
+      // e) Simulate minute 60 (12:25:56) and execute ControlClosureScheduler & LeaderboardService
+      const { ControlClosureScheduler } = await import(
+        "../src/modules/timing/control-closure.scheduler"
+      );
+      const { LeaderboardService } = await import(
+        "../src/modules/leaderboard/leaderboard.service"
+      );
+      const scheduler = app.get(ControlClosureScheduler);
+      const leaderboardService = app.get(LeaderboardService);
+
+      // Run Leaderboard update & ControlClosure check
+      await leaderboardService.getLiveLeaderboard(recheckCompId);
+      await scheduler.checkControlClosures();
+
+      // f) Assertion: Competitor MUST remain RESTING and NOT be changed to ELIMINATED_TR
+      entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(entryDb[0].status).toBe("RESTING");
+    });
+  });
 });

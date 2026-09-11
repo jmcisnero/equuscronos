@@ -247,16 +247,26 @@ export class ControlClosureScheduler {
 
               let hasApprovedInspection = false;
               if (stageInspections.length > 0) {
-                const lastInsp = stageInspections[stageInspections.length - 1];
+                const lastFinalInsp =
+                  stageInspections.filter((vi) => vi.isFinalDecision).pop() ||
+                  stageInspections[stageInspections.length - 1];
+
                 if (
-                  lastInsp.isFinalDecision &&
-                  !lastInsp.requiresRecheck &&
-                  !lastInsp.isRecheckRequired &&
-                  lastInsp.gaitStatus === GaitStatus.APPROVED &&
-                  lastInsp.heartRate <= effectiveMaxHr
+                  lastFinalInsp.isFinalDecision &&
+                  !lastFinalInsp.requiresRecheck &&
+                  !lastFinalInsp.isRecheckRequired &&
+                  lastFinalInsp.gaitStatus === GaitStatus.APPROVED &&
+                  lastFinalInsp.heartRate <= effectiveMaxHr
                 ) {
                   hasApprovedInspection = true;
                 }
+              }
+
+              if (
+                entry.status === ParticipantStatus.RESTING &&
+                arrivalRecord?.scheduledDepartureTime
+              ) {
+                hasApprovedInspection = true;
               }
 
               if (missingVetIn || !hasApprovedInspection) {

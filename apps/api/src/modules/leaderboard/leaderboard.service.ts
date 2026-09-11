@@ -9,6 +9,7 @@ import {
   ParticipantStatus,
   CompetitionStatus,
   GaitStatus,
+  isTerminalStatus,
 } from "@equuscronos/shared";
 import { VetInspection } from "../vet-inspections/entities/vet-inspection.entity";
 import { RealTimeGateway } from "../timing/real-time.gateway";
@@ -44,7 +45,7 @@ export class LeaderboardService {
         "timing.vetInspection",
         VetInspection,
         "vet",
-        "vet.competition = competition.id AND vet.vetGateNumber = stage.stageNumber AND vet.riderDorsal = CAST(entry.bibNumber AS varchar) AND vet.isFinalDecision = true",
+        "vet.competence_id = competition.id AND vet.vet_gate_number = stage.stage_number AND vet.rider_dorsal = CAST(entry.bib_number AS varchar) AND vet.is_final_decision = true",
       )
       .leftJoinAndSelect("entry.penalties", "penalties")
       .leftJoinAndSelect("penalties.stage", "penaltyStage")
@@ -157,15 +158,6 @@ export class LeaderboardService {
       }
 
       // Determinar estado dinámicamente si no está descalificado o retirado
-      const finalStatuses = [
-        ParticipantStatus.DQ,
-        ParticipantStatus.DNF,
-        ParticipantStatus.WD,
-        ParticipantStatus.NO_COMPLETED,
-        ParticipantStatus.ELIMINATED_TR,
-        ParticipantStatus.ELIMINATED_PP,
-        ParticipantStatus.ELIMINATED_GAIT,
-      ];
       let competitorStatus = entry.status;
 
       // ----------------------------------------------------
@@ -175,8 +167,7 @@ export class LeaderboardService {
         entry.competition?.status === CompetitionStatus.ACTIVE;
       if (
         isCompetitionActive &&
-        !finalStatuses.includes(entry.status) &&
-        entry.status !== ParticipantStatus.DQ &&
+        !isTerminalStatus(entry.status) &&
         entry.status !== ParticipantStatus.FINISHED &&
         entry.status !== ParticipantStatus.FINISHED_PROVISIONAL &&
         arrivalTime &&
@@ -194,16 +185,30 @@ export class LeaderboardService {
         const now = new Date();
 
         if (now.getTime() > neutralizationTimeLimit.getTime()) {
-          // Si ya superó el tiempo de neutralización, verificar si tiene un VET_IN aprobado
-          const hasApprovedInspection = activeRecords.some(
-            (r) =>
-              r.recordType === TimeRecordType.VET_IN &&
-              (r.stage?.stageNumber || 1) === calculatedCurrentStage &&
-              r.vetInspection &&
-              r.vetInspection.heartRate <=
-                (entry.competition?.maxHeartRate ?? 65) &&
-              r.vetInspection.gaitStatus === GaitStatus.APPROVED,
+          // Si ya superó el tiempo de neutralización, verificar si tiene un VET_IN aprobado o está en descanso (RESTING)
+          const stageInsps = allVetInspections.filter(
+            (vi) =>
+              vi.vetGateNumber === calculatedCurrentStage &&
+              vi.riderDorsal === String(entry.bibNumber),
           );
+          const lastFinalInsp =
+            stageInsps.filter((vi) => vi.isFinalDecision).pop() ||
+            stageInsps[stageInsps.length - 1];
+
+          const maxHr = entry.competition?.maxHeartRate ?? 65;
+          const hasApprovedInspection =
+            entry.status === ParticipantStatus.RESTING ||
+            (lastFinalInsp &&
+              lastFinalInsp.gaitStatus === GaitStatus.APPROVED &&
+              lastFinalInsp.heartRate <= maxHr &&
+              !lastFinalInsp.isRecheckRequired) ||
+            activeRecords.some(
+              (r) =>
+                r.recordType === TimeRecordType.VET_IN &&
+                r.vetInspection &&
+                r.vetInspection.heartRate <= maxHr &&
+                r.vetInspection.gaitStatus === GaitStatus.APPROVED,
+            );
 
           if (!hasApprovedInspection) {
             // Expirado! Mutamos a ELIMINATED_TR en la base de datos
@@ -223,7 +228,7 @@ export class LeaderboardService {
 
       // Evaluar estado dinámico si no fue descalificado por expiración y no está en estado final exitoso
       if (
-        !finalStatuses.includes(competitorStatus) &&
+        !isTerminalStatus(competitorStatus) &&
         competitorStatus !== ParticipantStatus.FINISHED &&
         competitorStatus !== ParticipantStatus.FINISHED_PROVISIONAL
       ) {
@@ -504,6 +509,9 @@ export class LeaderboardService {
           timePenaltySeconds: p.timePenaltySeconds,
           reason: p.reason,
         })),
+        disqualificationReason: entry.disqualificationReason,
+        disqualificationNotes: entry.disqualificationNotes,
+        disqualifiedAtStage: entry.disqualifiedAtStage,
       });
     }
 
@@ -548,20 +556,13 @@ export class LeaderboardService {
     });
 
     // 5. Ajustar campos de visualización para etapas activas no finalizadas
-    const displayFinalStatuses = [
-      ParticipantStatus.DQ,
-      ParticipantStatus.DNF,
-      ParticipantStatus.WD,
-      ParticipantStatus.NO_COMPLETED,
-      ParticipantStatus.ELIMINATED_TR,
-      ParticipantStatus.ELIMINATED_PP,
-      ParticipantStatus.ELIMINATED_GAIT,
-      ParticipantStatus.FINISHED,
-      ParticipantStatus.FINISHED_PROVISIONAL,
-    ];
     leaderboard.forEach((entry) => {
+      const isFinishedOrTerminal =
+        isTerminalStatus(entry.status) ||
+        entry.status === ParticipantStatus.FINISHED ||
+        entry.status === ParticipantStatus.FINISHED_PROVISIONAL;
       if (
-        !displayFinalStatuses.includes(entry.status) &&
+        !isFinishedOrTerminal &&
         (entry.completedStages || 0) < entry.currentStage
       ) {
         entry.totalRaceTimeMs = null;

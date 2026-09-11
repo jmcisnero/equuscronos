@@ -11,6 +11,17 @@ const dbConfig = {
 };
 
 async function rebuild() {
+  // CRITICAL SECURITY CHECKS
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL SECURITY ALERT: Destructive database reset is BLOCKED in PRODUCTION environment!');
+    process.exit(1);
+  }
+  if (process.env.CONFIRM_DESTRUCTIVE_RESET !== 'yes') {
+    console.error('⚠️ SAFETY BLOCK: Destructive operation requires CONFIRM_DESTRUCTIVE_RESET=yes environment variable.');
+    console.error('Usage: CONFIRM_DESTRUCTIVE_RESET=yes node libs/database/src/seeds/rebuild_db.js');
+    process.exit(1);
+  }
+
   const client = new Client(dbConfig);
   try {
     console.log(`Connecting to ${dbConfig.database} at ${dbConfig.host}:${dbConfig.port}...`);
@@ -23,12 +34,17 @@ async function rebuild() {
     console.log('Schema dropped and recreated successfully!');
 
     // 2. Load Migrations
-    const migrationPath = path.join(__dirname, '../migrations/001_init_schema.sql');
-    console.log(`Reading migration script from: ${migrationPath}`);
-    const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-    
     console.log('Executing migrations...');
-    await client.query(migrationSql);
+    const migrationsDir = path.join(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort();
+
+    for (const file of migrationFiles) {
+      console.log(`Executing migration: ${file}`);
+      const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      await client.query(migrationSql);
+    }
     console.log('Migrations executed successfully!');
 
     // 3. Load Seed

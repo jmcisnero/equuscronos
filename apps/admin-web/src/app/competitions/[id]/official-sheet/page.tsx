@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CompetitionService } from "@/services/api/competition.service";
 import { useLiveLeaderboard, LeaderboardEntry } from "@/hooks/useLiveLeaderboard";
+import { getEliminationDisplayLabel, isTerminalStatus } from "@equuscronos/shared";
 
 export default function OfficialSheetPage({
   params,
@@ -147,9 +148,11 @@ export default function OfficialSheetPage({
   // Helper to determine the stage where a competitor abandoned/was eliminated
   const getEliminatedStage = (entry: LeaderboardEntry) => {
     const statusStr = entry.status as string;
-    const isEliminated = ["DQ", "DNF", "WD", "NO_COMPLETED"].includes(statusStr) || 
-                         statusStr.startsWith("ELIMINATED");
-    if (!isEliminated) return null;
+    if (!isTerminalStatus(statusStr)) return null;
+
+    if (entry.disqualifiedAtStage) {
+      return entry.disqualifiedAtStage;
+    }
 
     const stg2 = entry.stages?.find(s => s.stageNumber === 2);
     if (stg2?.startTime) {
@@ -164,30 +167,14 @@ export default function OfficialSheetPage({
 
     const stg = entry.stages?.find(s => s.stageNumber === stageNumber);
     const statusStr = entry.status as string;
-    if (statusStr === "WD") return "Retirado";
-    if (statusStr === "DNF") return "Ret. Vol.";
-    if (statusStr === "ELIMINATED_GAIT" || stg?.motricity === "LAMENESS_ELIMINATED") {
-      return "Cojera";
-    }
-    if (statusStr === "ELIMINATED_PP") {
+
+    if (statusStr === "ELIMINATED_PP" || (stg?.heartRate && stg.heartRate > (comp.maxHeartRate || 65))) {
       const hr = stg?.heartRate || entry.heartRate;
       return hr ? `${hr} ppm F.C.A.` : "F.C.A.";
     }
-    if (statusStr === "ELIMINATED_TR") {
-      return "Ex. T. Rec.";
-    }
-    if (stg?.heartRate && stg.heartRate > (comp.maxHeartRate || 65)) {
-      return `${stg.heartRate} ppm F.C.A.`;
-    }
-    if (statusStr === "DQ") {
-      if (stg?.motricity === "LAMENESS_ELIMINATED") return "Cojera";
-      if (stg?.heartRate && stg.heartRate > (comp.maxHeartRate || 65)) {
-        return `${stg.heartRate} ppm F.C.A.`;
-      }
-      return "Descalif.";
-    }
-    if (statusStr === "NO_COMPLETED") return "N.C.";
-    return "Eliminado";
+
+    const info = getEliminationDisplayLabel(statusStr);
+    return info.code;
   };
 
   // Stage 1 Statistics

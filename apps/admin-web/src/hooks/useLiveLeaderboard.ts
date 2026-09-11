@@ -23,16 +23,7 @@ export interface LeaderboardEntry {
   bibNumber: number;
   riderName: string;
   horseName: string;
-  status:
-    | "IN_RACE"
-    | "VET_CHECK"
-    | "RESTING"
-    | "FINISHED"
-    | "DQ"
-    | "DNF"
-    | "WD"
-    | "NO_COMPLETED"
-    | "FINISHED_PROVISIONAL";
+  status: string;
   currentStage: number;
   lastArrivalTime?: string;
   nextVetControlTime?: string;
@@ -54,6 +45,9 @@ export interface LeaderboardEntry {
     jerseyImageUrl?: string;
   } | null;
   stages?: LeaderboardStage[];
+  disqualificationReason?: string;
+  disqualificationNotes?: string;
+  disqualifiedAtStage?: number;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";

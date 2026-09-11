@@ -18,6 +18,7 @@ import {
 import { AdminContingencyService } from "./admin-contingency.service";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { UserRole, GaitStatus } from "@equuscronos/shared";
+import { DisqualifyEntryDto } from "./dto/disqualify-entry.dto";
 
 @ApiTags("10. Contingencia Administrativa (Sólo Admin)")
 @ApiBearerAuth("access-token")
@@ -149,5 +150,25 @@ export class AdminContingencyController {
   @ApiResponse({ status: 204, description: "Penalización eliminada." })
   async deletePenalty(@Param("id", ParseUUIDPipe) id: string) {
     await this.contingencyService.deletePenalty(id);
+  }
+
+  // ==========================================
+  // DISQUALIFICATION ENDPOINTS
+  // ==========================================
+
+  @Post("entries/:id/disqualify")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Descalificar o dar de baja a un competidor por causales FEU (Solo ADMIN)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Competidor descalificado/dado de baja exitosamente.",
+  })
+  async disqualifyEntry(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: DisqualifyEntryDto,
+  ) {
+    return await this.contingencyService.disqualifyEntry(id, dto);
   }
 }
