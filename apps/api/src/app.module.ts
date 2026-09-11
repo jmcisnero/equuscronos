@@ -77,17 +77,33 @@ import { AssetsModule } from "./modules/assets/assets.module";
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
 
-    // 2. Configuración de la conexión a PostgreSQL
-    TypeOrmModule.forRoot({
-      type: "postgres",
-      host: process.env.DB_HOST || "localhost",
-      port: parseInt(process.env.DB_PORT, 10) || 5432,
-      username: process.env.DB_USER || "postgres",
-      password: process.env.DB_PASSWORD || "equus_secure_pass_2026",
-      database: process.env.DB_NAME || "equuscronos",
-      autoLoadEntities: true, // TypeORM encuentra las entidades que registramos en cada módulo
-      synchronize: false, // IMPORTANTE! La estructura la mandan los scripts SQL, no el código.
-      logging: ["query", "error"],
+    // 2. Configuración de la conexión a PostgreSQL con guardas de seguridad
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const isProd = process.env.NODE_ENV === "production";
+        // Guardas de seguridad estrictas: synchronize y dropSchema NUNCA permitidos en producción
+        const syncFlag = process.env.TYPEORM_SYNCHRONIZE === "true" && !isProd ? true : false;
+        const dropSchemaFlag = false;
+
+        if (isProd && (process.env.TYPEORM_SYNCHRONIZE === "true" || process.env.TYPEORM_DROP_SCHEMA === "true")) {
+          throw new Error(
+            "CRITICAL SECURITY VIOLATION: TypeORM synchronize/dropSchema attempted in PRODUCTION environment!",
+          );
+        }
+
+        return {
+          type: "postgres",
+          host: process.env.DB_HOST || "localhost",
+          port: parseInt(process.env.DB_PORT, 10) || 5432,
+          username: process.env.DB_USER || "postgres",
+          password: process.env.DB_PASSWORD || "equus_secure_pass_2026",
+          database: process.env.DB_NAME || "equuscronos",
+          autoLoadEntities: true,
+          synchronize: syncFlag,
+          dropSchema: dropSchemaFlag,
+          logging: isProd ? ["error"] : ["query", "error"],
+        };
+      },
     }),
 
     // Configuración de Throttler para prevenir inundación de sincronización

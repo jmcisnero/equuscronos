@@ -142,4 +142,30 @@ export const ContingencyService = {
       throw new Error(err.message || "Error al eliminar la penalización.");
     }
   },
+
+  // ==========================================
+  // DISQUALIFICATION OPERATIONS
+  // ==========================================
+  async disqualifyEntry(
+    entryId: string,
+    reason: string,
+    stageNumber?: number,
+    notes?: string,
+  ): Promise<any> {
+    const response = await fetch(
+      `${API_BASE}/contingency/entries/${entryId}/disqualify`,
+      {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ reason, stageNumber, notes }),
+      },
+    );
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(
+        err.message || "Error al descalificar o dar de baja al competidor.",
+      );
+    }
+    return response.json();
+  },
 };

@@ -17,6 +17,7 @@ import {
   ParticipantStatus,
   GaitStatus,
 } from "@equuscronos/shared";
+import { DisqualifyEntryDto } from "./dto/disqualify-entry.dto";
 
 @Injectable()
 export class AdminContingencyService {
@@ -363,6 +364,38 @@ export class AdminContingencyService {
 
       await this.recalculateAndValidateEntry(manager, entryId);
       setTimeout(() => this.broadcastUpdate(competitionId), 100);
+    });
+  }
+
+  // ==========================================
+  // DISQUALIFICATION ACTIONS
+  // ==========================================
+
+  async disqualifyEntry(
+    entryId: string,
+    dto: DisqualifyEntryDto,
+  ): Promise<CompetitionEntry> {
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      const entry = await manager.findOne(CompetitionEntry, {
+        where: { id: entryId },
+        relations: ["competition", "currentStage"],
+      });
+      if (!entry) {
+        throw new NotFoundException(`Binomio ${entryId} no encontrado.`);
+      }
+
+      entry.status = dto.reason;
+      entry.disqualificationReason = dto.reason;
+      entry.disqualificationNotes = dto.notes || null;
+      entry.disqualifiedAtStage =
+        dto.stageNumber ?? (entry.currentStage?.stageNumber || 1);
+
+      const savedEntry = await manager.save(CompetitionEntry, entry);
+
+      const competitionId = entry.competition.id;
+      setTimeout(() => this.broadcastUpdate(competitionId), 100);
+
+      return savedEntry;
     });
   }
 }

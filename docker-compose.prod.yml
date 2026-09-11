@@ -12,9 +12,8 @@ services:
       POSTGRES_DB: ${DB_NAME:-equuscronos}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Inicialización automática de esquema y semillas
+      # Inicialización automática del esquema base
       - ./libs/database/src/migrations/001_init_schema.sql:/docker-entrypoint-initdb.d/001_init_schema.sql:ro
-      - ./libs/database/src/seeds/01_initial_seed.sql:/docker-entrypoint-initdb.d/002_initial_seed.sql:ro
     networks:
       - equus-network
 

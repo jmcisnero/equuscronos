@@ -37,6 +37,12 @@ export enum ParticipantStatus {
   ELIMINATED_GAIT = "ELIMINATED_GAIT", // Eliminado por Aire Irregular
   FAIL_WEIGHT = "FAIL_WEIGHT", // Falta de Peso (Art. 20)
   FINISHED_PROVISIONAL = "FINISHED_PROVISIONAL", // Finalizado provisional (última etapa, pendiente firma de actas)
+  DQ_ROUTE = "DQ_ROUTE", // Desvío de Itinerario (Art. 25)
+  DQ_ASSISTANCE = "DQ_ASSISTANCE", // Ayuda en los últimos 500m (Art. 26 lit. a)
+  DQ_DISMOUNTED = "DQ_DISMOUNTED", // Avanzar desmontado hacia la meta (Art. 26 lit. d)
+  DQ_VET_ROUTE = "DQ_VET_ROUTE", // Ética / Extenuación en Ruta (Art. 34)
+  DQ_OVERTIME = "DQ_OVERTIME", // Fuera de Tiempo (Art. 32, 55)
+  DQ_OLYMPIC = "DQ_OLYMPIC", // Eliminado en Presentación Olímpica (Art. 38, 39, 56)
 }
 
 //Tipos de eventos cronometrados

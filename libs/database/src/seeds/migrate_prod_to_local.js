@@ -92,6 +92,17 @@ async function insertRows(client, tableName, rows) {
 }
 
 async function runMigration() {
+  // CRITICAL SECURITY CHECKS
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL SECURITY ALERT: Data import script is BLOCKED in PRODUCTION environment!');
+    process.exit(1);
+  }
+  if (process.env.CONFIRM_DESTRUCTIVE_RESET !== 'yes') {
+    console.error('⚠️ SAFETY BLOCK: Script requires CONFIRM_DESTRUCTIVE_RESET=yes environment variable.');
+    console.error('Usage: CONFIRM_DESTRUCTIVE_RESET=yes node libs/database/src/seeds/migrate_prod_to_local.js');
+    process.exit(1);
+  }
+
   console.log('=== Starting Selective Data Hot Migration (Prod -> Local Dev) ===');
   console.log(`Target Competition ID: ${TARGET_COMPETITION_ID}`);
 

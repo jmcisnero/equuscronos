@@ -135,4 +135,22 @@ export class LeaderboardEntryDto {
     type: "array",
   })
   stages?: any[];
+
+  @ApiPropertyOptional({
+    description: "Motivo reglamentario FEU de descalificación o retiro",
+    example: "DQ_ROUTE",
+  })
+  disqualificationReason?: string;
+
+  @ApiPropertyOptional({
+    description: "Notas u observaciones de la acta del jurado",
+    example: "Desvío en el tramo 2",
+  })
+  disqualificationNotes?: string;
+
+  @ApiPropertyOptional({
+    description: "Etapa en la que ocurrió el cese o descalificación",
+    example: 1,
+  })
+  disqualifiedAtStage?: number;
 }
