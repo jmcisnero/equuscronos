@@ -175,13 +175,13 @@ export class VetInspectionsService {
       const recoveryMinutes = diffMs / (1000 * 60);
 
       // Buscar inspecciones previas de la misma etapa
-      const previousInspections = await manager.find(VetInspection, {
-        where: {
-          competition: { id: dto.competitionId },
-          vetGateNumber: dto.vetGateNumber,
-          riderDorsal: dto.riderDorsal,
-        },
-      });
+      const previousInspections = await manager
+        .createQueryBuilder(VetInspection, "vi")
+        .where("vi.competitionId = :compId", { compId: dto.competitionId })
+        .andWhere("vi.vetGateNumber = :gateNum", { gateNum: dto.vetGateNumber })
+        .andWhere("vi.riderDorsal = :dorsal", { dorsal: dto.riderDorsal })
+        .orderBy("vi.createdAt", "ASC")
+        .getMany();
 
       // Es rechequeo (2ª toma) SI Y SOLO SI ya existe una inspección previa registrada en esta etapa
       const isRecheck = previousInspections.length > 0;
@@ -270,15 +270,19 @@ export class VetInspectionsService {
       // Consolidar estado final:
       // Al ingresar un rechequeo o decisión final, actualizar las inspecciones previas a is_final_decision = false.
       if (isFinalDecision) {
-        await manager.update(
-          VetInspection,
-          {
-            competition: { id: dto.competitionId },
-            vetGateNumber: dto.vetGateNumber,
-            riderDorsal: dto.riderDorsal,
-          },
-          { isFinalDecision: false },
-        );
+        await manager
+          .createQueryBuilder()
+          .update(VetInspection)
+          .set({ isFinalDecision: false })
+          .where(
+            "competitionId = :compId AND vetGateNumber = :gateNum AND riderDorsal = :dorsal",
+            {
+              compId: dto.competitionId,
+              gateNum: dto.vetGateNumber,
+              dorsal: dto.riderDorsal,
+            },
+          )
+          .execute();
       }
 
       // Actualizar el estado del binomio
@@ -312,6 +316,7 @@ export class VetInspectionsService {
       const newInspection = manager.create(VetInspection, {
         tenant: entry.competition.tenant,
         competition: entry.competition,
+        competitionId: entry.competition.id,
         vetGateNumber: dto.vetGateNumber,
         riderDorsal: dto.riderDorsal,
         arrivalTime: effectiveArrivalDate,
@@ -333,7 +338,7 @@ export class VetInspectionsService {
       if (!shouldDisqualify && isFinalDecision && !isRecheckRequired) {
         const neutralizationMins = stage.neutralizationMinutes || 60;
         arrivalRecord.scheduledDepartureTime = new Date(
-          arrivalRecord.recordedAt.getTime() + neutralizationMins * 60 * 1000,
+          new Date(arrivalRecord.recordedAt).getTime() + neutralizationMins * 60 * 1000,
         );
         await manager.save(TimingRecord, arrivalRecord);
 

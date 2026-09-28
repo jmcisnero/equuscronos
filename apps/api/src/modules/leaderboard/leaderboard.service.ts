@@ -52,13 +52,11 @@ export class LeaderboardService {
       .where("entry.competition_id = :competitionId", { competitionId })
       .getMany();
 
-    const allVetInspections = await this.entryRepository.manager.find(
-      VetInspection,
-      {
-        where: { competition: { id: competitionId } },
-        order: { createdAt: "ASC" },
-      },
-    );
+    const allVetInspections = await this.entryRepository.manager
+      .createQueryBuilder(VetInspection, "vi")
+      .where("vi.competitionId = :competitionId", { competitionId })
+      .orderBy("vi.createdAt", "ASC")
+      .getMany();
 
     let shouldBroadcastWS = false;
 
@@ -196,24 +194,30 @@ export class LeaderboardService {
             stageInsps[stageInsps.length - 1];
 
           const maxHr = entry.competition?.maxHeartRate ?? 65;
+          const isGaitAcceptable =
+            lastFinalInsp?.gaitStatus === GaitStatus.APPROVED ||
+            lastFinalInsp?.gaitStatus === GaitStatus.OBSERVATION;
+
           const hasApprovedInspection =
             entry.status === ParticipantStatus.RESTING ||
+            entry.status === ParticipantStatus.IN_RACE ||
+            entry.status === ParticipantStatus.VET_CHECK ||
             (lastFinalInsp &&
-              lastFinalInsp.gaitStatus === GaitStatus.APPROVED &&
+              isGaitAcceptable &&
               lastFinalInsp.heartRate <= maxHr &&
+              !lastFinalInsp.requiresRecheck &&
               !lastFinalInsp.isRecheckRequired) ||
             activeRecords.some(
               (r) =>
                 r.recordType === TimeRecordType.VET_IN &&
-                r.vetInspection &&
-                r.vetInspection.heartRate <= maxHr &&
-                r.vetInspection.gaitStatus === GaitStatus.APPROVED,
+                r.stage?.stageNumber === calculatedCurrentStage &&
+                r.isApproved,
             );
 
           if (!hasApprovedInspection) {
             // Expirado! Mutamos a ELIMINATED_TR en la base de datos
             console.log(
-              `[LeaderboardService] Competidor ${entry.bibNumber} superó tiempo de neutralización sin inspección aprobada. Mutando a ELIMINATED_TR.`,
+              `[LeaderboardService DEBUG] Competidor ${entry.bibNumber} (entry ${entry.id}) superó tiempo de neutralización. hasApprovedInspection=${hasApprovedInspection}, entry.status=${entry.status}, calculatedCurrentStage=${calculatedCurrentStage}, stageInspsCount=${stageInsps.length}, lastFinalInsp=${JSON.stringify(lastFinalInsp)}. Mutando a ELIMINATED_TR.`,
             );
             await this.entryRepository.update(
               { id: entry.id },

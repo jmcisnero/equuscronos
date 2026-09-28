@@ -164,7 +164,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
 
       const vetInspections = await manager.find(VetInspection, {
         where: {
-          competition: { id: entry.competition.id },
+          competitionId: entry.competition.id,
           vetGateNumber: currentStage.stageNumber,
           riderDorsal: String(entry.bibNumber),
         },
@@ -283,7 +283,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
 
             await manager.update(CompetitionEntry, entry.id, {
               status: ParticipantStatus.VET_CHECK,
-              currentStage: { id: dto.stageId },
+              currentStage: { id: dto.stageId } as Stage,
             });
           }
         }
@@ -483,7 +483,7 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
 
     await manager.update(CompetitionEntry, entry.id, {
       status: newStatus,
-      currentStage: { id: dto.stageId },
+      currentStage: { id: dto.stageId } as Stage,
     });
   }
 
@@ -679,6 +679,9 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
+    if (process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined) {
+      return;
+    }
     // Iniciar escáner periódico en segundo plano
     this.scannerInterval = setInterval(() => {
       this.scanAndTriggerAutomaticStarts().catch((err) => {
@@ -736,20 +739,20 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
 
     const vetInspection = await manager.findOne(VetInspection, {
       where: {
-        competition: { id: entry.competition.id },
+        competitionId: entry.competition.id,
         vetGateNumber: currentStage.stageNumber,
         riderDorsal: String(entry.bibNumber),
         isFinalDecision: true,
       },
     });
 
-    if (
-      !vetInRecord ||
-      !vetInspection ||
-      vetInspection.gaitStatus !== GaitStatus.APPROVED
-    ) {
+    const isGaitAcceptable =
+      vetInspection?.gaitStatus === GaitStatus.APPROVED ||
+      vetInspection?.gaitStatus === GaitStatus.OBSERVATION;
+
+    if (!vetInRecord || !vetInspection || !isGaitAcceptable) {
       console.log(
-        `[Auto Start] Abortado: El binomio dorsal ${entry.bibNumber} no cuenta con inspección veterinaria VET_IN Aprobada (APPROVED).`,
+        `[Auto Start] Abortado: El binomio dorsal ${entry.bibNumber} no cuenta con inspección veterinaria VET_IN Aprobada o en Observación (APPROVED/OBSERVATION).`,
       );
       return;
     }
@@ -908,14 +911,13 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    const vetInspection = await mgr.findOne(VetInspection, {
-      where: {
-        competition: { id: fullEntry.competition.id },
-        vetGateNumber: currentStage.stageNumber,
-        riderDorsal: String(fullEntry.bibNumber),
-        isFinalDecision: true,
-      },
-    });
+    const vetInspection = await mgr
+      .createQueryBuilder(VetInspection, "vi")
+      .where("vi.competitionId = :compId", { compId: fullEntry.competition.id })
+      .andWhere("vi.vetGateNumber = :gateNum", { gateNum: currentStage.stageNumber })
+      .andWhere("vi.riderDorsal = :dorsal", { dorsal: String(fullEntry.bibNumber) })
+      .andWhere("vi.isFinalDecision = :isFinal", { isFinal: true })
+      .getOne();
 
     if (vetInspection && vetInspection.isRecheckRequired) {
       return {
@@ -990,10 +992,9 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
     });
     await manager.save(automaticStart);
 
-    await manager.update(CompetitionEntry, entry.id, {
-      status: ParticipantStatus.IN_RACE,
-      currentStage: { id: nextStage.id },
-    });
+    entry.status = ParticipantStatus.IN_RACE;
+    entry.currentStage = nextStage;
+    await manager.save(CompetitionEntry, entry);
 
     console.log(
       `[Auto Start] LARGADA AUTOMÁTICA REGISTRADA: Dorsal ${entry.bibNumber} inició la Etapa ${nextStage.stageNumber} a las ${startTime.toISOString()}.`,
@@ -1075,10 +1076,9 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
           } else {
             // Si ya existe la largada en la base de datos para la siguiente etapa, pero por algún motivo
             // el estado de la inscripción sigue como RESTING, corregimos el estado y la etapa actual.
-            await manager.update(CompetitionEntry, fullEntry.id, {
-              status: ParticipantStatus.IN_RACE,
-              currentStage: { id: eligibility.nextStage.id },
-            });
+            fullEntry.status = ParticipantStatus.IN_RACE;
+            fullEntry.currentStage = eligibility.nextStage;
+            await manager.save(CompetitionEntry, fullEntry);
             console.log(
               `[Auto Start] CORRECCIÓN DE ESTADO: Dorsal ${fullEntry.bibNumber} ya tiene START en etapa ${eligibility.nextStage.stageNumber}, cambiando status a IN_RACE.`,
             );

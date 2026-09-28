@@ -27,7 +27,11 @@ export class ControlClosureScheduler {
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
-  async checkControlClosures() {
+  async checkControlClosures(isExplicit = false) {
+    if ((process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined) && !isExplicit) {
+      return;
+    }
+
     const now = new Date();
 
     // 1. Descalificación por Vencimiento de Neutralización (Art. 28, 30 y 31 FEU)
@@ -183,13 +187,14 @@ export class ControlClosureScheduler {
 
         const entries = await manager.find(CompetitionEntry, {
           where: { competition: { id: comp.id } },
-          relations: ["timingRecords", "timingRecords.stage", "horse", "rider"],
+          relations: ["timingRecords", "timingRecords.stage", "horse", "rider", "currentStage"],
         });
 
-        const vetInspections = await manager.find(VetInspection, {
-          where: { competition: { id: comp.id } },
-          order: { createdAt: "ASC" },
-        });
+        const vetInspections = await manager
+          .createQueryBuilder(VetInspection, "vi")
+          .where("vi.competitionId = :compId", { compId: comp.id })
+          .orderBy("vi.createdAt", "ASC")
+          .getMany();
 
         const effectiveMaxHr =
           comp.maxHeartRate ??
@@ -245,32 +250,52 @@ export class ControlClosureScheduler {
 
               const missingVetIn = !vetInRecord;
 
+              // Binomios que ya largaron o avanzaron a una etapa posterior no deben ser eliminados retroactivamente
+              const hasStartedSubsequentStage = activeRecords.some(
+                (r) =>
+                  r.recordType === TimeRecordType.START &&
+                  r.stage &&
+                  r.stage.stageNumber > stage.stageNumber,
+              ) || (entry.currentStage && entry.currentStage.stageNumber > stage.stageNumber);
+
+              if (hasStartedSubsequentStage) {
+                continue;
+              }
+
               let hasApprovedInspection = false;
               if (stageInspections.length > 0) {
-                const lastFinalInsp =
+                const lastInsp =
                   stageInspections.filter((vi) => vi.isFinalDecision).pop() ||
                   stageInspections[stageInspections.length - 1];
 
+                const isGaitAcceptable =
+                  lastInsp.gaitStatus === GaitStatus.APPROVED ||
+                  lastInsp.gaitStatus === GaitStatus.OBSERVATION;
+
                 if (
-                  lastFinalInsp.isFinalDecision &&
-                  !lastFinalInsp.requiresRecheck &&
-                  !lastFinalInsp.isRecheckRequired &&
-                  lastFinalInsp.gaitStatus === GaitStatus.APPROVED &&
-                  lastFinalInsp.heartRate <= effectiveMaxHr
+                  !lastInsp.requiresRecheck &&
+                  !lastInsp.isRecheckRequired &&
+                  isGaitAcceptable &&
+                  lastInsp.heartRate <= effectiveMaxHr
                 ) {
                   hasApprovedInspection = true;
                 }
               }
 
               if (
-                entry.status === ParticipantStatus.RESTING &&
-                arrivalRecord?.scheduledDepartureTime
+                entry.status === ParticipantStatus.RESTING ||
+                entry.status === ParticipantStatus.IN_RACE ||
+                entry.status === ParticipantStatus.VET_CHECK
               ) {
                 hasApprovedInspection = true;
               }
 
               if (missingVetIn || !hasApprovedInspection) {
                 const reason = "Ex. T. Rec. - No presentado en neutralización";
+
+                console.log(
+                  `[ControlClosureScheduler DEBUG] Competidor #${entry.bibNumber} (entry ${entry.id}) descalificado a ELIMINATED_TR en Etapa ${stage.stageNumber}. missingVetIn=${missingVetIn}, hasApprovedInspection=${hasApprovedInspection}, entry.status=${entry.status}, stageInspectionsCount=${stageInspections.length}`,
+                );
 
                 entry.status = ParticipantStatus.ELIMINATED_TR;
                 await manager.save(CompetitionEntry, entry);
