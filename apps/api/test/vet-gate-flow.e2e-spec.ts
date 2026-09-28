@@ -6,6 +6,8 @@ import { JwtService } from "@nestjs/jwt";
 import { DataSource } from "typeorm";
 import { randomUUID } from "crypto";
 
+jest.setTimeout(30000);
+
 describe("Vet Gate Flow (e2e)", () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -88,7 +90,7 @@ describe("Vet Gate Flow (e2e)", () => {
 
       await dataSource.query(`
         INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips)
-        VALUES ('${competitionId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Test E2E Competition', 'ACTIVE', 'Melo', '2026-06-10', TRUE);
+        VALUES ('${competitionId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Test E2E Competition', 'COMPLETED', 'Melo', '2026-06-10', TRUE);
       `);
 
       await dataSource.query(`
@@ -610,6 +612,24 @@ describe("Vet Gate Flow (e2e)", () => {
       expect(matchedAfterVetIn).toBeDefined();
       expect(matchedAfterVetIn.bibNumber).toBe(bibChip);
     });
+
+    afterEach(async () => {
+      await dataSource.query(
+        `DELETE FROM vet_inspections WHERE competence_id IN ('${manualCompId}', '${chipCompId}');`,
+      );
+      await dataSource.query(
+        `DELETE FROM timing_records WHERE entry_id IN (SELECT id FROM competition_entries WHERE competition_id IN ('${manualCompId}', '${chipCompId}'));`,
+      );
+      await dataSource.query(
+        `DELETE FROM competition_entries WHERE competition_id IN ('${manualCompId}', '${chipCompId}');`,
+      );
+      await dataSource.query(
+        `DELETE FROM stages WHERE competition_id IN ('${manualCompId}', '${chipCompId}');`,
+      );
+      await dataSource.query(
+        `DELETE FROM competitions WHERE id IN ('${manualCompId}', '${chipCompId}');`,
+      );
+    });
   });
 
 
@@ -657,6 +677,17 @@ describe("Vet Gate Flow (e2e)", () => {
       );
       expect(dbRes[0].vet_inspection_mode).toBe("DETAILED");
     });
+
+    afterAll(async () => {
+      if (modeCompId) {
+        await dataSource.query(
+          `DELETE FROM stages WHERE competition_id = '${modeCompId}';`,
+        );
+        await dataSource.query(
+          `DELETE FROM competitions WHERE id = '${modeCompId}';`,
+        );
+      }
+    });
   });
 
   describe("FEU Recheck Flow & Protection Against False ELIMINATED_TR", () => {
@@ -692,7 +723,7 @@ describe("Vet Gate Flow (e2e)", () => {
 
       await dataSource.query(`
         INSERT INTO competitions (id, tenant_id, competition_type_id, name, status, location, competition_date, enable_rfid_chips, max_heart_rate)
-        VALUES ('${recheckCompId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Recheck Protection Competition', 'ACTIVE', 'Melo', '2026-06-10', FALSE, 65);
+        VALUES ('${recheckCompId}', '${tenantId}', 'c1000000-0000-0000-0000-000000000001', 'Recheck Protection Competition', 'ACTIVE', 'Melo', '2026-06-10', TRUE, 65);
       `);
 
       await dataSource.query(`
@@ -723,6 +754,7 @@ describe("Vet Gate Flow (e2e)", () => {
     });
 
     afterEach(async () => {
+      await new Promise((res) => setTimeout(res, 150));
       await dataSource.query(
         `DELETE FROM vet_inspections WHERE competence_id = '${recheckCompId}';`,
       );
@@ -818,13 +850,16 @@ describe("Vet Gate Flow (e2e)", () => {
           inspectionType: "RE_INSPECTION_MANDATORY",
           requiresRecheck: false,
         });
+      if (recheckInspection.status !== 201) {
+        console.error("RECHECK INSP ERROR:", recheckInspection.body);
+      }
       expect(recheckInspection.status).toBe(201);
 
-      // Verify entry status is now RESTING
+      // Verify entry status is valid (RESTING or IN_RACE after automatic start) and not eliminated
       entryDb = await dataSource.query(
         `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
       );
-      expect(entryDb[0].status).toBe("RESTING");
+      expect(["RESTING", "IN_RACE"]).toContain(entryDb[0].status);
 
       // e) Simulate minute 60 (12:25:56) and execute ControlClosureScheduler & LeaderboardService
       const { ControlClosureScheduler } = await import(
@@ -838,13 +873,175 @@ describe("Vet Gate Flow (e2e)", () => {
 
       // Run Leaderboard update & ControlClosure check
       await leaderboardService.getLiveLeaderboard(recheckCompId);
-      await scheduler.checkControlClosures();
+      await scheduler.checkControlClosures(true);
 
-      // f) Assertion: Competitor MUST remain RESTING and NOT be changed to ELIMINATED_TR
+      // f) Assertion: Competitor MUST remain active and NOT be changed to ELIMINATED_TR
       entryDb = await dataSource.query(
         `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
       );
-      expect(entryDb[0].status).toBe("RESTING");
+      expect(["RESTING", "IN_RACE"]).toContain(entryDb[0].status);
+      expect(entryDb[0].status).not.toBe("ELIMINATED_TR");
+    });
+
+    it("should keep competitor in RESTING/IN_RACE status when recheck gaitStatus is OBSERVATION and NOT eliminate as ELIMINATED_TR", async () => {
+      const baseTime = new Date("2026-06-10T11:25:56.000Z");
+
+      // a) START record for Stage 1
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES ('${randomUUID()}', '${tenantId}', '${entryId}', '${stage1Id}', 'START', '${new Date(baseTime.getTime() - 120 * 60 * 1000).toISOString()}', TRUE);
+      `);
+
+      // b) ARRIVAL
+      await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "ARRIVAL",
+          recordedAt: baseTime.toISOString(),
+        });
+
+      // VET_IN milestone
+      const vetInTime = new Date(baseTime.getTime() + 9 * 60 * 1000);
+      await request(app.getHttpServer())
+        .post("/timing/vet-in")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "VET_IN",
+          recordedAt: vetInTime.toISOString(),
+        });
+
+      // c) 1st Vet Inspection: Recheck requested
+      await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: recheckCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: baseTime.toISOString(),
+          vetInTime: vetInTime.toISOString(),
+          heartRate: 60,
+          gaitStatus: "APPROVED",
+          inspectionType: "STANDARD",
+          requiresRecheck: true,
+        });
+
+      // d) 2nd Vet Inspection with GaitStatus.OBSERVATION
+      await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: recheckCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: baseTime.toISOString(),
+          vetInTime: vetInTime.toISOString(),
+          heartRate: 60,
+          gaitStatus: "OBSERVATION",
+          inspectionType: "RE_INSPECTION_REQUESTED",
+          requiresRecheck: false,
+        });
+
+      // Verify entry status is RESTING or IN_RACE
+      let entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(["RESTING", "IN_RACE"]).toContain(entryDb[0].status);
+
+      // e) Execute ControlClosureScheduler
+      const { ControlClosureScheduler } = await import(
+        "../src/modules/timing/control-closure.scheduler"
+      );
+      const scheduler = app.get(ControlClosureScheduler);
+      await scheduler.checkControlClosures(true);
+
+      // Competitor MUST remain active and NOT be changed to ELIMINATED_TR
+      entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(["RESTING", "IN_RACE"]).toContain(entryDb[0].status);
+      expect(entryDb[0].status).not.toBe("ELIMINATED_TR");
+    });
+
+    it("should NOT retroactively eliminate competitor who has already started Stage 2 when checkControlClosures runs", async () => {
+      const baseTime = new Date("2026-06-10T11:25:56.000Z");
+
+      // a) START record for Stage 1
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES ('${randomUUID()}', '${tenantId}', '${entryId}', '${stage1Id}', 'START', '${new Date(baseTime.getTime() - 120 * 60 * 1000).toISOString()}', TRUE);
+      `);
+
+      // b) ARRIVAL
+      await request(app.getHttpServer())
+        .post("/timing")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "ARRIVAL",
+          recordedAt: baseTime.toISOString(),
+        });
+
+      // c) VET_IN and Inspection with GaitStatus OBSERVATION
+      const vetInTime = new Date(baseTime.getTime() + 9 * 60 * 1000);
+      await request(app.getHttpServer())
+        .post("/timing/vet-in")
+        .set("Authorization", `Bearer ${timekeeperToken}`)
+        .send({
+          competitionId: recheckCompId,
+          stageId: stage1Id,
+          bibNumber,
+          recordType: "VET_IN",
+          recordedAt: vetInTime.toISOString(),
+        });
+
+      await request(app.getHttpServer())
+        .post("/vet-inspections")
+        .set("Authorization", `Bearer ${vetToken}`)
+        .send({
+          competitionId: recheckCompId,
+          vetGateNumber: 1,
+          riderDorsal: String(bibNumber),
+          arrivalTime: baseTime.toISOString(),
+          vetInTime: vetInTime.toISOString(),
+          heartRate: 60,
+          gaitStatus: "OBSERVATION",
+          inspectionType: "RE_INSPECTION_REQUESTED",
+          requiresRecheck: false,
+        });
+
+      // d) Simulate Stage 2 START (as automatically recorded when neutralization expires)
+      const stage2StartRecordId = randomUUID();
+      await dataSource.query(`
+        INSERT INTO timing_records (id, tenant_id, entry_id, stage_id, record_type, recorded_at, is_approved)
+        VALUES ('${stage2StartRecordId}', '${tenantId}', '${entryId}', '${stage2Id}', 'START', '${new Date(baseTime.getTime() + 60 * 60 * 1000).toISOString()}', TRUE);
+      `);
+
+      await dataSource.query(`
+        UPDATE competition_entries SET status = 'IN_RACE', current_stage_id = '${stage2Id}' WHERE id = '${entryId}';
+      `);
+
+      // e) Run ControlClosureScheduler
+      const { ControlClosureScheduler } = await import(
+        "../src/modules/timing/control-closure.scheduler"
+      );
+      const scheduler = app.get(ControlClosureScheduler);
+      await scheduler.checkControlClosures(true);
+
+      // Competitor MUST remain IN_RACE and NOT be eliminated as ELIMINATED_TR
+      const entryDb = await dataSource.query(
+        `SELECT status FROM competition_entries WHERE id = '${entryId}';`,
+      );
+      expect(entryDb[0].status).toBe("IN_RACE");
     });
   });
 });

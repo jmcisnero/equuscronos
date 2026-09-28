@@ -19,6 +19,9 @@ export class VetInspection {
   @JoinColumn({ name: "tenant_id" })
   tenant: Tenant;
 
+  @Column({ name: "competence_id", type: "uuid" })
+  competitionId: string;
+
   @ManyToOne(() => Competition, { onDelete: "CASCADE" })
   @JoinColumn({ name: "competence_id" })
   competition: Competition;
