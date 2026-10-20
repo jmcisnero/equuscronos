@@ -5,6 +5,7 @@ export enum UserRole {
   VET = "VET",
   TIMEKEEPER = "TIMEKEEPER",
   USER = "USER",
+  SPECTATOR = "SPECTATOR",
 }
 
 export enum OwnerType {

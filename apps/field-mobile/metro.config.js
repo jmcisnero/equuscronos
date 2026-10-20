@@ -63,4 +63,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// 5. Use a per-app Metro cache so field-mobile and user-mobile don't clear the
+// same shared %TEMP%\metro-cache concurrently (causes EPERM on Windows).
+const { FileStore } = require('metro-cache');
+config.cacheStores = [
+  new FileStore({ root: path.join(projectRoot, 'node_modules', '.cache', 'metro') }),
+];
+
 module.exports = config;

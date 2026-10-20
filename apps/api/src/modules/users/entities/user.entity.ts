@@ -55,6 +55,12 @@ export class User {
   @Column({ type: "enum", enum: UserRole, default: UserRole.USER })
   role: UserRole;
 
+  @Column({ name: "opt_in_marketing", type: "boolean", default: true })
+  optInMarketing: boolean;
+
+  @Column({ name: "is_guest", type: "boolean", default: false })
+  isGuest: boolean;
+
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

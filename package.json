@@ -11,7 +11,9 @@
     "libs/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=!@equuscronos/field-mobile",
+    "dev:all": "turbo run dev",
+    "dev:field": "turbo run dev --filter=@equuscronos/field-mobile",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
