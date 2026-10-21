@@ -96,7 +96,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
     location: "Cardona, Soriano",
     isFederated: true,
     enableRfidChips: true,
-    maxHeartRate: 64,
+    maxHeartRate: 65,
     status: "PLANNED",
     stages: [
       { id: "s3", stageNumber: 1, distanceKm: 60, neutralizationMinutes: 40 },

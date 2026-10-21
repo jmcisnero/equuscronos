@@ -17,6 +17,7 @@ import {
   HeartPulseBadge,
   StageHistoryMobile,
   StageHistoryTable,
+  DEFAULT_MAX_HEART_RATE,
 } from "./LeaderboardShared";
 
 interface LeaderboardTableProps {
@@ -60,7 +61,7 @@ export default function LeaderboardTable({
   const maxHeartRate =
     propsMaxHeartRate !== undefined
       ? propsMaxHeartRate
-      : (currentCompetition?.maxHeartRate || 64);
+      : (currentCompetition?.maxHeartRate || DEFAULT_MAX_HEART_RATE);
 
   const leaderboard = propsLeaderboard !== undefined ? propsLeaderboard : hookData.leaderboard;
   const isLoading = propsIsLoading !== undefined ? propsIsLoading : hookData.isLoading;
@@ -398,7 +399,7 @@ export default function LeaderboardTable({
                     </svg>
                     Historial de Etapas Anteriores (Detalle Clínico)
                   </h5>
-                  <StageHistoryMobile stages={previousStages} />
+                  <StageHistoryMobile stages={previousStages} maxHeartRate={maxHeartRate} />
                 </div>
               </div>
             );
@@ -623,7 +624,7 @@ export default function LeaderboardTable({
                                 </svg>
                                 Historial de Etapas Anteriores (Detalle Clínico)
                               </h5>
-                              <StageHistoryTable stages={previousStages} />
+                              <StageHistoryTable stages={previousStages} maxHeartRate={maxHeartRate} />
                             </div>
                           </div>
                         </td>

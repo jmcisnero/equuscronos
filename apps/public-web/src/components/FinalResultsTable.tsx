@@ -233,7 +233,7 @@ export default function FinalResultsTable({
           </div>
           <div>
             <h3 className="text-base font-black tracking-tight leading-tight text-slate-900">
-              Resultados Oficiales - Control de Meta Cerrado
+              Resultados Finales - Control de Meta Cerrado
             </h3>
             <p className="text-slate-600 text-xs mt-1">
               La carrera ha concluido. Aquellos binomios que no lograron completar la meta final dentro del tiempo límite reglamentario se registran como "No Completó" (NC).
@@ -402,7 +402,7 @@ export default function FinalResultsTable({
                     </svg>
                     Historial de Etapas (Detalle Clínico)
                   </h5>
-                  <StageHistoryMobile stages={entry.stages || []} />
+                  <StageHistoryMobile stages={entry.stages || []} maxHeartRate={maxHeartRate} />
                 </div>
               </div>
             );
@@ -613,7 +613,7 @@ export default function FinalResultsTable({
                                 </svg>
                                 Historial de Etapas (Trazabilidad Clínicas Completa y Auditoría FEU)
                               </h5>
-                              <StageHistoryTable stages={entry.stages || []} />
+                              <StageHistoryTable stages={entry.stages || []} maxHeartRate={maxHeartRate} />
                             </div>
                           </div>
                         </td>

@@ -19,7 +19,7 @@ export default function HomePage() {
               Vivo
             </h1>
             <p className="text-slate-300 mt-3 text-xs sm:text-sm max-w-xl leading-relaxed">
-              Monitoreo en tiempo real de binomios oficiales. Clasificación
+              Monitoreo en tiempo real de binomios en competencia. Clasificación
               inmediata basada en el reglamento de la Federación Ecuestre
               Uruguaya (FEU) para eventos de Raid Hípico y Endurance.
             </p>

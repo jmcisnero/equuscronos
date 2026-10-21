@@ -8,8 +8,17 @@ import {
   ScrollView,
 } from "react-native";
 import { LeaderboardEntry } from "../types";
-import { VetHeartRateBadge } from "./VetHeartRateBadge";
+import { HeartPulseBadge } from "./race/HeartPulseBadge";
+import { RaceStatusBadge } from "./race/RaceStatusBadge";
 import { Theme, useThemedStyles } from "../theme/useTheme";
+import {
+  DEFAULT_MAX_HEART_RATE,
+  formatHHMMSS,
+  formatSpeed,
+  formatTime,
+  getPreviousStages,
+  isTerminalStatus,
+} from "../utils/raceFormat";
 
 interface StageBreakdownModalProps {
   visible: boolean;
@@ -18,16 +27,19 @@ interface StageBreakdownModalProps {
   maxHeartRate?: number;
 }
 
+/** Historial de etapas (Detalle Clínico) — equivalente a StageHistoryMobile de la web. */
 export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
   visible,
   entry,
   onClose,
-  maxHeartRate = 64,
+  maxHeartRate = DEFAULT_MAX_HEART_RATE,
 }) => {
   // Los hooks deben ejecutarse antes de cualquier return condicional.
   const styles = useThemedStyles(createStyles);
 
   if (!entry) return null;
+  const stages = getPreviousStages(entry);
+  const showRank = !!entry.rank && !isTerminalStatus(entry.status);
 
   return (
     <Modal
@@ -40,35 +52,40 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
-            <View>
+            <View style={{ flex: 1 }}>
               <View style={styles.bibRow}>
                 <View style={styles.bibBadge}>
-                  <Text style={styles.bibText}>DORSAL {entry.bibNumber}</Text>
+                  <Text style={styles.bibText}>#{entry.bibNumber}</Text>
                 </View>
                 <Text style={styles.rankText}>
-                  {entry.rank ? `Posición #${entry.rank}` : "Sin clasificar"}
+                  {showRank ? `Posición #${entry.rank}` : "Sin clasificar"}
                 </Text>
+                <RaceStatusBadge status={entry.status} />
               </View>
               <Text style={styles.riderName}>{entry.riderName}</Text>
-              <Text style={styles.horseName}>🐴 {entry.horseName}</Text>
+              <Text style={styles.horseName}>Caballo: {entry.horseName}</Text>
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={onClose}
+              accessibilityLabel="Cerrar detalle"
+            >
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionTitle}>DESGLOSE DE ETAPAS</Text>
+            <Text style={styles.sectionTitle}>HISTORIAL DE ETAPAS (DETALLE CLÍNICO)</Text>
 
-            {entry.stages && entry.stages.length > 0 ? (
-              entry.stages.map((stage) => (
+            {stages.length > 0 ? (
+              stages.map((stage) => (
                 <View key={stage.stageNumber} style={styles.stageCard}>
                   <View style={styles.stageHeader}>
                     <Text style={styles.stageTitle}>
                       ETAPA {stage.stageNumber} • {stage.distanceKm} KM
                     </Text>
-                    <VetHeartRateBadge
-                      heartRate={stage.heartRate}
+                    <HeartPulseBadge
+                      pulse={stage.heartRate}
                       maxHeartRate={maxHeartRate}
                       isRecheck={stage.isRecheck}
                       recheckStatus={stage.recheckStatus}
@@ -77,28 +94,24 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
 
                   <View style={styles.stageGrid}>
                     <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Largada</Text>
-                      <Text style={styles.gridValue}>
-                        {stage.startTime ? stage.startTime.split("T")[1]?.slice(0, 8) : "--:--:--"}
-                      </Text>
+                      <Text style={styles.gridLabel}>Salida</Text>
+                      <Text style={styles.gridValue}>{formatHHMMSS(stage.startTime)}</Text>
                     </View>
                     <View style={styles.gridItem}>
                       <Text style={styles.gridLabel}>Llegada</Text>
-                      <Text style={styles.gridValue}>
-                        {stage.arrivalTime ? stage.arrivalTime.split("T")[1]?.slice(0, 8) : "--:--:--"}
-                      </Text>
+                      <Text style={styles.gridValue}>{formatHHMMSS(stage.arrivalTime)}</Text>
                     </View>
                     <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Entrada Vet</Text>
-                      <Text style={styles.gridValue}>
-                        {stage.vetInTime ? stage.vetInTime.split("T")[1]?.slice(0, 8) : "--:--:--"}
-                      </Text>
+                      <Text style={styles.gridLabel}>Toma de Pulso</Text>
+                      <Text style={styles.gridValue}>{formatHHMMSS(stage.vetInTime)}</Text>
+                    </View>
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>Tiempo Neto</Text>
+                      <Text style={styles.gridValue}>{formatTime(stage.netTimeMs)}</Text>
                     </View>
                     <View style={styles.gridItem}>
                       <Text style={styles.gridLabel}>Velocidad Etapa</Text>
-                      <Text style={styles.gridValueHighlight}>
-                        {stage.averageSpeed ? `${stage.averageSpeed.toFixed(2)} km/h` : "--"}
-                      </Text>
+                      <Text style={styles.gridValueHighlight}>{formatSpeed(stage.averageSpeed)}</Text>
                     </View>
                   </View>
                 </View>
@@ -106,7 +119,7 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
             ) : (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  Esperando registro de datos de tiempos en pista para desglosar etapas.
+                  Aún no hay etapas completadas para este binomio.
                 </Text>
               </View>
             )}
@@ -147,6 +160,7 @@ const createStyles = ({ colors, isDark }: Theme) =>
   },
   bibRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: 8,
     marginBottom: 4,

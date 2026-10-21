@@ -1,258 +1,265 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { LeaderboardEntry } from "../types";
-import { VetHeartRateBadge } from "./VetHeartRateBadge";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
+import { getRaceTones } from "../theme/raceTones";
+import { HeartPulseBadge } from "./race/HeartPulseBadge";
+import { RaceStatusBadge } from "./race/RaceStatusBadge";
+import {
+  formatGap,
+  formatHHMMSS,
+  formatSpeed,
+  formatTime,
+  isTerminalStatus,
+} from "../utils/raceFormat";
 
 interface LeaderboardRowProps {
   entry: LeaderboardEntry;
   onPress: (entry: LeaderboardEntry) => void;
-  maxHeartRate?: number;
+  maxHeartRate: number;
+  /** Competencia cerrada: muestra pulso de Etapa 1 (base del Trofeo Art. 42) */
+  isClosed?: boolean;
+  isTrophyWinner?: boolean;
+  /** Modalidad con chips RFID: muestra el límite de ingreso a Vet Gate */
+  isRfidMode?: boolean;
 }
 
-type BadgeTone = { bg: string; text: string };
-
-/** Paleta de estados de carrera: [oscuro, claro] para mantener contraste AA. */
-const STATUS_TONES: Record<string, { label: string; dark: BadgeTone; light: BadgeTone }> = {
-  IN_RACE: {
-    label: "EN PISTA",
-    dark: { bg: "#065f46", text: "#6ee7b7" },
-    light: { bg: "#D1FAE5", text: "#065F46" },
-  },
-  VET_CHECK: {
-    label: "VET CHECK",
-    dark: { bg: "#854d0e", text: "#fde047" },
-    light: { bg: "#FEF3C7", text: "#92400E" },
-  },
-  RESTING: {
-    label: "NEUTRALIZADO",
-    dark: { bg: "#1e3a8a", text: "#93c5fd" },
-    light: { bg: "#DBEAFE", text: "#1E40AF" },
-  },
-  FINISHED: {
-    label: "FINALIZADO",
-    dark: { bg: "#14532d", text: "#86efac" },
-    light: { bg: "#DCFCE7", text: "#166534" },
-  },
-  DQ: {
-    label: "DESCALIFICADO",
-    dark: { bg: "#7f1d1d", text: "#fca5a5" },
-    light: { bg: "#FEE2E2", text: "#991B1B" },
-  },
-  DNF: {
-    label: "RETIRO / DNF",
-    dark: { bg: "#451a03", text: "#fdba74" },
-    light: { bg: "#FFEDD5", text: "#9A3412" },
-  },
-};
-
-const STATUS_ALIASES: Record<string, string> = {
-  FINISHED_PROVISIONAL: "FINISHED",
-  ELIMINATED_GAIT: "DQ",
-  ELIMINATED_TR: "DQ",
-  WD: "DNF",
-};
-
-export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({
+/**
+ * Tarjeta de binomio. Estructura idéntica a la vista móvil de
+ * public-web/LeaderboardTable.tsx: rango, camiseta + dorsal, estado,
+ * jinete/caballo/club, grilla de métricas y pulso en Vet Gate.
+ */
+const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
   entry,
   onPress,
-  maxHeartRate = 64,
+  maxHeartRate,
+  isClosed = false,
+  isTrophyWinner = false,
+  isRfidMode = false,
 }) => {
-  const { isDark, colors } = useTheme();
+  const { isDark } = useTheme();
+  const tones = useMemo(() => getRaceTones(isDark), [isDark]);
   const styles = useThemedStyles(createStyles);
 
-  const formatSpeed = (speed?: number) => {
-    if (!speed || speed <= 0) return "--";
-    return `${speed.toFixed(2)} km/h`;
-  };
+  const isOut = isTerminalStatus(entry.status);
+  const showRank = !!entry.rank && !isOut;
+  const podium =
+    entry.rank === 1 || entry.rank === 2 || entry.rank === 3
+      ? tones.podium[entry.rank]
+      : tones.podium.other;
+  const gap = formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs);
 
-  const getStatusBadge = (status: string) => {
-    const tone = STATUS_TONES[STATUS_ALIASES[status] ?? status];
-    if (!tone) {
-      return { label: status, bg: colors.surfaceMuted, text: colors.textStrong };
-    }
-    return { label: tone.label, ...(isDark ? tone.dark : tone.light) };
-  };
-
-  const statusBadge = getStatusBadge(entry.status);
+  // En resultados finales la web muestra el pulso de Etapa 1 (criterio del Trofeo)
+  const pulseSource = isClosed
+    ? entry.stages?.find((s) => s.stageNumber === 1)
+    : undefined;
+  const pulse = isClosed ? pulseSource?.heartRate : entry.heartRate;
+  const tenant = entry.representedTenant;
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, isOut && styles.cardOut]}
       onPress={() => onPress(entry)}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`Posición ${showRank ? entry.rank : "sin clasificar"}, dorsal ${entry.bibNumber}, ${entry.riderName} con ${entry.horseName}`}
+      accessibilityHint="Abre el historial de etapas"
     >
-      <View style={styles.topRow}>
-        <View style={styles.rankContainer}>
-          <Text style={styles.rankText}>
-            {entry.rank !== null ? `#${entry.rank}` : "-"}
-          </Text>
-        </View>
+      {/* Cabecera: rango · camiseta + dorsal · estado */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          {showRank ? (
+            <View
+              style={[styles.rank, { backgroundColor: podium.bg, borderColor: podium.border }]}
+            >
+              <Text style={[styles.rankText, { color: podium.text }]}>{entry.rank}</Text>
+            </View>
+          ) : (
+            <View style={styles.rankEmpty}>
+              <Text style={styles.rankEmptyText}>--</Text>
+            </View>
+          )}
 
-        <View style={styles.bibBadge}>
-          <Text style={styles.bibText}>DORSAL {entry.bibNumber}</Text>
-        </View>
+          {tenant?.jerseyImageUrl ? (
+            <Image source={{ uri: tenant.jerseyImageUrl }} style={styles.jersey} />
+          ) : null}
 
-        <View style={[styles.statusBadge, { backgroundColor: statusBadge.bg }]}>
-          <Text style={[styles.statusText, { color: statusBadge.text }]}>
-            {statusBadge.label}
-          </Text>
+          <View style={[styles.bib, { backgroundColor: tones.bibBg }]}>
+            <Text style={[styles.bibText, { color: tones.bibText }]}>#{entry.bibNumber}</Text>
+          </View>
         </View>
+        <RaceStatusBadge status={entry.status} />
       </View>
 
-      <View style={styles.mainInfo}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.riderName} numberOfLines={1}>
-            {entry.riderName}
+      {/* Binomio y club */}
+      <View style={styles.identity}>
+        <Text style={styles.rider} numberOfLines={1}>
+          {entry.riderName}
+        </Text>
+        <Text style={styles.horse} numberOfLines={1}>
+          Caballo: {entry.horseName}
+        </Text>
+        {!!tenant?.name && (
+          <Text style={styles.club} numberOfLines={1}>
+            🚩 {tenant.name}
           </Text>
-          <Text style={styles.horseName} numberOfLines={1}>
-            🐴 {entry.horseName}
-          </Text>
-          {entry.representedTenant && (
-            <Text style={styles.tenantName} numberOfLines={1}>
-              🚩 {entry.representedTenant.name}
-            </Text>
-          )}
-        </View>
+        )}
+      </View>
 
-        <View style={styles.rightStats}>
-          <VetHeartRateBadge
-            heartRate={entry.heartRate}
+      {/* Grilla de métricas técnicas */}
+      <View style={styles.grid}>
+        <Metric label="Etapa" value={`Etapa ${entry.currentStage}`} styles={styles} />
+        <Metric label="Tiempo Neto" value={formatTime(entry.totalRaceTimeMs)} styles={styles} strong />
+        <Metric
+          label="Diferencia"
+          value={gap.text}
+          styles={styles}
+          color={gap.isLeader ? tones.accent : undefined}
+          strong
+        />
+        <Metric label="Velocidad Promedio" value={formatSpeed(entry.averageSpeed)} styles={styles} />
+        {!!entry.startTime && (
+          <Metric
+            label="Hora Salida"
+            value={formatHHMMSS(entry.startTime)}
+            styles={styles}
+            color={tones.timeAccent}
+            strong
+          />
+        )}
+        {!!entry.arrivalTime && (
+          <Metric
+            label="Hora Llegada"
+            value={formatHHMMSS(entry.arrivalTime)}
+            styles={styles}
+            color={tones.timeAccent}
+            strong
+          />
+        )}
+        {!!entry.vetInTime && (
+          <Metric label="Toma de Pulso" value={formatHHMMSS(entry.vetInTime)} styles={styles} />
+        )}
+        {isRfidMode && !!entry.nextVetControlTime && !isClosed && (
+          <Metric
+            label="Límite Vet Gate"
+            value={formatHHMMSS(entry.nextVetControlTime)}
+            styles={styles}
+            color={tones.accent}
+            strong
+          />
+        )}
+      </View>
+
+      {/* Pulso en control veterinario */}
+      {(pulse || entry.isRecheck || isTrophyWinner) && (
+        <View style={styles.pulseRow}>
+          <Text style={styles.metricLabel}>
+            {isClosed ? "Pulso Etapa 1 (Art. 42)" : "Pulso Control Veterinario"}
+          </Text>
+          <HeartPulseBadge
+            pulse={pulse}
             maxHeartRate={maxHeartRate}
-            isRecheck={entry.isRecheck}
-            recheckStatus={entry.recheckStatus}
+            isTrophyWinner={isTrophyWinner}
+            isRecheck={isClosed ? pulseSource?.isRecheck ?? entry.isRecheck : entry.isRecheck}
+            recheckStatus={isClosed ? pulseSource?.recheckStatus ?? entry.recheckStatus : entry.recheckStatus}
           />
         </View>
-      </View>
-
-      <View style={styles.footerMetrics}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Etapa Actual</Text>
-          <Text style={styles.metricValue}>Etapa {entry.currentStage}</Text>
-        </View>
-
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Velocidad Promedio</Text>
-          <Text style={styles.metricValueHighlight}>
-            {formatSpeed(entry.averageSpeed)}
-          </Text>
-        </View>
-
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Brecha</Text>
-          <Text style={styles.metricValue}>
-            {entry.gapToLeaderMs > 0
-              ? `+${Math.round(entry.gapToLeaderMs / 1000)}s`
-              : "LÍDER"}
-          </Text>
-        </View>
-      </View>
+      )}
+      {isTrophyWinner && (
+        <Text style={[styles.trophyNote, { color: tones.trophy }]}>
+          🏆 Trofeo al Menor Pulso (Art. 42)
+        </Text>
+      )}
     </TouchableOpacity>
   );
 };
 
-const createStyles = ({ colors, cardShadow }: Theme) =>
+const Metric: React.FC<{
+  label: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+  color?: string;
+  strong?: boolean;
+}> = ({ label, value, styles, color, strong }) => (
+  <View style={styles.metric}>
+    <Text style={styles.metricLabel}>{label}</Text>
+    <Text style={[styles.metricValue, strong && styles.metricStrong, color ? { color } : null]}>
+      {value}
+    </Text>
+  </View>
+);
+
+/** Memoizado: el feed en vivo re-emite la lista completa en cada tick de socket. */
+export const LeaderboardRow = React.memo(LeaderboardRowBase);
+
+const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 14,
-      padding: 12,
+      borderRadius: 20,
+      padding: 14,
       marginVertical: 6,
       marginHorizontal: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      gap: 12,
       ...cardShadow,
     },
-    topRow: {
-      flexDirection: "row",
+    cardOut: {
+      backgroundColor: isDark ? "rgba(244,63,94,0.06)" : "#FFF8F9",
+    },
+    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+    rank: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      borderWidth: 1,
       alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 8,
+      justifyContent: "center",
     },
-    rankContainer: {
-      backgroundColor: colors.surfaceSunken,
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      borderRadius: 8,
-    },
-    rankText: {
-      color: colors.warning,
-      fontWeight: "900",
-      fontSize: 13,
-    },
-    bibBadge: {
-      backgroundColor: colors.surfaceSunken,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    bibText: {
-      color: colors.textStrong,
-      fontWeight: "800",
-      fontSize: 10,
-      letterSpacing: 0.5,
-    },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    statusText: {
-      fontSize: 9,
-      fontWeight: "800",
-    },
-    mainInfo: {
+    rankText: { fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] },
+    rankEmpty: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+    rankEmptyText: { color: colors.textMuted, fontWeight: "800", fontSize: 14 },
+    jersey: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border },
+    bib: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
+    bibText: { fontSize: 13, fontWeight: "900", fontVariant: ["tabular-nums"] },
+    identity: { gap: 2 },
+    rider: { color: colors.text, fontSize: 17, fontWeight: "900" },
+    horse: { color: colors.textSecondary, fontSize: 13, fontWeight: "700" },
+    club: { color: colors.primary, fontSize: 12, fontWeight: "700" },
+    grid: {
       flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
+      flexWrap: "wrap",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+      rowGap: 10,
     },
-    riderName: {
-      color: colors.text,
-      fontSize: 15,
-      fontWeight: "800",
-    },
-    horseName: {
-      color: colors.textSecondary,
-      fontSize: 12,
-      fontWeight: "600",
-      marginTop: 2,
-    },
-    tenantName: {
-      color: colors.primary,
-      fontSize: 10,
-      fontWeight: "600",
-      marginTop: 2,
-    },
-    rightStats: {
-      alignItems: "flex-end",
-    },
-    footerMetrics: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      backgroundColor: colors.surfaceSunken,
-      padding: 8,
-      borderRadius: 10,
-      marginTop: 2,
-    },
-    metricItem: {
-      alignItems: "center",
-    },
+    metric: { width: "50%" },
     metricLabel: {
       color: colors.textMuted,
       fontSize: 9,
-      fontWeight: "600",
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
     },
     metricValue: {
       color: colors.textStrong,
-      fontSize: 11,
-      fontWeight: "700",
-      marginTop: 1,
+      fontSize: 14,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+      marginTop: 2,
     },
-    metricValueHighlight: {
-      color: colors.primary,
-      fontSize: 11,
-      fontWeight: "800",
-      marginTop: 1,
+    metricStrong: { color: colors.text, fontWeight: "800" },
+    pulseRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      borderStyle: "dashed",
+      paddingTop: 8,
     },
+    trophyNote: { fontSize: 11, fontWeight: "800", marginTop: -6 },
   });

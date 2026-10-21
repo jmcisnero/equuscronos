@@ -1,236 +1,247 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { HeaderBrand } from "../components/HeaderBrand";
 import { LeaderboardRow } from "../components/LeaderboardRow";
 import { StageBreakdownModal } from "../components/StageBreakdownModal";
+import { RaceSummaryCard } from "../components/race/RaceSummaryCard";
 import { useCompetitionStore } from "../store/useCompetitionStore";
 import { useLiveLeaderboardMobile } from "../hooks/useLiveLeaderboardMobile";
 import { LeaderboardEntry } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
+import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE } from "../utils/raceFormat";
 
+/**
+ * Detalle de carrera. Equivalente móvil de public-web/app/leaderboard/[id]:
+ * resumen del Raid + buscador + tablero en vivo (LeaderboardTable) o
+ * resultados finales con Trofeo al Menor Pulso (FinalResultsTable).
+ */
 export const LiveLeaderboardScreen: React.FC = () => {
-  const {
-    activeCompetition,
-    activeCompetitionId,
-    searchQuery,
-    setSearchQuery,
-  } = useCompetitionStore();
+  const { activeCompetition, activeCompetitionId, searchQuery, setSearchQuery } =
+    useCompetitionStore();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const {
-    leaderboard,
-    isLoading,
-    isClosed,
-    isFallbackPolling,
-    countdown,
-    refresh,
-  } = useLiveLeaderboardMobile(activeCompetitionId);
+  const { leaderboard, isLoading, isClosed, isFallbackPolling, countdown, refresh } =
+    useLiveLeaderboardMobile(activeCompetitionId);
 
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const handleRowPress = (entry: LeaderboardEntry) => {
+  const maxHeartRate = activeCompetition?.maxHeartRate || DEFAULT_MAX_HEART_RATE;
+  const isRfidMode = activeCompetition?.enableRfidChips === true;
+
+  const handleRowPress = useCallback((entry: LeaderboardEntry) => {
     setSelectedEntry(entry);
     setModalVisible(true);
-  };
+  }, []);
 
-  const filteredLeaderboard = leaderboard.filter((item) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      item.riderName.toLowerCase().includes(query) ||
-      item.horseName.toLowerCase().includes(query) ||
-      item.bibNumber.toString().includes(query)
+  const filteredLeaderboard = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return leaderboard;
+    return leaderboard.filter(
+      (item) =>
+        item.riderName.toLowerCase().includes(q) ||
+        item.horseName.toLowerCase().includes(q) ||
+        item.bibNumber.toString().includes(q),
     );
-  });
+  }, [leaderboard, searchQuery]);
+
+  // Trofeo FEU (Art. 42): se calcula sobre el tablero completo, no el filtrado
+  const trophyBib = useMemo(
+    () => (isClosed ? computeTrophyWinnerBib(leaderboard) : null),
+    [isClosed, leaderboard],
+  );
+  const hasNoCompleted = useMemo(
+    () => leaderboard.some((e) => e.status === "NO_COMPLETED"),
+    [leaderboard],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: LeaderboardEntry }) => (
+      <LeaderboardRow
+        entry={item}
+        onPress={handleRowPress}
+        maxHeartRate={maxHeartRate}
+        isClosed={isClosed}
+        isTrophyWinner={item.bibNumber === trophyBib}
+        isRfidMode={isRfidMode}
+      />
+    ),
+    [handleRowPress, maxHeartRate, isClosed, trophyBib, isRfidMode],
+  );
+
+  const listHeader = (
+    <View>
+      <RaceSummaryCard
+        competition={activeCompetition}
+        maxHeartRate={maxHeartRate}
+        isClosed={isClosed}
+      />
+
+      {/* Buscador de binomios */}
+      <View style={styles.searchContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar por Jinete, Caballo o Dorsal..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          accessibilityLabel="Buscar binomio"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={8}>
+            <Text style={styles.clearIcon}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Título de sección + estado de sincronización */}
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          {isClosed ? "Clasificación General" : "Seguimiento en Vivo"}
+        </Text>
+        {isFallbackPolling && !isClosed && (
+          <View style={styles.pollingCounter}>
+            <Text style={styles.counterText}>Actualiza en {countdown}s</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Aviso de cierre de control con binomios N.C. (igual que la web) */}
+      {isClosed && hasNoCompleted && (
+        <View style={styles.ncBanner}>
+          <Text style={styles.ncIcon}>ℹ️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.ncTitle}>Control de Meta Cerrado (Tiempo Expirado)</Text>
+            <Text style={styles.ncText}>
+              Los binomios que no completaron la meta dentro del tiempo límite reglamentario
+              figuran como "No Completó" (N.C.).
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       <HeaderBrand />
 
-      <View style={styles.body}>
-        {/* Banner de Competencia Seleccionada */}
-        <View style={styles.competitionBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.compLabel}>COMPETENCIA EN MONITOREO</Text>
-            <Text style={styles.compTitle} numberOfLines={1}>
-              {activeCompetition?.name || "Selecciona una competencia..."}
-            </Text>
-          </View>
-          {isFallbackPolling && !isClosed && (
-            <View style={styles.pollingCounter}>
-              <Text style={styles.counterText}>REST {countdown}s</Text>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando cronometraje en vivo...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredLeaderboard}
+          keyExtractor={(item) => String(item.bibNumber)}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeader}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={8}
+          windowSize={7}
+          removeClippedSubviews
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={refresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+              progressBackgroundColor={colors.surface}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? "Sin coincidencias" : "Sin datos de carrera aún"}
+              </Text>
+              <Text style={styles.emptySub}>
+                {searchQuery
+                  ? "No se encontraron binomios que coincidan con la búsqueda."
+                  : "Los tiempos aparecerán aquí en cuanto se registre la largada."}
+              </Text>
             </View>
-          )}
-        </View>
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      )}
 
-        {/* Buscador de Binomios */}
-        <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Filtrar por Dorsal, Jinete o Caballo..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Lista Leaderboard */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Cargando cronometraje en vivo...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredLeaderboard}
-            keyExtractor={(item, index) => `${item.bibNumber}-${index}`}
-            renderItem={({ item }) => (
-              <LeaderboardRow
-                entry={item}
-                onPress={handleRowPress}
-                maxHeartRate={activeCompetition?.maxHeartRate || 64}
-              />
-            )}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading}
-                onRefresh={refresh}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
-                progressBackgroundColor={colors.surface}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>Sin datos de carrera aún</Text>
-                <Text style={styles.emptySub}>
-                  No hay registros transmitidos para el filtro ingresado.
-                </Text>
-              </View>
-            }
-            contentContainerStyle={styles.listContent}
-          />
-        )}
-      </View>
-
-      {/* Modal Desglose de Etapas */}
       <StageBreakdownModal
         visible={modalVisible}
         entry={selectedEntry}
         onClose={() => setModalVisible(false)}
-        maxHeartRate={activeCompetition?.maxHeartRate || 64}
+        maxHeartRate={maxHeartRate}
       />
     </View>
   );
 };
 
-const createStyles = ({ colors, cardShadow }: Theme) =>
+const createStyles = ({ colors, isDark }: Theme) =>
   StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  body: {
-    flex: 1,
-    paddingTop: 8,
-  },
-  competitionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 8,
-    ...cardShadow,
-  },
-  compLabel: {
-    color: colors.primary,
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  compTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "800",
-    marginTop: 2,
-  },
-  pollingCounter: {
-    backgroundColor: colors.warningSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  counterText: {
-    color: colors.warning,
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    marginHorizontal: 16,
-    paddingHorizontal: 10,
-    height: 40,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 8,
-  },
-  searchIcon: {
-    fontSize: 12,
-    marginRight: 6,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 12,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 10,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  emptySub: {
-    color: colors.textMuted,
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 4,
-  },
-});
+    container: { flex: 1, backgroundColor: colors.background },
+    listContent: { paddingBottom: 24 },
+    searchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      marginHorizontal: 16,
+      marginTop: 4,
+      paddingHorizontal: 12,
+      height: 46,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchIcon: { fontSize: 14, marginRight: 8 },
+    searchInput: { flex: 1, color: colors.text, fontSize: 14 },
+    clearIcon: { color: colors.textSecondary, fontSize: 14, padding: 4 },
+    sectionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 4,
+    },
+    sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "900" },
+    pollingCounter: {
+      backgroundColor: colors.warningSoft,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+    },
+    counterText: { color: colors.warning, fontSize: 10, fontWeight: "800" },
+    ncBanner: {
+      flexDirection: "row",
+      gap: 10,
+      marginHorizontal: 16,
+      marginTop: 8,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: isDark ? colors.surface : colors.surfaceSunken,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    ncIcon: { fontSize: 16 },
+    ncTitle: { color: colors.text, fontSize: 13, fontWeight: "900" },
+    ncText: { color: colors.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 15 },
+    loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
+    loadingText: { color: colors.textSecondary, fontSize: 12, marginTop: 10 },
+    emptyContainer: { alignItems: "center", padding: 32 },
+    emptyTitle: { color: colors.text, fontSize: 15, fontWeight: "800" },
+    emptySub: { color: colors.textMuted, fontSize: 12, textAlign: "center", marginTop: 4 },
+  });
