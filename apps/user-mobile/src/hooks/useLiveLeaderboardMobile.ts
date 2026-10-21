@@ -3,7 +3,18 @@ import { useCompetitionStore } from "../store/useCompetitionStore";
 import { socketService } from "../services/socket";
 import { api } from "../services/api";
 
-export function useLiveLeaderboardMobile(competitionId: string | null) {
+interface LiveLeaderboardOptions {
+  /**
+   * false: consulta histórica (COMPLETED / OFFICIAL) o pantalla sin foco.
+   * No abre WebSocket ni polling; los datos llegan por REST (selectCompetition / refresh).
+   */
+  live?: boolean;
+}
+
+export function useLiveLeaderboardMobile(
+  competitionId: string | null,
+  { live = true }: LiveLeaderboardOptions = {},
+) {
   const {
     leaderboard,
     setLeaderboard,
@@ -18,6 +29,11 @@ export function useLiveLeaderboardMobile(competitionId: string | null) {
 
   useEffect(() => {
     if (!competitionId) return;
+    if (!live) {
+      // Resultados históricos: sin tiempo real innecesario
+      setIsFallbackPolling(false);
+      return;
+    }
 
     let isSubscribed = true;
 
@@ -58,11 +74,11 @@ export function useLiveLeaderboardMobile(competitionId: string | null) {
       clearTimeout(checkSocketTimeout);
       socketService.disconnect();
     };
-  }, [competitionId]);
+  }, [competitionId, live]);
 
   // Manejador del temporizador regresivo para REST Polling de resguardo
   useEffect(() => {
-    if (isClosed || !isFallbackPolling || !competitionId) return;
+    if (!live || isClosed || !isFallbackPolling || !competitionId) return;
 
     const interval = setInterval(async () => {
       setCountdown((prev) => {
@@ -80,13 +96,13 @@ export function useLiveLeaderboardMobile(competitionId: string | null) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [competitionId, isClosed, isFallbackPolling]);
+  }, [competitionId, isClosed, isFallbackPolling, live]);
 
   return {
     leaderboard,
     isLoading: isLeaderboardLoading,
     isClosed,
-    isFallbackPolling,
+    isFallbackPolling: live && isFallbackPolling,
     countdown,
     refresh: async () => {
       if (competitionId) {

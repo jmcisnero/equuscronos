@@ -402,7 +402,7 @@ export function StageHistoryMobile({ stages, maxHeartRate = DEFAULT_MAX_HEART_RA
               </span>
               <span className="font-bold text-slate-800">
                 {stage.averageSpeed
-                  ? `${stage.averageSpeed.toFixed(2)} km/h`
+                  ? `${stage.averageSpeed.toFixed(3)} km/h`
                   : "—"}
               </span>
             </div>
@@ -493,7 +493,7 @@ export function StageHistoryTable({ stages, maxHeartRate = DEFAULT_MAX_HEART_RAT
               </td>
               <td className="py-3 px-3 text-slate-650">
                 {stage.averageSpeed
-                  ? `${stage.averageSpeed.toFixed(2)} km/h`
+                  ? `${stage.averageSpeed.toFixed(3)} km/h`
                   : "—"}
               </td>
               <td className="py-3 px-3 font-sans tabular-nums text-slate-500">

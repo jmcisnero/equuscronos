@@ -18,20 +18,34 @@ import { useLiveLeaderboardMobile } from "../hooks/useLiveLeaderboardMobile";
 import { LeaderboardEntry } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
 import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE } from "../utils/raceFormat";
+import { useIsFocused } from "@react-navigation/native";
+
+const CONCLUDED_STATUSES = ["COMPLETED", "OFFICIAL"];
 
 /**
  * Detalle de carrera. Equivalente móvil de public-web/app/leaderboard/[id]:
  * resumen del Raid + buscador + tablero en vivo (LeaderboardTable) o
  * resultados finales con Trofeo al Menor Pulso (FinalResultsTable).
+ *
+ * mode="results": consulta histórica abierta desde Explorar (ruta oculta
+ * ResultsTab). No abre WebSocket y mantiene el foco visual en "Explorar".
  */
-export const LiveLeaderboardScreen: React.FC = () => {
+export const LiveLeaderboardScreen: React.FC<{
+  navigation?: any;
+  mode?: "live" | "results";
+}> = ({ navigation, mode = "live" }) => {
   const { activeCompetition, activeCompetitionId, searchQuery, setSearchQuery } =
     useCompetitionStore();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const isFocused = useIsFocused();
 
-  const { leaderboard, isLoading, isClosed, isFallbackPolling, countdown, refresh } =
-    useLiveLeaderboardMobile(activeCompetitionId);
+  const isConcluded =
+    mode === "results" || CONCLUDED_STATUSES.includes(activeCompetition?.status ?? "");
+
+  const { leaderboard, isLoading, isClosed: socketClosed, isFallbackPolling, countdown, refresh } =
+    useLiveLeaderboardMobile(activeCompetitionId, { live: isFocused && !isConcluded });
+  const isClosed = socketClosed || isConcluded;
 
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -60,10 +74,6 @@ export const LiveLeaderboardScreen: React.FC = () => {
     () => (isClosed ? computeTrophyWinnerBib(leaderboard) : null),
     [isClosed, leaderboard],
   );
-  const hasNoCompleted = useMemo(
-    () => leaderboard.some((e) => e.status === "NO_COMPLETED"),
-    [leaderboard],
-  );
 
   const renderItem = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
@@ -81,6 +91,21 @@ export const LiveLeaderboardScreen: React.FC = () => {
 
   const listHeader = (
     <View>
+      {mode === "results" && (
+        <View style={styles.resultsBar}>
+          <TouchableOpacity
+            onPress={() => navigation?.navigate("ExplorerTab")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a Explorar"
+          >
+            <Text style={styles.backText}>‹ Explorar</Text>
+          </TouchableOpacity>
+          <Text style={styles.resultsTitle} accessibilityRole="header">
+            Resultados Finales
+          </Text>
+        </View>
+      )}
       <RaceSummaryCard
         competition={activeCompetition}
         maxHeartRate={maxHeartRate}
@@ -117,20 +142,6 @@ export const LiveLeaderboardScreen: React.FC = () => {
           </View>
         )}
       </View>
-
-      {/* Aviso de cierre de control con binomios N.C. (igual que la web) */}
-      {isClosed && hasNoCompleted && (
-        <View style={styles.ncBanner}>
-          <Text style={styles.ncIcon}>ℹ️</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ncTitle}>Control de Meta Cerrado (Tiempo Expirado)</Text>
-            <Text style={styles.ncText}>
-              Los binomios que no completaron la meta dentro del tiempo límite reglamentario
-              figuran como "No Completó" (N.C.).
-            </Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 
@@ -141,7 +152,9 @@ export const LiveLeaderboardScreen: React.FC = () => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando cronometraje en vivo...</Text>
+          <Text style={styles.loadingText}>
+            {isConcluded ? "Cargando resultados finales..." : "Cargando cronometraje en vivo..."}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -183,6 +196,9 @@ export const LiveLeaderboardScreen: React.FC = () => {
         entry={selectedEntry}
         onClose={() => setModalVisible(false)}
         maxHeartRate={maxHeartRate}
+        competition={activeCompetition}
+        isClosed={isClosed}
+        isTrophyWinner={!!selectedEntry && selectedEntry.bibNumber === trophyBib}
       />
     </View>
   );
@@ -192,6 +208,15 @@ const createStyles = ({ colors, isDark }: Theme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { paddingBottom: 24 },
+    resultsBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginHorizontal: 16,
+      marginTop: 10,
+    },
+    backText: { color: colors.primary, fontSize: 14, fontWeight: "800" },
+    resultsTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",
@@ -225,20 +250,6 @@ const createStyles = ({ colors, isDark }: Theme) =>
       borderColor: colors.warningBorder,
     },
     counterText: { color: colors.warning, fontSize: 10, fontWeight: "800" },
-    ncBanner: {
-      flexDirection: "row",
-      gap: 10,
-      marginHorizontal: 16,
-      marginTop: 8,
-      padding: 12,
-      borderRadius: 14,
-      backgroundColor: isDark ? colors.surface : colors.surfaceSunken,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    ncIcon: { fontSize: 16 },
-    ncTitle: { color: colors.text, fontSize: 13, fontWeight: "900" },
-    ncText: { color: colors.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 15 },
     loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
     loadingText: { color: colors.textSecondary, fontSize: 12, marginTop: 10 },
     emptyContainer: { alignItems: "center", padding: 32 },

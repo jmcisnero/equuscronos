@@ -313,7 +313,7 @@ export default function LeaderboardTable({
                     </span>
                     <span className="text-slate-800">
                       {entry.averageSpeed
-                        ? `${entry.averageSpeed.toFixed(2)} km/h`
+                        ? `${entry.averageSpeed.toFixed(3)} km/h`
                         : "--"}
                     </span>
                   </div>
@@ -558,7 +558,7 @@ export default function LeaderboardTable({
                         {/* VELOCIDAD PROMEDIO */}
                         <td className="py-4.5 px-2 text-center text-slate-800 whitespace-nowrap">
                           {entry.averageSpeed
-                            ? `${entry.averageSpeed.toFixed(2)} km/h`
+                            ? `${entry.averageSpeed.toFixed(3)} km/h`
                             : "--"}
                         </td>
 

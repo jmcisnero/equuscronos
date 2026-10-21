@@ -7,6 +7,7 @@ import { HeartPulseBadge } from "./race/HeartPulseBadge";
 import { RaceStatusBadge } from "./race/RaceStatusBadge";
 import {
   formatGap,
+  formatGapHMS,
   formatHHMMSS,
   formatSpeed,
   formatTime,
@@ -17,17 +18,43 @@ interface LeaderboardRowProps {
   entry: LeaderboardEntry;
   onPress: (entry: LeaderboardEntry) => void;
   maxHeartRate: number;
-  /** Competencia cerrada: muestra pulso de Etapa 1 (base del Trofeo Art. 42) */
+  /** Competencia finalizada (COMPLETED / OFFICIAL): vista de totales consolidados */
   isClosed?: boolean;
   isTrophyWinner?: boolean;
   /** Modalidad con chips RFID: muestra el límite de ingreso a Vet Gate */
   isRfidMode?: boolean;
 }
 
+/** Texto de progresión en vivo según el estado del binomio. */
+function getLiveProgress(entry: LeaderboardEntry): { icon: string; text: string } | null {
+  switch (entry.status) {
+    case "IN_RACE":
+      return entry.startTime
+        ? { icon: "🏇", text: `En ruta · salió ${formatHHMMSS(entry.startTime)}` }
+        : { icon: "🏇", text: "En ruta" };
+    case "VET_CHECK":
+      return entry.vetInTime
+        ? { icon: "🩺", text: `En Vet Gate · ingresó ${formatHHMMSS(entry.vetInTime)}` }
+        : { icon: "🩺", text: "En Vet Gate" };
+    case "RESTING":
+      return entry.nextStageDepartureTime
+        ? { icon: "⏱️", text: `Neutralización · larga ${formatHHMMSS(entry.nextStageDepartureTime)}` }
+        : { icon: "⏱️", text: "Cumpliendo neutralización" };
+    case "FINISHED_PROVISIONAL":
+      return { icon: "🏁", text: "Arribó a meta · resultado provisional" };
+    case "FINISHED":
+      return { icon: "🏁", text: "Completó la prueba" };
+    default:
+      return null;
+  }
+}
+
 /**
- * Tarjeta de binomio. Estructura idéntica a la vista móvil de
- * public-web/LeaderboardTable.tsx: rango, camiseta + dorsal, estado,
- * jinete/caballo/club, grilla de métricas y pulso en Vet Gate.
+ * Tarjeta de binomio. Dos modos, alineados con public-web:
+ *  - En curso (LeaderboardTable): etapa en disputa, progresión, última llegada.
+ *  - Finalizada (FinalResultsTable): puesto, tiempo total, velocidad media y
+ *    pulso de Etapa 1 (base del Trofeo al Menor Pulso, Art. 42).
+ * Al tocarla se abre el desglose por etapas.
  */
 const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
   entry,
@@ -48,30 +75,38 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
       ? tones.podium[entry.rank]
       : tones.podium.other;
   const gap = formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs);
-
-  // En resultados finales la web muestra el pulso de Etapa 1 (criterio del Trofeo)
-  const pulseSource = isClosed
-    ? entry.stages?.find((s) => s.stageNumber === 1)
-    : undefined;
-  const pulse = isClosed ? pulseSource?.heartRate : entry.heartRate;
   const tenant = entry.representedTenant;
+
+  // Finalizada: pulso de Etapa 1 (criterio del Trofeo). En curso: último pulso.
+  const stage1 = isClosed ? entry.stages?.find((s) => s.stageNumber === 1) : undefined;
+  const pulse = isClosed ? stage1?.heartRate : entry.heartRate;
+  const isRecheck = isClosed ? stage1?.isRecheck ?? entry.isRecheck : entry.isRecheck;
+  const recheckStatus = isClosed
+    ? stage1?.recheckStatus ?? entry.recheckStatus
+    : entry.recheckStatus;
+
+  const progress = !isClosed && !isOut ? getLiveProgress(entry) : null;
+  const lastArrival = entry.lastArrivalTime || entry.arrivalTime;
+
+  // Finalizada: diferencia en formato planilla y hora de llegada a meta (última etapa)
+  const finalGap = formatGapHMS(entry.gapToLeaderMs, entry.totalRaceTimeMs);
+  const lastStage = [...(entry.stages || [])].sort((a, b) => b.stageNumber - a.stageNumber)[0];
+  const finishArrival = lastStage?.arrivalTime || entry.arrivalTime;
 
   return (
     <TouchableOpacity
-      style={[styles.card, isOut && styles.cardOut]}
+      style={[styles.card, isOut && styles.cardOut, isTrophyWinner && { borderColor: tones.trophy }]}
       onPress={() => onPress(entry)}
       activeOpacity={0.8}
       accessibilityRole="button"
       accessibilityLabel={`Posición ${showRank ? entry.rank : "sin clasificar"}, dorsal ${entry.bibNumber}, ${entry.riderName} con ${entry.horseName}`}
-      accessibilityHint="Abre el historial de etapas"
+      accessibilityHint="Abre el desglose por etapas"
     >
-      {/* Cabecera: rango · camiseta + dorsal · estado */}
+      {/* Cabecera: puesto · camiseta + dorsal · estado */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {showRank ? (
-            <View
-              style={[styles.rank, { backgroundColor: podium.bg, borderColor: podium.border }]}
-            >
+            <View style={[styles.rank, { backgroundColor: podium.bg, borderColor: podium.border }]}>
               <Text style={[styles.rankText, { color: podium.text }]}>{entry.rank}</Text>
             </View>
           ) : (
@@ -79,11 +114,9 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
               <Text style={styles.rankEmptyText}>--</Text>
             </View>
           )}
-
           {tenant?.jerseyImageUrl ? (
             <Image source={{ uri: tenant.jerseyImageUrl }} style={styles.jersey} />
           ) : null}
-
           <View style={[styles.bib, { backgroundColor: tones.bibBg }]}>
             <Text style={[styles.bibText, { color: tones.bibText }]}>#{entry.bibNumber}</Text>
           </View>
@@ -91,80 +124,106 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
         <RaceStatusBadge status={entry.status} />
       </View>
 
-      {/* Binomio y club */}
-      <View style={styles.identity}>
-        <Text style={styles.rider} numberOfLines={1}>
-          {entry.riderName}
-        </Text>
-        <Text style={styles.horse} numberOfLines={1}>
-          Caballo: {entry.horseName}
-        </Text>
-        {!!tenant?.name && (
-          <Text style={styles.club} numberOfLines={1}>
-            🚩 {tenant.name}
+      {/* Binomio: jinete / 🐴 caballo / club (cada uno en su línea).
+          En finalizada el pulso de Etapa 1 acompaña al binomio para liberar
+          el ancho completo a las 4 métricas. */}
+      <View style={styles.identityRow}>
+        <View style={styles.identity}>
+          <Text style={styles.rider} numberOfLines={1} ellipsizeMode="tail">
+            {entry.riderName}
           </Text>
+          <Text style={styles.horse} numberOfLines={1} ellipsizeMode="tail">
+            🐴 {entry.horseName}
+          </Text>
+          {!!tenant?.name && (
+            <Text style={styles.club} numberOfLines={1} ellipsizeMode="tail">
+              {tenant.name}
+            </Text>
+          )}
+        </View>
+        {isClosed && (
+          <View style={styles.pulseCol}>
+            <HeartPulseBadge
+              pulse={pulse}
+              maxHeartRate={maxHeartRate}
+              isTrophyWinner={isTrophyWinner}
+              isRecheck={isRecheck}
+              recheckStatus={recheckStatus}
+            />
+          </View>
         )}
       </View>
 
-      {/* Grilla de métricas técnicas */}
-      <View style={styles.grid}>
-        <Metric label="Etapa" value={`Etapa ${entry.currentStage}`} styles={styles} />
-        <Metric label="Tiempo Neto" value={formatTime(entry.totalRaceTimeMs)} styles={styles} strong />
-        <Metric
-          label="Diferencia"
-          value={gap.text}
-          styles={styles}
-          color={gap.isLeader ? tones.accent : undefined}
-          strong
-        />
-        <Metric label="Velocidad Promedio" value={formatSpeed(entry.averageSpeed)} styles={styles} />
-        {!!entry.startTime && (
-          <Metric
-            label="Hora Salida"
-            value={formatHHMMSS(entry.startTime)}
-            styles={styles}
-            color={tones.timeAccent}
-            strong
-          />
-        )}
-        {!!entry.arrivalTime && (
-          <Metric
-            label="Hora Llegada"
-            value={formatHHMMSS(entry.arrivalTime)}
-            styles={styles}
-            color={tones.timeAccent}
-            strong
-          />
-        )}
-        {!!entry.vetInTime && (
-          <Metric label="Toma de Pulso" value={formatHHMMSS(entry.vetInTime)} styles={styles} />
-        )}
-        {isRfidMode && !!entry.nextVetControlTime && !isClosed && (
-          <Metric
-            label="Límite Vet Gate"
-            value={formatHHMMSS(entry.nextVetControlTime)}
-            styles={styles}
-            color={tones.accent}
-            strong
-          />
-        )}
-      </View>
-
-      {/* Pulso en control veterinario */}
-      {(pulse || entry.isRecheck || isTrophyWinner) && (
-        <View style={styles.pulseRow}>
-          <Text style={styles.metricLabel}>
-            {isClosed ? "Pulso Etapa 1 (Art. 42)" : "Pulso Control Veterinario"}
+      {/* Progresión en vivo (solo carrera en curso) */}
+      {progress && (
+        <View style={styles.progress}>
+          <Text style={styles.progressText} numberOfLines={1}>
+            {progress.icon} {progress.text}
           </Text>
-          <HeartPulseBadge
-            pulse={pulse}
-            maxHeartRate={maxHeartRate}
-            isTrophyWinner={isTrophyWinner}
-            isRecheck={isClosed ? pulseSource?.isRecheck ?? entry.isRecheck : entry.isRecheck}
-            recheckStatus={isClosed ? pulseSource?.recheckStatus ?? entry.recheckStatus : entry.recheckStatus}
-          />
         </View>
       )}
+
+      {/* Métricas: consolidadas (finalizada) o de seguimiento (en curso) */}
+      {isClosed ? (
+        <View style={styles.finalRow}>
+          <FinalMetric
+            label="Llegada Meta"
+            value={formatHHMMSS(finishArrival)}
+            styles={styles}
+            color={tones.timeAccent}
+          />
+          <FinalMetric label="Tiempo Total" value={formatTime(entry.totalRaceTimeMs)} styles={styles} />
+          <FinalMetric
+            label="Diferencia"
+            value={finalGap.text}
+            styles={styles}
+            color={finalGap.isLeader ? tones.accent : undefined}
+          />
+          <FinalMetric label="Vel. Media" value={formatSpeed(entry.averageSpeed)} styles={styles} />
+        </View>
+      ) : (
+        <View style={styles.liveRow}>
+          <View style={styles.grid}>
+            <Metric label="Etapa en disputa" value={`Etapa ${entry.currentStage}`} styles={styles} strong />
+            <Metric label="Tiempo Neto" value={formatTime(entry.totalRaceTimeMs)} styles={styles} strong />
+            <Metric
+              label="Diferencia"
+              value={gap.text}
+              styles={styles}
+              color={gap.isLeader ? tones.accent : undefined}
+              strong
+            />
+            <Metric label="Velocidad" value={formatSpeed(entry.averageSpeed)} styles={styles} />
+            {!!lastArrival && (
+              <Metric
+                label="Última llegada"
+                value={formatHHMMSS(lastArrival)}
+                styles={styles}
+                color={tones.timeAccent}
+                strong
+              />
+            )}
+            {isRfidMode && !!entry.nextVetControlTime && (
+              <Metric
+                label="Límite Vet Gate"
+                value={formatHHMMSS(entry.nextVetControlTime)}
+                styles={styles}
+                color={tones.accent}
+                strong
+              />
+            )}
+          </View>
+          <View style={styles.pulseCol}>
+            <HeartPulseBadge
+              pulse={pulse}
+              maxHeartRate={maxHeartRate}
+              isRecheck={isRecheck}
+              recheckStatus={recheckStatus}
+            />
+          </View>
+        </View>
+      )}
+
       {isTrophyWinner && (
         <Text style={[styles.trophyNote, { color: tones.trophy }]}>
           🏆 Trofeo al Menor Pulso (Art. 42)
@@ -182,8 +241,35 @@ const Metric: React.FC<{
   strong?: boolean;
 }> = ({ label, value, styles, color, strong }) => (
   <View style={styles.metric}>
-    <Text style={styles.metricLabel}>{label}</Text>
-    <Text style={[styles.metricValue, strong && styles.metricStrong, color ? { color } : null]}>
+    <Text style={styles.metricLabel} numberOfLines={1}>
+      {label}
+    </Text>
+    <Text
+      style={[styles.metricValue, strong && styles.metricStrong, color ? { color } : null]}
+      numberOfLines={1}
+    >
+      {value}
+    </Text>
+  </View>
+);
+
+/** Métrica de resultados finales: etiqueta 8.5/800 y valor 13/700 tabular. */
+const FinalMetric: React.FC<{
+  label: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+  color?: string;
+}> = ({ label, value, styles, color }) => (
+  <View style={styles.finalMetric}>
+    <Text style={styles.finalLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+      {label}
+    </Text>
+    <Text
+      style={[styles.finalValue, color ? { color } : null]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
       {value}
     </Text>
   </View>
@@ -202,7 +288,7 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
       marginHorizontal: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      gap: 12,
+      gap: 10,
       ...cardShadow,
     },
     cardOut: {
@@ -224,19 +310,61 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
     jersey: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border },
     bib: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
     bibText: { fontSize: 13, fontWeight: "900", fontVariant: ["tabular-nums"] },
-    identity: { gap: 2 },
-    rider: { color: colors.text, fontSize: 17, fontWeight: "900" },
-    horse: { color: colors.textSecondary, fontSize: 13, fontWeight: "700" },
-    club: { color: colors.primary, fontSize: 12, fontWeight: "700" },
-    grid: {
+
+    // Identidad: jinete / caballo (14 · 600) / club en línea propia
+    identityRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    identity: { flex: 1, gap: 2, minWidth: 0 },
+    rider: { color: colors.textStrong, fontSize: 13, fontWeight: "600" },
+    horse: { color: colors.text, fontSize: 14, fontWeight: "600" },
+    club: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
+
+    progress: {
+      alignSelf: "flex-start",
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      maxWidth: "100%",
+    },
+    progressText: { color: colors.textSecondary, fontSize: 11, fontWeight: "700" },
+
+    // Vista en curso
+    liveRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
+      alignItems: "center",
       borderTopWidth: 1,
       borderTopColor: colors.border,
       paddingTop: 10,
-      rowGap: 10,
+      gap: 8,
     },
-    metric: { width: "50%" },
+    grid: { flex: 1, flexDirection: "row", flexWrap: "wrap", rowGap: 10, minWidth: 0 },
+    metric: { width: "50%", paddingRight: 6 },
+
+    // Vista finalizada: 4 métricas en una sola fila, columnas iguales
+    finalRow: {
+      flexDirection: "row",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+      gap: 6,
+    },
+    finalMetric: { flex: 1, minWidth: 0 },
+    finalLabel: {
+      color: colors.textMuted,
+      fontSize: 8.5,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    finalValue: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+      fontVariant: ["tabular-nums"],
+      marginTop: 2,
+    },
+
+    pulseCol: { alignItems: "center", minWidth: 56, gap: 2 },
     metricLabel: {
       color: colors.textMuted,
       fontSize: 9,
@@ -252,14 +380,5 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
       marginTop: 2,
     },
     metricStrong: { color: colors.text, fontWeight: "800" },
-    pulseRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      borderStyle: "dashed",
-      paddingTop: 8,
-    },
-    trophyNote: { fontSize: 11, fontWeight: "800", marginTop: -6 },
+    trophyNote: { fontSize: 11, fontWeight: "800" },
   });

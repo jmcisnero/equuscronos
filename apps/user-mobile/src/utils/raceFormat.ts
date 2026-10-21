@@ -40,9 +40,18 @@ export function formatGap(gapMs: number, totalRaceTimeMs: number): { text: strin
   };
 }
 
-/** Velocidad promedio con 2 decimales (coherente con la web). */
+/** Diferencia con el líder en formato planilla FEU: "Líder" o "+HH:MM:SS". */
+export function formatGapHMS(gapMs: number, totalRaceTimeMs: number): { text: string; isLeader: boolean } {
+  if (!totalRaceTimeMs) return { text: "--", isLeader: false };
+  if (gapMs === 0) return { text: "Líder", isLeader: true };
+  if (!gapMs || isNaN(gapMs)) return { text: "--", isLeader: false };
+  return { text: `+${formatTime(gapMs)}`, isLeader: false };
+}
+
+/** Velocidad promedio con 3 decimales (estándar histórico de planillas FEU). */
 export function formatSpeed(speed?: number | null): string {
-  return speed && speed > 0 ? `${speed.toFixed(2)} km/h` : "--";
+  const n = Number(speed);
+  return speed !== null && speed !== undefined && !isNaN(n) && n > 0 ? `${n.toFixed(3)} km/h` : "--";
 }
 
 /** Fecha DD/MM/AAAA sin desfase de zona horaria para fechas "YYYY-MM-DD". */

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { LeaderboardEntry } from "../types";
+import { Competition, LeaderboardEntry } from "../types";
 import { HeartPulseBadge } from "./race/HeartPulseBadge";
 import { RaceStatusBadge } from "./race/RaceStatusBadge";
 import { Theme, useThemedStyles } from "../theme/useTheme";
@@ -17,29 +17,71 @@ import {
   formatSpeed,
   formatTime,
   getPreviousStages,
+  getStagePlan,
   isTerminalStatus,
 } from "../utils/raceFormat";
+
+/** Ventana reglamentaria de toma de pulso tras el arribo (Art. 28/54 FEU). */
+const PULSE_WINDOW_MS = 20 * 60 * 1000;
+
+/** Hora asignada de ingreso al control veterinario: arribo + 20 min (HH:MM:SS). */
+function formatVetControlTime(arrivalTime?: string | null): string {
+  if (!arrivalTime) return "--:--:--";
+  const t = new Date(arrivalTime).getTime();
+  if (isNaN(t)) return "--:--:--";
+  return formatHHMMSS(new Date(t + PULSE_WINDOW_MS).toISOString());
+}
 
 interface StageBreakdownModalProps {
   visible: boolean;
   entry: LeaderboardEntry | null;
   onClose: () => void;
   maxHeartRate?: number;
+  /** Competencia: aporta el plan de etapas (minutos de neutralización). */
+  competition?: Competition | null;
+  /** Competencia finalizada: muestra totales consolidados y todas las etapas. */
+  isClosed?: boolean;
+  isTrophyWinner?: boolean;
 }
 
-/** Historial de etapas (Detalle Clínico) — equivalente a StageHistoryMobile de la web. */
+/**
+ * Desglose por etapas (Detalle Clínico). Equivalente a StageHistoryMobile de
+ * la web, ampliado con hora de arribo a neutralización y minutos de descanso.
+ */
 export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
   visible,
   entry,
   onClose,
   maxHeartRate = DEFAULT_MAX_HEART_RATE,
+  competition,
+  isClosed = false,
+  isTrophyWinner = false,
 }) => {
   // Los hooks deben ejecutarse antes de cualquier return condicional.
   const styles = useThemedStyles(createStyles);
 
   if (!entry) return null;
-  const stages = getPreviousStages(entry);
+  const stages = isClosed
+    ? [...(entry.stages || [])].sort((a, b) => a.stageNumber - b.stageNumber)
+    : getPreviousStages(entry);
+  const plan = getStagePlan(competition).stages;
+  // Última etapa: según el plan de la competencia o, en su defecto, la mayor registrada
+  const lastPlanned = plan.length
+    ? plan[plan.length - 1].stageNumber
+    : (entry.stages || []).reduce<number | undefined>(
+        (max, s) => (max === undefined || s.stageNumber > max ? s.stageNumber : max),
+        undefined,
+      );
+  const isFeu = competition?.isFederated === true;
   const showRank = !!entry.rank && !isTerminalStatus(entry.status);
+  const tenantName = entry.representedTenant?.name;
+
+  /**
+   * Reglamento FEU: la llegada de la última etapa es la meta final; no hay
+   * neutralización ni toma de pulso de 20 min (rige balanza y sentencia).
+   */
+  const isFinalFeuStage = (stageNumber: number) =>
+    isFeu && lastPlanned !== undefined && stageNumber >= lastPlanned;
 
   return (
     <Modal
@@ -52,7 +94,7 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <View style={styles.bibRow}>
                 <View style={styles.bibBadge}>
                   <Text style={styles.bibText}>#{entry.bibNumber}</Text>
@@ -62,8 +104,17 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
                 </Text>
                 <RaceStatusBadge status={entry.status} />
               </View>
-              <Text style={styles.riderName}>{entry.riderName}</Text>
-              <Text style={styles.horseName}>Caballo: {entry.horseName}</Text>
+              <Text style={styles.riderName} numberOfLines={1}>
+                {entry.riderName}
+              </Text>
+              <Text style={styles.horseName} numberOfLines={1} ellipsizeMode="tail">
+                🐴 {entry.horseName}
+              </Text>
+              {!!tenantName && (
+                <Text style={styles.clubName} numberOfLines={1} ellipsizeMode="tail">
+                  {tenantName}
+                </Text>
+              )}
             </View>
             <TouchableOpacity
               style={styles.closeBtn}
@@ -75,47 +126,70 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
           </View>
 
           <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionTitle}>HISTORIAL DE ETAPAS (DETALLE CLÍNICO)</Text>
+            {/* Totales consolidados (competencia finalizada) */}
+            {isClosed && (
+              <View style={styles.totals}>
+                <View style={styles.totalItem}>
+                  <Text style={styles.gridLabel}>PUESTO</Text>
+                  <Text style={styles.totalValue}>{showRank ? `#${entry.rank}` : "--"}</Text>
+                </View>
+                <View style={styles.totalItem}>
+                  <Text style={styles.gridLabel}>TIEMPO TOTAL</Text>
+                  <Text style={styles.totalValue}>{formatTime(entry.totalRaceTimeMs)}</Text>
+                </View>
+                <View style={styles.totalItem}>
+                  <Text style={styles.gridLabel}>VEL. MEDIA</Text>
+                  <Text style={styles.totalValueAccent}>{formatSpeed(entry.averageSpeed)}</Text>
+                </View>
+              </View>
+            )}
+            {isTrophyWinner && (
+              <Text style={styles.trophyNote}>🏆 Trofeo al Menor Pulso (Art. 42)</Text>
+            )}
+
+            <Text style={styles.sectionTitle}>DESGLOSE POR ETAPA (DETALLE CLÍNICO)</Text>
 
             {stages.length > 0 ? (
-              stages.map((stage) => (
-                <View key={stage.stageNumber} style={styles.stageCard}>
-                  <View style={styles.stageHeader}>
-                    <Text style={styles.stageTitle}>
-                      ETAPA {stage.stageNumber} • {stage.distanceKm} KM
-                    </Text>
-                    <HeartPulseBadge
-                      pulse={stage.heartRate}
-                      maxHeartRate={maxHeartRate}
-                      isRecheck={stage.isRecheck}
-                      recheckStatus={stage.recheckStatus}
-                    />
-                  </View>
+              stages.map((stage) => {
+                const isFinal = isFinalFeuStage(stage.stageNumber);
+                return (
+                  <View key={stage.stageNumber} style={styles.stageCard}>
+                    <View style={styles.stageHeader}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.stageTitle}>
+                          Etapa {stage.stageNumber} ({stage.distanceKm} km)
+                          {isFinal ? "  ·  META" : ""}
+                        </Text>
+                        <Text style={styles.stageNet}>{formatTime(stage.netTimeMs)}</Text>
+                        <Text style={styles.stageNetLabel}>Tiempo neto de etapa</Text>
+                      </View>
+                      <HeartPulseBadge
+                        pulse={stage.heartRate}
+                        maxHeartRate={maxHeartRate}
+                        isTrophyWinner={isTrophyWinner && stage.stageNumber === 1}
+                        isRecheck={stage.isRecheck}
+                        recheckStatus={stage.recheckStatus}
+                      />
+                    </View>
 
-                  <View style={styles.stageGrid}>
-                    <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Salida</Text>
-                      <Text style={styles.gridValue}>{formatHHMMSS(stage.startTime)}</Text>
-                    </View>
-                    <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Llegada</Text>
-                      <Text style={styles.gridValue}>{formatHHMMSS(stage.arrivalTime)}</Text>
-                    </View>
-                    <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Toma de Pulso</Text>
-                      <Text style={styles.gridValue}>{formatHHMMSS(stage.vetInTime)}</Text>
-                    </View>
-                    <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Tiempo Neto</Text>
-                      <Text style={styles.gridValue}>{formatTime(stage.netTimeMs)}</Text>
-                    </View>
-                    <View style={styles.gridItem}>
-                      <Text style={styles.gridLabel}>Velocidad Etapa</Text>
-                      <Text style={styles.gridValueHighlight}>{formatSpeed(stage.averageSpeed)}</Text>
+                    {/* Largada | Llegada | Toma de Pulso (arribo + 20 min) | Vel. Prom.
+                        Igual que la planilla oficial / public-web. En la última etapa
+                        FEU no hay toma de pulso de 20 min (rige meta). */}
+                    <View style={styles.stageGrid}>
+                      <GridItem label="LARGADA" value={formatHHMMSS(stage.startTime)} styles={styles} />
+                      <GridItem label="LLEGADA" value={formatHHMMSS(stage.arrivalTime)} styles={styles} />
+                      {!isFinal && (
+                        <GridItem
+                          label="TOMA DE PULSO"
+                          value={formatVetControlTime(stage.arrivalTime)}
+                          styles={styles}
+                        />
+                      )}
+                      <GridItem label="VEL. PROM." value={formatSpeed(stage.averageSpeed)} styles={styles} highlight />
                     </View>
                   </View>
-                </View>
-              ))
+                );
+              })
             ) : (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
@@ -133,6 +207,20 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
     </Modal>
   );
 };
+
+const GridItem: React.FC<{
+  label: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+  highlight?: boolean;
+}> = ({ label, value, styles, highlight }) => (
+  <View style={styles.gridItem}>
+    <Text style={styles.gridLabel} numberOfLines={1}>
+      {label}
+    </Text>
+    <Text style={highlight ? styles.gridValueHighlight : styles.gridValue}>{value}</Text>
+  </View>
+);
 
 const createStyles = ({ colors, isDark }: Theme) =>
   StyleSheet.create({
@@ -183,14 +271,64 @@ const createStyles = ({ colors, isDark }: Theme) =>
   },
   riderName: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 16,
+    fontWeight: "700",
   },
   horseName: {
-    color: colors.textSecondary,
-    fontSize: 13,
+    color: colors.textStrong,
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  clubName: {
+    color: colors.textMuted,
+    fontSize: 12,
     fontWeight: "600",
     marginTop: 2,
+  },
+  totals: {
+    flexDirection: "row",
+    backgroundColor: isDark ? colors.surface : colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    marginBottom: 10,
+  },
+  totalItem: { flex: 1, alignItems: "center" },
+  totalValue: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+    marginTop: 3,
+  },
+  totalValueAccent: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+    marginTop: 3,
+  },
+  trophyNote: {
+    color: colors.warning,
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  stageNet: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+    marginTop: 4,
+  },
+  stageNetLabel: {
+    color: colors.textMuted,
+    fontSize: 9,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   closeBtn: {
     width: 32,
@@ -226,7 +364,8 @@ const createStyles = ({ colors, isDark }: Theme) =>
   stageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 8,
     marginBottom: 10,
   },
   stageTitle: {
@@ -248,19 +387,25 @@ const createStyles = ({ colors, isDark }: Theme) =>
   },
   gridLabel: {
     color: colors.textMuted,
-    fontSize: 9,
-    fontWeight: "600",
+    fontSize: 9.5,
+    fontWeight: "800",
   },
   gridValue: {
     color: colors.textStrong,
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
     marginTop: 2,
   },
   gridValueHighlight: {
     color: colors.primary,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+    marginTop: 2,
+  },
+  pulseCell: {
+    alignItems: "flex-start",
     marginTop: 2,
   },
   emptyContainer: {

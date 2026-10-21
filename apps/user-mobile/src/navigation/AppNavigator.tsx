@@ -16,6 +16,11 @@ import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
 
 const Tab = createBottomTabNavigator();
 
+/** Consulta histórica: misma pantalla de clasificación, sin tiempo real. */
+const ResultsScreen: React.FC<{ navigation: any }> = (props) => (
+  <LiveLeaderboardScreen {...props} mode="results" />
+);
+
 export const AppNavigator: React.FC = () => {
   const { isDark, colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -42,13 +47,21 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer theme={navTheme}>
       <Tab.Navigator
-        screenOptions={({ route }) => ({
+        backBehavior="history"
+        screenOptions={({ route, navigation }) => {
+          // ResultsTab es una ruta oculta hija del flujo "Explorar": mientras
+          // está enfocada, el tab "Explorar" conserva el resaltado visual.
+          const state = navigation.getState();
+          const current = state?.routes?.[state.index]?.name;
+          const explorerContext = route.name === "ExplorerTab" && current === "ResultsTab";
+          return {
           headerShown: false,
           tabBarStyle: styles.tabBar,
           tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.tabInactive,
+          tabBarInactiveTintColor: explorerContext ? colors.primary : colors.tabInactive,
           tabBarLabelStyle: styles.tabBarLabel,
-          tabBarIcon: ({ focused }) => {
+          tabBarIcon: ({ focused: isRouteFocused }) => {
+            const focused = isRouteFocused || explorerContext;
             let icon = "🏆";
             if (route.name === "ExplorerTab") icon = "🏆";
             if (route.name === "LiveTab") icon = "⏱️";
@@ -61,7 +74,8 @@ export const AppNavigator: React.FC = () => {
               </View>
             );
           },
-        })}
+          };
+        }}
       >
         <Tab.Screen
           name="ExplorerTab"
@@ -82,6 +96,15 @@ export const AppNavigator: React.FC = () => {
           name="ProfileTab"
           component={ProfileScreen}
           options={{ title: "Perfil" }}
+        />
+        <Tab.Screen
+          name="ResultsTab"
+          component={ResultsScreen}
+          options={{
+            title: "Resultados Finales",
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: "none" },
+          }}
         />
       </Tab.Navigator>
     </NavigationContainer>

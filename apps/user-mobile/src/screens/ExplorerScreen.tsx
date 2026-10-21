@@ -36,7 +36,9 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   const handleSelect = async (comp: Competition) => {
     await selectCompetition(comp.id);
-    navigation.navigate("LiveTab");
+    // Finalizadas: consulta histórica sin cambiar el tab activo a "En Vivo"
+    const isConcluded = comp.status === "COMPLETED" || comp.status === "OFFICIAL";
+    navigation.navigate(isConcluded ? "ResultsTab" : "LiveTab");
   };
 
   const filteredCompetitions = competitions.filter((c) => {
