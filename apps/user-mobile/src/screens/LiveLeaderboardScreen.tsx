@@ -21,6 +21,7 @@ import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE } from "../utils/raceFor
 import { useIsFocused } from "@react-navigation/native";
 
 const CONCLUDED_STATUSES = ["COMPLETED", "OFFICIAL"];
+const keyExtractor = (item: LeaderboardEntry) => String(item.bibNumber);
 
 /**
  * Detalle de carrera. Equivalente móvil de public-web/app/leaderboard/[id]:
@@ -34,7 +35,7 @@ export const LiveLeaderboardScreen: React.FC<{
   navigation?: any;
   mode?: "live" | "results";
 }> = ({ navigation, mode = "live" }) => {
-  const { activeCompetition, activeCompetitionId, searchQuery, setSearchQuery } =
+  const { activeCompetition, activeCompetitionId, searchQuery, setSearchQuery, leaderboardError } =
     useCompetitionStore();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -159,11 +160,13 @@ export const LiveLeaderboardScreen: React.FC<{
       ) : (
         <FlatList
           data={filteredLeaderboard}
-          keyExtractor={(item) => String(item.bibNumber)}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           ListHeaderComponent={listHeader}
           keyboardShouldPersistTaps="handled"
           initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          updateCellsBatchingPeriod={50}
           windowSize={7}
           removeClippedSubviews
           refreshControl={
@@ -178,11 +181,17 @@ export const LiveLeaderboardScreen: React.FC<{
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
-                {searchQuery ? "Sin coincidencias" : "Sin datos de carrera aún"}
+                {searchQuery
+                  ? "Sin coincidencias"
+                  : leaderboardError
+                  ? "📡 Sin conexión"
+                  : "Sin datos de carrera aún"}
               </Text>
               <Text style={styles.emptySub}>
                 {searchQuery
                   ? "No se encontraron binomios que coincidan con la búsqueda."
+                  : leaderboardError
+                  ? leaderboardError
                   : "Los tiempos aparecerán aquí en cuanto se registre la largada."}
               </Text>
             </View>

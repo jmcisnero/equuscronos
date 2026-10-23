@@ -26,6 +26,7 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     setStatusFilter,
     searchQuery,
     setSearchQuery,
+    competitionsError,
   } = useCompetitionStore();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -134,12 +135,26 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               />
             }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>Sin competencias encontradas</Text>
-                <Text style={styles.emptySub}>
-                  Prueba cambiando los filtros o la palabra clave de búsqueda.
-                </Text>
-              </View>
+              competitionsError ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>📡 Sin conexión</Text>
+                  <Text style={styles.emptySub}>{competitionsError}</Text>
+                  <TouchableOpacity
+                    style={styles.retryBtn}
+                    onPress={fetchCompetitions}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.retryText}>Reintentar</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>Sin competencias encontradas</Text>
+                  <Text style={styles.emptySub}>
+                    Prueba cambiando los filtros o la palabra clave de búsqueda.
+                  </Text>
+                </View>
+              )
             }
             contentContainerStyle={styles.listContent}
           />
@@ -239,5 +254,17 @@ const createStyles = ({ colors, cardShadow }: Theme) =>
     fontSize: 12,
     textAlign: "center",
     marginTop: 4,
+  },
+  retryBtn: {
+    marginTop: 14,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  retryText: {
+    color: colors.onPrimary,
+    fontWeight: "800",
+    fontSize: 13,
   },
 });

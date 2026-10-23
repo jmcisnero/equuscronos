@@ -14,6 +14,10 @@ interface CompetitionState {
   isClosed: boolean;
   searchQuery: string;
   statusFilter: "ALL" | "ACTIVE" | "PLANNED" | "COMPLETED";
+  /** Error de red al cargar competencias (null = sin error). */
+  competitionsError: string | null;
+  /** Error de red al cargar el leaderboard de la competencia activa. */
+  leaderboardError: string | null;
 
   // Actions
   fetchCompetitions: () => Promise<void>;
@@ -43,9 +47,11 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
   isClosed: false,
   searchQuery: "",
   statusFilter: "ALL",
+  competitionsError: null,
+  leaderboardError: null,
 
   fetchCompetitions: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, competitionsError: null });
     try {
       const data = await api.getCompetitions();
       set({ competitions: data || [], isLoading: false });
@@ -56,15 +62,27 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
         get().selectCompetition(activeComp.id);
       }
     } catch (error) {
-      console.warn("[CompetitionStore] Error fetching competitions:", error);
-      set({ isLoading: false });
+      if (__DEV__) console.warn("[CompetitionStore] Error fetching competitions:", error);
+      set({
+        isLoading: false,
+        competitionsError: "No se pudo conectar con el servidor. Verifica tu conexión.",
+      });
     }
   },
 
   selectCompetition: async (id: string) => {
-    set({ activeCompetitionId: id, isLeaderboardLoading: true });
+    // Limpia el tablero anterior para no mostrar datos de otra competencia
+    set({
+      activeCompetitionId: id,
+      isLeaderboardLoading: true,
+      leaderboard: [],
+      leaderboardError: null,
+    });
+    // Descarta respuestas lentas si el usuario ya eligió otra competencia
+    const isStale = () => get().activeCompetitionId !== id;
     try {
       const comp = await api.getCompetitionById(id).catch(() => null);
+      if (isStale()) return;
       const isEnded = comp?.status === "COMPLETED" || comp?.status === "OFFICIAL";
       set({
         activeCompetition: comp,
@@ -72,15 +90,20 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
       });
 
       const lb = await api.getLeaderboard(id);
+      if (isStale()) return;
       set({ leaderboard: lb || [], isLeaderboardLoading: false });
     } catch (error) {
-      console.warn(`[CompetitionStore] Error selecting competition ${id}:`, error);
-      set({ isLeaderboardLoading: false });
+      if (isStale()) return;
+      if (__DEV__) console.warn(`[CompetitionStore] Error selecting competition ${id}:`, error);
+      set({
+        isLeaderboardLoading: false,
+        leaderboardError: "Sin conexión. Desliza hacia abajo para reintentar.",
+      });
     }
   },
 
   setLeaderboard: (data: LeaderboardEntry[]) => {
-    set({ leaderboard: data });
+    set({ leaderboard: data, leaderboardError: null });
   },
 
   setIsLiveSocket: (isLive: boolean) => {
