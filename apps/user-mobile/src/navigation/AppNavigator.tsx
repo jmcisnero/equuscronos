@@ -117,8 +117,6 @@ const createStyles = ({ colors, isDark }: Theme) =>
       backgroundColor: isDark ? colors.background : colors.surface,
       borderTopColor: colors.divider,
       borderTopWidth: 1,
-      height: 60,
-      paddingBottom: 8,
       paddingTop: 6,
     },
     tabBarLabel: {

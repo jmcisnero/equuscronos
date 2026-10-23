@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 
 // 1. Watch all files within the monorepo (including shared libraries in libs/)
-config.watchFolders = [workspaceRoot];
+config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
 
 // Exclude heavy web build directories, .git, and brain logs from Metro watcher on Windows
 config.resolver.blockList = [
