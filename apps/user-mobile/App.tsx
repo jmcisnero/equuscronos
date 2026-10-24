@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
+import { addNotificationListeners } from "./src/services/notifications";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { useAuthStore } from "./src/store/useAuthStore";
 import { useCompetitionStore } from "./src/store/useCompetitionStore";
@@ -22,29 +22,11 @@ export default function App() {
     initializeAuth();
     fetchCompetitions();
 
-    // Listener para notificaciones push en primer plano (Foreground)
-    const notificationSubscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log(
-          "[PushNotification Received]:",
-          notification.request.content.title,
-          notification.request.content.body,
-        );
-      },
-    );
-
-    // Listener para cuando el usuario presiona una notificación push (Tap action)
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
-        console.log("[PushNotification Clicked] Payload data:", data);
-      },
-    );
-
-    return () => {
-      notificationSubscription.remove();
-      responseSubscription.remove();
-    };
+    // Listeners de push (primer plano y tap). No-op en Expo Go.
+    return addNotificationListeners({
+      onReceived: (title, body) => console.log("[PushNotification Received]:", title, body),
+      onResponse: (data) => console.log("[PushNotification Clicked] Payload data:", data),
+    });
   }, []);
 
   return (
