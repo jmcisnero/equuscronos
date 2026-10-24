@@ -55,9 +55,10 @@
       ],
       "expo-secure-store"
     ],
+    "owner": "equuscronos",
     "extra": {
       "eas": {
-        "projectId": "equuscronos-user-mobile-project-id"
+        "projectId": "93ed1b8a-b2b5-459c-911c-14817aea1c77"
       }
     }
   }
