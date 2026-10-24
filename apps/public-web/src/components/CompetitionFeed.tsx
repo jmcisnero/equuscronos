@@ -450,7 +450,7 @@ export default function CompetitionFeed() {
                           Club Organizador:
                         </span>
                         <span className="font-extrabold text-slate-700">
-                          {comp.tenant?.name || "Club Oficial"}
+                          {comp.tenant?.name || "Club Organizador"}
                         </span>
                       </div>
                     </div>
@@ -495,7 +495,7 @@ export default function CompetitionFeed() {
                     const statusLabel = isCancelled
                       ? "Cancelado"
                       : isOfficial
-                        ? "Oficial (FEU Auditado)"
+                        ? "Resultados Finales"
                         : "Finalizado";
 
                     return (
@@ -607,7 +607,7 @@ export default function CompetitionFeed() {
                           const statusLabel = isCancelled
                             ? "Cancelado"
                             : isOfficial
-                              ? "Oficial (FEU Auditado)"
+                              ? "Resultados Finales"
                               : "Finalizado";
 
                           return (

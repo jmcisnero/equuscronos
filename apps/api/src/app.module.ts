@@ -71,6 +71,8 @@ import { RolesGuard } from "./modules/auth/guards/roles.guard";
 import { TenantInterceptor } from "./modules/auth/interceptors/tenant.interceptor";
 import { AssetsModule } from "./modules/assets/assets.module";
 
+import { NotificationsModule } from "./modules/notifications/notifications.module";
+
 @Module({
   imports: [
     // 1. Carga de variables de entorno (.env)
@@ -131,6 +133,7 @@ import { AssetsModule } from "./modules/assets/assets.module";
     DashboardModule,
     LeaderboardModule,
     AssetsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [

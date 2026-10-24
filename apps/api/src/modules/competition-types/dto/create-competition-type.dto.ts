@@ -13,7 +13,7 @@ export class CreateCompetitionTypeDto {
 
   @ApiPropertyOptional({
     description: "JSON con parámetros reglamentarios (BPM máx, peso mínimo)",
-    example: { max_heart_rate: 64, min_weight_kg: 75 },
+    example: { max_heart_rate: 65, min_weight_kg: 75 },
   })
   @IsOptional()
   @IsObject()

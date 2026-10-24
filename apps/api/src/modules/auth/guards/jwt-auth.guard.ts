@@ -16,6 +16,10 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
     const isPublic =
       path.includes("/auth/login") ||
       path.includes("auth/login") ||
+      path.includes("/auth/public") ||
+      path.includes("auth/public") ||
+      path.includes("/notifications") ||
+      path.includes("notifications") ||
       path.includes("/leaderboard") ||
       path.includes("leaderboard") ||
       path.includes("/uploads") ||

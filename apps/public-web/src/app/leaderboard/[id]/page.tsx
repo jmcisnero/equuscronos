@@ -100,13 +100,13 @@ export default function LeaderboardPage({ params }: LeaderboardPageProps) {
                 {tenant?.jerseyImageUrl ? (
                   <img
                     src={tenant.jerseyImageUrl}
-                    alt={`Camiseta oficial de ${tenant.name}`}
+                    alt={`Camiseta de ${tenant.name}`}
                     className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-md"
                   />
                 ) : (
                   <div
                     className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shadow-md text-slate-300"
-                    title="Sin camiseta oficial"
+                    title="Sin camiseta"
                   >
                     <svg
                       className="w-6 h-6"

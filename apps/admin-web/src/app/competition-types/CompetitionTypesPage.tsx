@@ -561,7 +561,7 @@ export function CompetitionTypesPage() {
                           e.target.value !== "" ? Number(e.target.value) : "",
                         )
                       }
-                      placeholder="Ej: 64"
+                      placeholder="Ej: 65"
                       className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-equus-green/20 focus:border-equus-green text-slate-800 shadow-sm"
                     />
                   </div>
@@ -758,7 +758,7 @@ export function CompetitionTypesPage() {
                         onChange={(e) => handleJsonChange(e.target.value)}
                         rows={6}
                         className="w-full block bg-slate-900 text-slate-100 p-4 font-sans tabular-nums text-xs focus:outline-none resize-y leading-relaxed"
-                        placeholder={'{\n  "max_heart_rate": 64\n}'}
+                        placeholder={'{\n  "max_heart_rate": 65\n}'}
                       />
                     </div>
                     {jsonError && (

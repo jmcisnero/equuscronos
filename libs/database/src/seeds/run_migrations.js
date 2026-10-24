@@ -41,19 +41,41 @@ async function main() {
     await client.connect();
     console.log('Connected successfully!');
 
+    // Asegurar tabla de control de migraciones
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename VARCHAR(255) PRIMARY KEY,
+        applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Marcar 001, 002, 003 si las tablas base ya existen
+    const tableRes = await client.query(`SELECT to_regclass('public.users') as exists;`);
+    if (tableRes.rows[0].exists) {
+      await client.query(`INSERT INTO schema_migrations (filename) VALUES ('001_init_schema.sql'), ('002_add_disqualification_columns.sql'), ('003_production_least_privilege_setup.sql') ON CONFLICT DO NOTHING;`);
+    }
+
+    const res = await client.query(`SELECT filename FROM schema_migrations;`);
+    const appliedFiles = new Set(res.rows.map(r => r.filename));
+
     const migrationsDir = path.join(__dirname, '../migrations');
     const files = fs.readdirSync(migrationsDir)
       .filter(f => f.endsWith('.sql'))
       .sort();
 
     for (const file of files) {
+      if (appliedFiles.has(file)) {
+        console.log(`⏭️  Skipping already applied migration: ${file}`);
+        continue;
+      }
       console.log(`Applying migration: ${file}...`);
       const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
       await client.query(sql);
+      await client.query(`INSERT INTO schema_migrations (filename) VALUES ($1);`, [file]);
       console.log(`✅ Applied: ${file}`);
     }
 
-    console.log('\nAll migrations executed successfully!');
+    console.log('\nAll pending migrations executed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);
     process.exit(1);

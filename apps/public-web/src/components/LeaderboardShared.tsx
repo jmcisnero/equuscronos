@@ -210,9 +210,12 @@ export const renderRecheckStatusBadge = (
   return null;
 };
 
+/** Máximo de pulsaciones por defecto (Reglamento FEU, Art. 31). El valor de la competencia siempre prevalece. */
+export const DEFAULT_MAX_HEART_RATE = 65;
+
 export const HeartPulseBadge = ({
   pulse,
-  maxHeartRate = 64,
+  maxHeartRate = DEFAULT_MAX_HEART_RATE,
   isTrophyWinner = false,
   isRecheck = false,
   recheckStatus = null,
@@ -341,9 +344,10 @@ export const renderStatusBadge = (status: string) => {
 
 interface StageHistoryProps {
   stages: NonNullable<LeaderboardEntry["stages"]>;
+  maxHeartRate?: number;
 }
 
-export function StageHistoryMobile({ stages }: StageHistoryProps) {
+export function StageHistoryMobile({ stages, maxHeartRate = DEFAULT_MAX_HEART_RATE }: StageHistoryProps) {
   if (!stages || stages.length === 0) {
     return (
       <div className="text-center py-2 text-slate-400 text-xs font-semibold">
@@ -398,7 +402,7 @@ export function StageHistoryMobile({ stages }: StageHistoryProps) {
               </span>
               <span className="font-bold text-slate-800">
                 {stage.averageSpeed
-                  ? `${stage.averageSpeed.toFixed(2)} km/h`
+                  ? `${stage.averageSpeed.toFixed(3)} km/h`
                   : "—"}
               </span>
             </div>
@@ -415,7 +419,7 @@ export function StageHistoryMobile({ stages }: StageHistoryProps) {
                 Pulso
               </span>
               <span
-                className={`font-sans tabular-nums font-bold px-1.5 py-0.5 rounded text-[11px] ${stage.heartRate && stage.heartRate > 64
+                className={`font-sans tabular-nums font-bold px-1.5 py-0.5 rounded text-[11px] ${stage.heartRate && stage.heartRate > maxHeartRate
                     ? "bg-rose-100 text-rose-800"
                     : "bg-slate-100 text-slate-805"
                   }`}
@@ -430,7 +434,7 @@ export function StageHistoryMobile({ stages }: StageHistoryProps) {
   );
 }
 
-export function StageHistoryTable({ stages }: StageHistoryProps) {
+export function StageHistoryTable({ stages, maxHeartRate = DEFAULT_MAX_HEART_RATE }: StageHistoryProps) {
   if (!stages || stages.length === 0) {
     return (
       <div className="text-center py-4 text-slate-400 text-xs font-semibold">
@@ -489,7 +493,7 @@ export function StageHistoryTable({ stages }: StageHistoryProps) {
               </td>
               <td className="py-3 px-3 text-slate-650">
                 {stage.averageSpeed
-                  ? `${stage.averageSpeed.toFixed(2)} km/h`
+                  ? `${stage.averageSpeed.toFixed(3)} km/h`
                   : "—"}
               </td>
               <td className="py-3 px-3 font-sans tabular-nums text-slate-500">
@@ -498,7 +502,7 @@ export function StageHistoryTable({ stages }: StageHistoryProps) {
               <td className="py-3 px-3 text-center">
                 {stage.heartRate ? (
                   <span
-                    className={`inline-block font-sans tabular-nums font-extrabold text-[11px] px-2 py-0.5 rounded ${stage.heartRate > 64
+                    className={`inline-block font-sans tabular-nums font-extrabold text-[11px] px-2 py-0.5 rounded ${stage.heartRate > maxHeartRate
                         ? "bg-rose-50 text-rose-750 border border-rose-100"
                         : "bg-slate-50 text-slate-600 border border-slate-100"
                       }`}

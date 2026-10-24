@@ -40,7 +40,7 @@ export interface UseCompetitionRulesFormReturn {
 }
 
 const DEFAULT_RULES: CompetitionRules = {
-  max_heart_rate: 64,
+  max_heart_rate: 65,
   min_weight_kg: 75,
   min_weight: 75,
 };

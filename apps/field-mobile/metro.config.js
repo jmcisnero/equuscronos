@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 
 // 1. Watch all files within the monorepo (including shared libraries in libs/)
-config.watchFolders = [workspaceRoot];
+config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
 
 // Exclude heavy web build directories, .git, and brain logs from Metro watcher on Windows
 config.resolver.blockList = [
@@ -62,5 +62,12 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   }
   return context.resolveRequest(context, moduleName, platform);
 };
+
+// 5. Use a per-app Metro cache so field-mobile and user-mobile don't clear the
+// same shared %TEMP%\metro-cache concurrently (causes EPERM on Windows).
+const { FileStore } = require('metro-cache');
+config.cacheStores = [
+  new FileStore({ root: path.join(projectRoot, 'node_modules', '.cache', 'metro') }),
+];
 
 module.exports = config;

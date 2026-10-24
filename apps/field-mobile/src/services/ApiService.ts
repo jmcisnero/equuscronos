@@ -1,12 +1,20 @@
 import axios, { AxiosInstance } from "axios";
 import * as SecureStore from "expo-secure-store";
+import { NativeModules } from "react-native";
 import { LocalTimingRecord, LocalVetInspection } from "../database/schema";
 import { getDatabase } from "../database/db";
 import { UserRole } from "@equuscronos/shared";
 
+/** En dev usa el host de Metro (misma PC que el backend) para tolerar cambios de IP. */
+function getDevApiBaseUrl(): string {
+  const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+  const host = scriptURL?.match(/^\w+:\/\/([^/:]+)/)?.[1] ?? "localhost";
+  return `http://${host}:3000`;
+}
+
 const DEFAULT_API_BASE_URL =
   typeof __DEV__ !== "undefined" && __DEV__
-    ? "http://192.168.1.26:3000"
+    ? getDevApiBaseUrl()
     : "https://api.equuscronos.com";
 
 export interface DirectTimingPayload {

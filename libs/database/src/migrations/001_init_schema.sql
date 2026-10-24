@@ -264,17 +264,17 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- 6. ÍNDICES DE ALTO RENDIMIENTO
 -- ==========================================================
 -- Consultas críticas para el Leaderboard en Tiempo Real
-CREATE INDEX idx_timing_entry ON timing_records(entry_id, recorded_at);
-CREATE INDEX idx_timing_stage ON timing_records(stage_id);
-CREATE INDEX idx_entry_competition ON competition_entries(competition_id, status);
-CREATE INDEX idx_vet_competence_dorsal ON vet_inspections(competence_id, rider_dorsal);
-CREATE INDEX idx_weight_controls_entry ON weight_controls(entry_id);
+CREATE INDEX IF NOT EXISTS idx_timing_entry ON timing_records(entry_id, recorded_at);
+CREATE INDEX IF NOT EXISTS idx_timing_stage ON timing_records(stage_id);
+CREATE INDEX IF NOT EXISTS idx_entry_competition ON competition_entries(competition_id, status);
+CREATE INDEX IF NOT EXISTS idx_vet_competence_dorsal ON vet_inspections(competence_id, rider_dorsal);
+CREATE INDEX IF NOT EXISTS idx_weight_controls_entry ON weight_controls(entry_id);
 
 -- Consultas rápidas de Autenticación y Búsqueda
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_riders_ids ON riders(national_id, feu_id);
-CREATE INDEX idx_horses_ids ON horses(chip_id, feu_id);
-CREATE INDEX idx_audit_chrono ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_riders_ids ON riders(national_id, feu_id);
+CREATE INDEX IF NOT EXISTS idx_horses_ids ON horses(chip_id, feu_id);
+CREATE INDEX IF NOT EXISTS idx_audit_chrono ON audit_logs(created_at DESC);
 
 -- ==========================================================
 -- 7. SEGURIDAD Y AISLAMIENTO (RLS)

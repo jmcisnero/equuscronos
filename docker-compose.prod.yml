@@ -1,11 +1,21 @@
 version: '3.8'
 
+# Rotación de logs: máx. 3 x 50MB por contenedor
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # 1. Base de Datos Principal: PostgreSQL
   db:
     image: postgres:15-alpine
     container_name: equuscronos-db
+    # Memoria compartida para consultas paralelas (default Docker: 64MB)
+    shm_size: 256mb
     restart: always
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
@@ -22,6 +32,7 @@ services:
     image: redis:7-alpine
     container_name: equuscronos-cache
     restart: always
+    logging: *default-logging
     networks:
       - equus-network
 
@@ -32,6 +43,7 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: equuscronos-api
     restart: always
+    logging: *default-logging
     environment:
       NODE_ENV: production
       TYPEORM_SYNCHRONIZE: "false"
@@ -59,6 +71,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_ADMIN:-https://api.equuscronos.com/admin}
     container_name: equuscronos-admin-web
     restart: always
+    logging: *default-logging
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_ADMIN:-https://api.equuscronos.com/admin}
       PORT: 3001
@@ -76,6 +89,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_LIVE:-https://api.equuscronos.com}
     container_name: equuscronos-public-web
     restart: always
+    logging: *default-logging
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_LIVE:-https://api.equuscronos.com}
       PORT: 3002
@@ -91,6 +105,7 @@ services:
       dockerfile: apps/web-informativa/Dockerfile
     container_name: equuscronos-web-informativa
     restart: always
+    logging: *default-logging
     expose:
       - "80"
     networks:
@@ -101,6 +116,7 @@ services:
     image: caddy:2-alpine
     container_name: equuscronos-caddy
     restart: always
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
