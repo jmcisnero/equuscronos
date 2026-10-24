@@ -29,7 +29,6 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.equuscronos.usermobile",
-      "versionCode": 1,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.POST_NOTIFICATIONS"
