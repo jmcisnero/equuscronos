@@ -123,7 +123,8 @@ export const HeartPulseBadge: React.FC<HeartPulseBadgeProps> = ({
 
   const value = Number(pulse);
   const isHigh = value > maxHeartRate;
-  const color = isTrophyWinner ? tones.trophy : isHigh ? PULSE_COLORS.high : PULSE_COLORS.ok;
+  const okColor = isDark ? "#15803D" : PULSE_COLORS.ok;
+  const color = isTrophyWinner ? tones.trophy : isHigh ? PULSE_COLORS.high : okColor;
 
   return (
     <View

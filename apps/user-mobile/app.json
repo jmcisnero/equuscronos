@@ -29,8 +29,16 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.equuscronos.usermobile",
+      "versionCode": 1,
       "permissions": [
-        "NOTIFICATIONS"
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -44,11 +52,13 @@
           "color": "#10b981",
           "sounds": []
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
+    "owner": "equuscronos",
     "extra": {
       "eas": {
-        "projectId": "equuscronos-user-mobile-project-id"
+        "projectId": "93ed1b8a-b2b5-459c-911c-14817aea1c77"
       }
     }
   }

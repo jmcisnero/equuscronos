@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useCompetitionStore } from "../store/useCompetitionStore";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const LOGO = require("../../assets/logo_isotipo.png");
 /** Proporción nativa del recorte del isotipo (740x600) */
@@ -11,6 +12,7 @@ export const HeaderBrand: React.FC = () => {
   const { isLiveSocket, isClosed } = useCompetitionStore();
   const { isDark, setPreference } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const insets = useSafeAreaInsets();
 
   // Estado de conexión del feed. Nunca se rotula como "oficial":
   // EquusCronos no es un canal emitido por la federación.
@@ -21,7 +23,7 @@ export const HeaderBrand: React.FC = () => {
     : { label: "SINCRONIZANDO", badge: styles.pollingBadge, dot: styles.pollingDot };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.titleRow}>
         <View style={styles.logoTile}>
           <Image
@@ -66,7 +68,7 @@ const createStyles = ({ colors, isDark }: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: isDark ? colors.background : colors.surface,
-      paddingTop: 48,
+      paddingTop: 12,
       paddingBottom: 12,
       paddingHorizontal: 16,
       flexDirection: "row",

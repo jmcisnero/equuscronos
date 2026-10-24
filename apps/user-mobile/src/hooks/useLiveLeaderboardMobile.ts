@@ -1,7 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCompetitionStore } from "../store/useCompetitionStore";
 import { socketService } from "../services/socket";
 import { api } from "../services/api";
+
+const POLL_SECONDS = 15;
+/** Margen inicial para que el socket conecte antes de activar el polling de respaldo. */
+const INITIAL_CONNECT_GRACE_MS = 2000;
 
 interface LiveLeaderboardOptions {
   /**
@@ -24,8 +28,21 @@ export function useLiveLeaderboardMobile(
     setIsLiveSocket,
   } = useCompetitionStore();
 
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(POLL_SECONDS);
   const [isFallbackPolling, setIsFallbackPolling] = useState(false);
+
+  /** REST: descarta respuestas de una competencia que ya no está activa. */
+  const fetchRest = useCallback(async () => {
+    if (!competitionId) return;
+    try {
+      const data = await api.getLeaderboard(competitionId);
+      if (data && useCompetitionStore.getState().activeCompetitionId === competitionId) {
+        setLeaderboard(data);
+      }
+    } catch (err) {
+      if (__DEV__) console.warn("[useLiveLeaderboardMobile] REST error:", err);
+    }
+  }, [competitionId, setLeaderboard]);
 
   useEffect(() => {
     if (!competitionId) return;
@@ -36,67 +53,63 @@ export function useLiveLeaderboardMobile(
     }
 
     let isSubscribed = true;
+    let hasConnectedOnce = false;
 
-    // Conectar WebSocket
-    socketService.connect(
-      competitionId,
-      (data) => {
-        if (isSubscribed) {
-          console.log("[useLiveLeaderboardMobile] Realtime Socket update received");
-          setLeaderboard(data);
-          setIsLiveSocket(true);
-          setIsFallbackPolling(false);
-          setCountdown(15);
+    socketService.connect(competitionId, {
+      onLeaderboardUpdate: (data) => {
+        if (!isSubscribed) return;
+        setLeaderboard(data);
+        setCountdown(POLL_SECONDS);
+      },
+      onCompetitionClosed: () => {
+        if (isSubscribed) setIsClosed(true);
+      },
+      onConnectionChange: (connected) => {
+        if (!isSubscribed) return;
+        setIsLiveSocket(connected);
+        // Caída de señal en cualquier momento -> polling REST de respaldo.
+        setIsFallbackPolling(!connected);
+        if (connected) {
+          // Reconexión: recupera eventos perdidos durante el corte.
+          if (hasConnectedOnce) fetchRest();
+          hasConnectedOnce = true;
+          setCountdown(POLL_SECONDS);
         }
       },
-      () => {
-        if (isSubscribed) {
-          console.log("[useLiveLeaderboardMobile] Competition Closed Signal");
-          setIsClosed(true);
-        }
-      },
-    );
+    });
 
-    // Chequear si el socket logró conectarse
-    const checkSocketTimeout = setTimeout(() => {
-      if (!socketService.isConnected()) {
-        console.log("[useLiveLeaderboardMobile] Socket not connected. Enabling REST Polling fallback.");
+    const graceTimeout = setTimeout(() => {
+      if (isSubscribed && !socketService.isConnected()) {
         setIsLiveSocket(false);
         setIsFallbackPolling(true);
-      } else {
-        setIsLiveSocket(true);
-        setIsFallbackPolling(false);
       }
-    }, 2000);
+    }, INITIAL_CONNECT_GRACE_MS);
 
     return () => {
       isSubscribed = false;
-      clearTimeout(checkSocketTimeout);
+      clearTimeout(graceTimeout);
       socketService.disconnect();
+      // Evita que el header muestre "EN VIVO" con un socket ya cerrado.
+      setIsLiveSocket(false);
     };
-  }, [competitionId, live]);
+  }, [competitionId, live, fetchRest]);
 
-  // Manejador del temporizador regresivo para REST Polling de resguardo
+  // Temporizador regresivo del polling REST de resguardo
   useEffect(() => {
     if (!live || isClosed || !isFallbackPolling || !competitionId) return;
 
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          // Ejecutar refresh REST de resguardo
-          api.getLeaderboard(competitionId)
-            .then((data) => {
-              if (data) setLeaderboard(data);
-            })
-            .catch((err) => console.warn("Polling REST error:", err));
-          return 15;
+          fetchRest();
+          return POLL_SECONDS;
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [competitionId, isClosed, isFallbackPolling, live]);
+  }, [competitionId, isClosed, isFallbackPolling, live, fetchRest]);
 
   return {
     leaderboard,
@@ -105,11 +118,8 @@ export function useLiveLeaderboardMobile(
     isFallbackPolling: live && isFallbackPolling,
     countdown,
     refresh: async () => {
-      if (competitionId) {
-        const data = await api.getLeaderboard(competitionId);
-        setLeaderboard(data);
-        setCountdown(15);
-      }
+      await fetchRest();
+      setCountdown(POLL_SECONDS);
     },
   };
 }

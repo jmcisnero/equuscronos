@@ -15,14 +15,24 @@ function getDevServerHost(): string | null {
 }
 
 function resolveApiBaseUrl(): string {
+  const explicit = process.env.EXPO_PUBLIC_API_URL;
   // 1. Override explícito (ej. staging / producción / túnel)
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (explicit) {
+    // Release: solo tráfico cifrado (https -> Socket.IO usa wss automáticamente)
+    if (!__DEV__ && !/^https:\/\//i.test(explicit)) {
+      console.error(`[API] EXPO_PUBLIC_API_URL debe usar https:// en producción (recibido: ${explicit})`);
+    }
+    return explicit;
+  }
   // 2. Dev: misma IP que Metro
   if (__DEV__) {
     const host = getDevServerHost();
     if (host) return `http://${host}:${API_PORT}`;
+    return `http://localhost:${API_PORT}`;
   }
-  return `http://localhost:${API_PORT}`;
+  // 3. Release sin URL configurada: error de configuración del build (eas.json -> env)
+  console.error("[API] Falta EXPO_PUBLIC_API_URL en el perfil de build de producción.");
+  return "";
 }
 
 export const API_BASE_URL = resolveApiBaseUrl().replace(/\/+$/, "");
