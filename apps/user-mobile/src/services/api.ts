@@ -1,4 +1,5 @@
 import { NativeModules } from "react-native";
+import Constants from "expo-constants";
 import { Competition, LeaderboardEntry, UserProfile, CompetitionSubscription } from "../types";
 
 const API_PORT = 3000;
@@ -7,8 +8,17 @@ const API_PORT = 3000;
  * En desarrollo, obtiene el host de la PC que sirve el bundle de Metro.
  * El backend corre en la misma máquina, así que la IP LAN se resuelve sola
  * aunque cambie (DHCP).
+ *
+ * 1. expo-constants `hostUri` ("192.168.1.23:8081"): funciona en Expo Go y
+ *    development builds con la Nueva Arquitectura (SDK 52+).
+ * 2. `NativeModules.SourceCode.scriptURL`: solo arquitectura antigua (fallback).
  */
 function getDevServerHost(): string | null {
+  const hostUri: string | undefined =
+    Constants.expoConfig?.hostUri ?? (Constants as any).expoGoConfig?.debuggerHost;
+  const fromHostUri = hostUri?.split(":")[0];
+  if (fromHostUri) return fromHostUri;
+
   const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
   const match = scriptURL?.match(/^\w+:\/\/([^/:]+)/);
   return match ? match[1] : null;

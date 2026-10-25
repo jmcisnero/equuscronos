@@ -10,15 +10,17 @@ const config = getDefaultConfig(projectRoot);
 // 1. Watch all files within the monorepo (including shared libraries in libs/)
 config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
 
-// Exclude heavy web build directories, .git, and brain logs from Metro watcher on Windows
+// Exclude heavy web build directories, .git, and brain logs from the Metro watcher.
+// Patterns accept both "/" (Linux/EAS) and "\" (Windows). NEVER block a generic
+// "dist/" folder: node_modules packages (memoize-one, ...) and @equuscronos/shared
+// publish their entry points there.
+const SEP = '[\\\\/]';
 config.resolver.blockList = [
-  /.*\/apps\/admin-web\/\.next\/.*/,
-  /.*\/apps\/public-web\/\.next\/.*/,
-  /.*\/apps\/web-informativa\/\.next\/.*/,
-  /.*\/dist\/.*/,
-  /.*\/\.git\/.*/,
-  /.*\/\.system_generated\/.*/,
-  /.*\/brain\/.*/,
+  new RegExp(`${SEP}apps${SEP}(admin-web|public-web|web-informativa)${SEP}\\.next${SEP}.*`),
+  new RegExp(`${SEP}apps${SEP}api${SEP}dist${SEP}.*`),
+  new RegExp(`${SEP}\\.git${SEP}.*`),
+  new RegExp(`${SEP}\\.system_generated${SEP}.*`),
+  new RegExp(`${SEP}brain${SEP}.*`),
 ];
 
 // 2. Tell Metro to resolve packages looking at the project node_modules and the workspace node_modules

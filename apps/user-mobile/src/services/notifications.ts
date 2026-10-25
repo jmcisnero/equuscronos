@@ -1,6 +1,6 @@
-import * as Notifications from "expo-notifications";
+import type * as NotificationsModule from "expo-notifications";
 import * as Device from "expo-device";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 
 /**
@@ -9,19 +9,65 @@ import { Platform } from "react-native";
  * - NO registra el token en el backend: eso lo hace useAuthStore tras un login exitoso.
  * - NUNCA lanza excepciones: ante cualquier fallo retorna null, para no bloquear
  *   el renderizado ni la carga de datos públicos (competencias / leaderboard).
- * - Sin un projectId de EAS válido (UUID) no intenta pedir token remoto. Es el
- *   comportamiento esperado en Expo Go sin `eas init`.
+ * - Sin un projectId de EAS válido (UUID) no intenta pedir token remoto.
+ * - Expo Go (SDK 53+) en Android lanza un error al IMPORTAR expo-notifications,
+ *   por eso el módulo se carga de forma diferida y solo fuera de Expo Go
+ *   (development build / producción).
  */
 
-// Configurar cómo se comportan las notificaciones cuando la app está en primer plano
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+/** true cuando la app corre dentro de Expo Go (sin push remoto). */
+export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let cachedModule: typeof NotificationsModule | null | undefined;
+
+/** Carga diferida y segura de expo-notifications (null en Expo Go o ante error). */
+function getNotifications(): typeof NotificationsModule | null {
+  if (cachedModule !== undefined) return cachedModule;
+  if (isExpoGo) {
+    console.warn("[PushNotifications] Expo Go detectado: notificaciones push deshabilitadas (usar development build).");
+    cachedModule = null;
+    return null;
+  }
+  try {
+    const mod: typeof NotificationsModule = require("expo-notifications");
+    // Comportamiento de las notificaciones con la app en primer plano
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+    cachedModule = mod;
+  } catch (error) {
+    console.warn("[PushNotifications] expo-notifications no disponible:", error);
+    cachedModule = null;
+  }
+  return cachedModule;
+}
+
+/**
+ * Registra listeners de notificaciones (primer plano y tap).
+ * Devuelve una función de limpieza; no hace nada en Expo Go.
+ */
+export function addNotificationListeners(handlers: {
+  onReceived?: (title?: string | null, body?: string | null) => void;
+  onResponse?: (data: Record<string, unknown>) => void;
+}): () => void {
+  const Notifications = getNotifications();
+  if (!Notifications) return () => undefined;
+  const received = Notifications.addNotificationReceivedListener((n) =>
+    handlers.onReceived?.(n.request.content.title, n.request.content.body),
+  );
+  const response = Notifications.addNotificationResponseReceivedListener((r) =>
+    handlers.onResponse?.((r.notification.request.content.data ?? {}) as Record<string, unknown>),
+  );
+  return () => {
+    received.remove();
+    response.remove();
+  };
+}
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -46,7 +92,7 @@ export function getEasProjectId(): string | null {
   return valid ?? null;
 }
 
-async function ensureAndroidChannel(): Promise<void> {
+async function ensureAndroidChannel(Notifications: typeof NotificationsModule): Promise<void> {
   if (Platform.OS !== "android") return;
   try {
     await Notifications.setNotificationChannelAsync("default", {
@@ -81,7 +127,10 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    await ensureAndroidChannel();
+    const Notifications = getNotifications();
+    if (!Notifications) return null;
+
+    await ensureAndroidChannel(Notifications);
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
