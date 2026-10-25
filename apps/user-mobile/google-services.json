@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "18009908081",
+    "project_id": "equuscronos-app",
+    "storage_bucket": "equuscronos-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18009908081:android:b91510b7725d454beb8cd0",
+        "android_client_info": {
+          "package_name": "com.equuscronos.usermobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFc2t8IatKXo5jQXwqFLm8vnBIP2ms93Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
