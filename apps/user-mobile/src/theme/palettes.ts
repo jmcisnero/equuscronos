@@ -16,6 +16,13 @@ export interface ThemeColors {
   border: string;
   divider: string;
 
+  /** Tarjeta de resumen de carrera (tono verde de contraste) */
+  summarySurface: string;
+  summaryBorder: string;
+  /** Bloques internos de la tarjeta de resumen (metadatos, etapas) */
+  summaryInner: string;
+  summaryInnerBorder: string;
+
   text: string;
   textStrong: string;
   textSecondary: string;
@@ -54,6 +61,11 @@ export const darkColors: ThemeColors = {
   border: "#334155",
   divider: "#1e293b",
 
+  summarySurface: "#0F291E",
+  summaryBorder: "rgba(16, 185, 129, 0.25)",
+  summaryInner: "rgba(15, 23, 42, 0.55)",
+  summaryInnerBorder: "rgba(16, 185, 129, 0.18)",
+
   text: "#ffffff",
   textStrong: "#e2e8f0",
   textSecondary: "#94a3b8",
@@ -90,6 +102,11 @@ export const lightColors: ThemeColors = {
   surfaceSelected: "#ECFDF5",
   border: "#E2E8F0",
   divider: "#E2E8F0",
+
+  summarySurface: "#F0FDF4",
+  summaryBorder: "#BBF7D0",
+  summaryInner: "#FFFFFF",
+  summaryInnerBorder: "#DCFCE7",
 
   text: "#0F172A",
   textStrong: "#1E293B",

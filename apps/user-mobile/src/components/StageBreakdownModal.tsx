@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   View,
@@ -6,11 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from "react-native";
 import { Competition, LeaderboardEntry } from "../types";
 import { HeartPulseBadge } from "./race/HeartPulseBadge";
 import { RaceStatusBadge } from "./race/RaceStatusBadge";
-import { Theme, useThemedStyles } from "../theme/useTheme";
+import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
+import { getRaceTones } from "../theme/raceTones";
 import {
   DEFAULT_MAX_HEART_RATE,
   formatHHMMSS,
@@ -59,6 +61,8 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
 }) => {
   // Los hooks deben ejecutarse antes de cualquier return condicional.
   const styles = useThemedStyles(createStyles);
+  const { isDark } = useTheme();
+  const tones = useMemo(() => getRaceTones(isDark), [isDark]);
 
   if (!entry) return null;
   const stages = isClosed
@@ -75,6 +79,11 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
   const isFeu = competition?.isFederated === true;
   const showRank = !!entry.rank && !isTerminalStatus(entry.status);
   const tenantName = entry.representedTenant?.name;
+  const jerseyUrl = entry.representedTenant?.jerseyImageUrl;
+  const podium =
+    entry.rank === 1 || entry.rank === 2 || entry.rank === 3
+      ? tones.podium[entry.rank]
+      : tones.podium.other;
 
   /**
    * Reglamento FEU: la llegada de la última etapa es la meta final; no hay
@@ -92,37 +101,51 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
     >
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
-          {/* Header */}
+          {/* Header: misma cabecera que la tarjeta del listado
+              (puesto · camiseta · dorsal | estado) + binomio */}
           <View style={styles.header}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <View style={styles.bibRow}>
-                <View style={styles.bibBadge}>
-                  <Text style={styles.bibText}>#{entry.bibNumber}</Text>
+            <View style={styles.headerTop}>
+              <View style={styles.headerLeft}>
+                {showRank ? (
+                  <View
+                    style={[styles.rank, { backgroundColor: podium.bg, borderColor: podium.border }]}
+                    accessibilityLabel={`Posición ${entry.rank}`}
+                  >
+                    <Text style={[styles.rankText, { color: podium.text }]}>{entry.rank}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.rankEmpty} accessibilityLabel="Sin clasificar">
+                    <Text style={styles.rankEmptyText}>--</Text>
+                  </View>
+                )}
+                {jerseyUrl ? <Image source={{ uri: jerseyUrl }} style={styles.jersey} /> : null}
+                <View style={[styles.bibBadge, { backgroundColor: tones.bibBg }]}>
+                  <Text style={[styles.bibText, { color: tones.bibText }]}>#{entry.bibNumber}</Text>
                 </View>
-                <Text style={styles.rankText}>
-                  {showRank ? `Posición #${entry.rank}` : "Sin clasificar"}
-                </Text>
-                <RaceStatusBadge status={entry.status} />
               </View>
-              <Text style={styles.riderName} numberOfLines={1}>
-                {entry.riderName}
-              </Text>
-              <Text style={styles.horseName} numberOfLines={1} ellipsizeMode="tail">
-                🐴 {entry.horseName}
-              </Text>
-              {!!tenantName && (
-                <Text style={styles.clubName} numberOfLines={1} ellipsizeMode="tail">
-                  {tenantName}
-                </Text>
-              )}
+              <View style={styles.headerRight}>
+                <RaceStatusBadge status={entry.status} />
+                <TouchableOpacity
+                  style={styles.closeBtn}
+                  onPress={onClose}
+                  hitSlop={8}
+                  accessibilityLabel="Cerrar detalle"
+                >
+                  <Text style={styles.closeBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              accessibilityLabel="Cerrar detalle"
-            >
-              <Text style={styles.closeBtnText}>✕</Text>
-            </TouchableOpacity>
+            <Text style={styles.riderName} numberOfLines={1}>
+              {entry.riderName}
+            </Text>
+            <Text style={styles.horseName} numberOfLines={1} ellipsizeMode="tail">
+              🐴 {entry.horseName}
+            </Text>
+            {!!tenantName && (
+              <Text style={styles.clubName} numberOfLines={1} ellipsizeMode="tail">
+                {tenantName}
+              </Text>
+            )}
           </View>
 
           <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
@@ -147,7 +170,7 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
               <Text style={styles.trophyNote}>🏆 Trofeo al Menor Pulso (Art. 42)</Text>
             )}
 
-            <Text style={styles.sectionTitle}>DESGLOSE POR ETAPA (DETALLE CLÍNICO)</Text>
+            <Text style={styles.sectionTitle}>DESGLOSE POR ETAPA</Text>
 
             {stages.length > 0 ? (
               stages.map((stage) => {
@@ -239,35 +262,40 @@ const createStyles = ({ colors, isDark }: Theme) =>
     borderColor: colors.border,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
     paddingBottom: 12,
+    gap: 2,
   },
-  bibRow: {
+  headerTop: {
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  rank: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankText: { fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  rankEmpty: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+  rankEmptyText: { color: colors.textMuted, fontWeight: "800", fontSize: 14 },
+  jersey: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border },
   bibBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   bibText: {
-    color: colors.onPrimary,
     fontWeight: "900",
-    fontSize: 10,
-  },
-  rankText: {
-    color: colors.warning,
-    fontWeight: "800",
-    fontSize: 12,
+    fontSize: 13,
+    fontVariant: ["tabular-nums"],
   },
   riderName: {
     color: colors.text,
@@ -392,14 +420,14 @@ const createStyles = ({ colors, isDark }: Theme) =>
   },
   gridValue: {
     color: colors.textStrong,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
     marginTop: 2,
   },
   gridValueHighlight: {
     color: colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
     marginTop: 2,

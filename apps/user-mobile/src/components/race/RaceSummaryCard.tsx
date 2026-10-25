@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
 import { Competition } from "../../types";
 import { Theme, useThemedStyles } from "../../theme/useTheme";
+import { getRaceTones } from "../../theme/raceTones";
 import {
   formatDateDMY,
   formatKm,
@@ -90,43 +91,52 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
         </View>
       </View>
 
-      {/* Desglose de etapas (Art. 28 / 52) */}
-      {stages.length > 0 && (
-        <View style={styles.stages}>
-          {stages.map((s, i) => (
-            <View key={s.stageNumber} style={styles.stageChip}>
-              <Text style={styles.stageTitle}>Etapa {s.stageNumber}</Text>
-              <Text style={styles.stageKm}>{formatKm(s.distanceKm)}</Text>
-              {i < stages.length - 1 && s.neutralizationMinutes > 0 && (
-                <Text style={styles.stageNeut}>Neut. {s.neutralizationMinutes} min</Text>
-              )}
-            </View>
-          ))}
+      {/* Desglose de etapas (Art. 28 / 52) + Límite Vet Gate (Art. 31/54) en la misma fila */}
+      <View style={styles.stages}>
+        {stages.map((s, i) => (
+          <View key={s.stageNumber} style={styles.stageChip}>
+            <Text style={styles.stageTitle}>Etapa {s.stageNumber}</Text>
+            <Text style={styles.stageKm}>{formatKm(s.distanceKm)}</Text>
+            {i < stages.length - 1 && s.neutralizationMinutes > 0 && (
+              <Text style={styles.stageNeut}>Neut. {s.neutralizationMinutes} min</Text>
+            )}
+          </View>
+        ))}
+        <View
+          style={styles.stageChip}
+          accessible
+          accessibilityLabel={`Límite Vet Gate: hasta ${maxHeartRate} pulsaciones por minuto`}
+        >
+          <Text style={styles.stageTitle}>Límite ppm</Text>
+          <View style={styles.vetHeader}>
+            <Text style={styles.vetHeart} allowFontScaling={false}>♥</Text>
+            <Text style={styles.stageKm} numberOfLines={1}>
+              ≤ {maxHeartRate}
+            </Text>
+          </View>
         </View>
-      )}
-
-      {/* Límite Vet Gate (Art. 31) */}
-      <View style={styles.vetLimit}>
-        <Text style={styles.vetHeart}>♥</Text>
-        <Text style={styles.vetText}>
-          Límite Vet Gate: <Text style={styles.vetValue}>≤ {maxHeartRate} ppm</Text>
-        </Text>
       </View>
     </View>
   );
 };
 
-const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
-  StyleSheet.create({
+const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
+  // Tono verde de contraste para separar el resumen de la lista de binomios
+  const summaryBg = colors.summarySurface;
+  const summaryBorder = colors.summaryBorder;
+  const innerBg = colors.summaryInner;
+  const innerBorder = colors.summaryInnerBorder;
+
+  return StyleSheet.create({
     card: {
-      backgroundColor: colors.surface,
+      backgroundColor: summaryBg,
       borderRadius: 18,
       padding: 16,
       marginHorizontal: 16,
       marginTop: 12,
       marginBottom: 8,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: summaryBorder,
       gap: 12,
       ...cardShadow,
     },
@@ -135,8 +145,10 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
     muted: { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
     metaRow: {
       flexDirection: "row",
-      backgroundColor: colors.surfaceSunken,
+      backgroundColor: innerBg,
       borderRadius: 12,
+      borderWidth: 1,
+      borderColor: innerBorder,
       paddingVertical: 10,
     },
     metaItem: { flex: 1, alignItems: "center" },
@@ -168,29 +180,20 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
     organizerName: { color: colors.text, fontSize: 14, fontWeight: "800" },
     stages: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     stageChip: {
-      backgroundColor: colors.surfaceSunken,
+      flexGrow: 1,
+      flexBasis: "30%",
+      minWidth: 0,
+      backgroundColor: innerBg,
       borderRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 7,
       borderWidth: 1,
-      borderColor: colors.border,
-      minWidth: 84,
+      borderColor: innerBorder,
     },
     stageTitle: { color: colors.textMuted, fontSize: 9, fontWeight: "900", textTransform: "uppercase" },
     stageKm: { color: colors.text, fontSize: 15, fontWeight: "900", fontVariant: ["tabular-nums"] },
     stageNeut: { color: colors.warning, fontSize: 10, fontWeight: "700", marginTop: 1 },
-    vetLimit: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      backgroundColor: colors.primarySoft,
-      borderColor: colors.primaryBorder,
-      borderWidth: 1,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-    },
-    vetHeart: { color: isDark ? "#10B981" : "#1C4F38", fontSize: 16 },
-    vetText: { color: colors.textStrong, fontSize: 12, fontWeight: "600" },
-    vetValue: { color: colors.text, fontWeight: "900" },
+    vetHeader: { flexDirection: "row", alignItems: "center", gap: 4 },
+    vetHeart: { color: getRaceTones(isDark).heartOk, fontSize: 14 },
   });
+};
