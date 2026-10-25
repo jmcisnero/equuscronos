@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -35,14 +35,37 @@ export const LiveLeaderboardScreen: React.FC<{
   navigation?: any;
   mode?: "live" | "results";
 }> = ({ navigation, mode = "live" }) => {
-  const { activeCompetition, activeCompetitionId, searchQuery, setSearchQuery, leaderboardError } =
-    useCompetitionStore();
+  const {
+    activeCompetition,
+    activeCompetitionId,
+    searchQuery,
+    setSearchQuery,
+    leaderboardError,
+    competitions,
+    selectCompetition,
+    isLoading: isCompetitionsLoading,
+  } = useCompetitionStore();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const isFocused = useIsFocused();
 
-  const isConcluded =
-    mode === "results" || CONCLUDED_STATUSES.includes(activeCompetition?.status ?? "");
+  const selectionConcluded = CONCLUDED_STATUSES.includes(activeCompetition?.status ?? "");
+  const isConcluded = mode === "results" || selectionConcluded;
+
+  // Pestaña "En Vivo": nunca muestra datos residuales de competencias finalizadas.
+  // Si hay una ACTIVE disponible se cambia a ella; si no, se muestra el empty state.
+  const liveCompetition = useMemo(
+    () => competitions.find((c) => c.status === "ACTIVE"),
+    [competitions],
+  );
+  const showNoLiveState =
+    mode === "live" && !isCompetitionsLoading && (!activeCompetitionId || selectionConcluded);
+
+  useEffect(() => {
+    if (mode === "live" && isFocused && selectionConcluded && liveCompetition) {
+      selectCompetition(liveCompetition.id);
+    }
+  }, [mode, isFocused, selectionConcluded, liveCompetition, selectCompetition]);
 
   const { leaderboard, isLoading, isClosed: socketClosed, isFallbackPolling, countdown, refresh } =
     useLiveLeaderboardMobile(activeCompetitionId, { live: isFocused && !isConcluded });
@@ -146,11 +169,39 @@ export const LiveLeaderboardScreen: React.FC<{
     </View>
   );
 
+  if (showNoLiveState && !liveCompetition) {
+    return (
+      <View style={styles.container}>
+        <HeaderBrand />
+        <View style={styles.noLiveContainer}>
+          <View style={styles.noLiveIconRing}>
+            <Text style={styles.noLiveIcon}>⏱️</Text>
+          </View>
+          <Text style={styles.noLiveTitle} accessibilityRole="header">
+            No hay competencias en vivo en este momento
+          </Text>
+          <Text style={styles.noLiveSub}>
+            Consulta el calendario o los resultados de competencias anteriores.
+          </Text>
+          <TouchableOpacity
+            style={styles.noLiveButton}
+            onPress={() => navigation?.navigate("ExplorerTab")}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Ir a Explorar"
+          >
+            <Text style={styles.noLiveButtonText}>Explorar competencias</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <HeaderBrand />
 
-      {isLoading ? (
+      {isLoading || (showNoLiveState && !!liveCompetition) ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>
@@ -261,6 +312,47 @@ const createStyles = ({ colors, isDark }: Theme) =>
     counterText: { color: colors.warning, fontSize: 10, fontWeight: "800" },
     loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
     loadingText: { color: colors.textSecondary, fontSize: 12, marginTop: 10 },
+    noLiveContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 32,
+      paddingBottom: 48,
+    },
+    noLiveIconRing: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 20,
+    },
+    noLiveIcon: { fontSize: 38, opacity: isDark ? 0.45 : 0.4 },
+    noLiveTitle: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "900",
+      textAlign: "center",
+      lineHeight: 23,
+    },
+    noLiveSub: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: "center",
+      marginTop: 8,
+      lineHeight: 18,
+    },
+    noLiveButton: {
+      marginTop: 24,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 22,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    noLiveButtonText: { color: colors.onPrimary, fontSize: 14, fontWeight: "800" },
     emptyContainer: { alignItems: "center", padding: 32 },
     emptyTitle: { color: colors.text, fontSize: 15, fontWeight: "800" },
     emptySub: { color: colors.textMuted, fontSize: 12, textAlign: "center", marginTop: 4 },

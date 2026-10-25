@@ -14,13 +14,6 @@ interface HeartPulseBadgeProps {
   size?: "md" | "lg";
 }
 
-/** Paleta sincronizada con public-web (HeartPulseBadge). */
-export const PULSE_COLORS = {
-  ok: "#1C4F38", // Verde institucional EquusCronos (≤ límite)
-  high: "#E11D48", // Rojo carmín reglamentario (> límite, Art. 31/54)
-  empty: "#94A3B8", // Gris neutro sin dato
-} as const;
-
 const RECHECK_LABEL: Record<"PENDING" | "PASSED" | "OBSERVED" | "FAILED", { text: string; a11y: string }> = {
   PENDING: { text: "(R)", a11y: "Rechequeo solicitado, pendiente (Art. 21/31)" },
   PASSED: { text: "(R) ✓", a11y: "Rechequeo aprobado (Art. 21/31)" },
@@ -114,7 +107,7 @@ export const HeartPulseBadge: React.FC<HeartPulseBadgeProps> = ({
     return (
       <View style={styles.wrap} accessibilityLabel="Sin registro de pulso">
         <View style={[styles.canvas, { width: canvasW, height: canvasH }]}>
-          <Text style={[styles.empty, { color: PULSE_COLORS.empty }]}>--</Text>
+          <Text style={[styles.empty, { color: tones.heartFill.empty }]}>--</Text>
         </View>
         {recheck}
       </View>
@@ -123,8 +116,11 @@ export const HeartPulseBadge: React.FC<HeartPulseBadgeProps> = ({
 
   const value = Number(pulse);
   const isHigh = value > maxHeartRate;
-  const okColor = isDark ? "#15803D" : PULSE_COLORS.ok;
-  const color = isTrophyWinner ? tones.trophy : isHigh ? PULSE_COLORS.high : okColor;
+  const color = isTrophyWinner
+    ? tones.trophy
+    : isHigh
+    ? tones.heartFill.high
+    : tones.heartFill.ok;
 
   return (
     <View

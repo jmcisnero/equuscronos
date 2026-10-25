@@ -53,6 +53,16 @@ export function getRaceTones(isDark: boolean) {
     /** Verde marca EquusCronos (#1C4F38) aclarado en oscuro para contraste */
     heartOk: isDark ? "#10B981" : "#1C4F38",
     heartHigh: isDark ? "#F43F5E" : "#E11D48",
+    /**
+     * Relleno del corazón de HeartPulseBadge (número blanco encima): tonos más
+     * profundos que heartOk/heartHigh para mantener contraste del texto blanco.
+     * Sincronizado con public-web (Art. 31/54: ≤ límite verde, > límite carmín).
+     */
+    heartFill: {
+      ok: isDark ? "#15803D" : "#1C4F38",
+      high: "#E11D48",
+      empty: "#94A3B8",
+    },
     trophy: "#F59E0B",
     /** Tostado de marca (#AD8F6C) para LÍDER y acentos */
     accent: isDark ? "#D6BC97" : "#8A6D4B",

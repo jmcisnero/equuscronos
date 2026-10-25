@@ -17,23 +17,24 @@ export const CompetitionCard: React.FC<CompetitionCardProps> = ({
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case "ACTIVE":
-        return { label: "EN VIVO", bg: colors.primary };
+        return { label: "EN VIVO", bg: colors.primarySoft, border: colors.primaryBorder, fg: colors.primary };
       case "PLANNED":
-        return { label: "PROGRAMADA", bg: colors.info };
+        return { label: "PLANIFICADA", bg: colors.surfaceMuted, border: colors.border, fg: colors.info };
       case "COMPLETED":
       case "OFFICIAL":
         // El estado interno "OFFICIAL" se presenta como finalizada:
         // la app no emite resultados oficiales de la federación.
-        return { label: "FINALIZADA", bg: colors.textMuted };
+        return { label: "FINALIZADA", bg: colors.neutralSoft, border: colors.neutralBorder, fg: colors.textSecondary };
       default:
-        return { label: status, bg: colors.textSecondary };
+        return { label: status, bg: colors.neutralSoft, border: colors.neutralBorder, fg: colors.textSecondary };
     }
   };
 
-  const status = getStatusColor(competition.status);
+  const status = getStatusStyle(competition.status);
+  const isFederated = competition.isFederated === true;
 
   return (
     <TouchableOpacity
@@ -64,25 +65,32 @@ export const CompetitionCard: React.FC<CompetitionCardProps> = ({
             </Text>
           </View>
         </View>
-
-        <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-          <Text style={styles.statusText}>{status.label}</Text>
-        </View>
       </View>
 
       <Text style={styles.title} numberOfLines={2}>
         {competition.name}
       </Text>
 
+      {/* Fila inferior: fecha | tipo (FEDERADA/SOCIAL) | estado */}
       <View style={styles.footerRow}>
-        <Text style={styles.dateText}>
-          📅 {competition.competitionDate ? competition.competitionDate.split("T")[0] : "Fecha a confirmar"}
-        </Text>
-        {competition.isFederated && (
-          <View style={styles.federatedBadge}>
-            <Text style={styles.federatedText}>FEDERADA</Text>
+        <View style={styles.footerLeft}>
+          <Text style={styles.dateText} numberOfLines={1}>
+            📅 {competition.competitionDate ? competition.competitionDate.split("T")[0] : "A confirmar"}
+          </Text>
+        </View>
+        <View style={styles.footerCenter}>
+          <View style={[styles.pill, isFederated ? styles.federatedPill : styles.socialPill]}>
+            <Text style={[styles.pillText, { color: isFederated ? colors.warning : colors.textSecondary }]}>
+              {isFederated ? "FEDERADA" : "SOCIAL"}
+            </Text>
           </View>
-        )}
+        </View>
+        <View style={styles.footerRight}>
+          <View style={[styles.pill, { backgroundColor: status.bg, borderColor: status.border }]}>
+            {competition.status === "ACTIVE" && <View style={[styles.liveDot, { backgroundColor: status.fg }]} />}
+            <Text style={[styles.pillText, { color: status.fg }]}>{status.label}</Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -137,23 +145,13 @@ const createStyles = ({ colors, cardShadow }: Theme) =>
     },
     tenantName: {
       color: colors.textStrong,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
     },
     locationText: {
       color: colors.textSecondary,
       fontSize: 10,
       marginTop: 1,
-    },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-    },
-    statusText: {
-      color: "#ffffff",
-      fontSize: 9,
-      fontWeight: "900",
     },
     title: {
       color: colors.text,
@@ -164,27 +162,40 @@ const createStyles = ({ colors, cardShadow }: Theme) =>
     footerRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       borderTopWidth: 1,
       borderTopColor: colors.border,
       paddingTop: 8,
     },
+    footerLeft: { flex: 1, alignItems: "flex-start" },
+    footerCenter: { flex: 1, alignItems: "center" },
+    footerRight: { flex: 1, alignItems: "flex-end" },
     dateText: {
       color: colors.textSecondary,
       fontSize: 11,
       fontWeight: "600",
+      fontVariant: ["tabular-nums"],
     },
-    federatedBadge: {
-      backgroundColor: colors.warningSoft,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
+    pill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 6,
       borderWidth: 1,
+    },
+    federatedPill: {
+      backgroundColor: colors.warningSoft,
       borderColor: colors.warningBorder,
     },
-    federatedText: {
-      color: colors.warning,
-      fontSize: 8,
-      fontWeight: "900",
+    socialPill: {
+      backgroundColor: colors.neutralSoft,
+      borderColor: colors.neutralBorder,
     },
+    pillText: {
+      fontSize: 9,
+      fontWeight: "900",
+      letterSpacing: 0.4,
+    },
+    liveDot: { width: 6, height: 6, borderRadius: 3 },
   });
