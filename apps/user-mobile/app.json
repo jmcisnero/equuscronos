@@ -29,6 +29,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.equuscronos.usermobile",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.POST_NOTIFICATIONS"

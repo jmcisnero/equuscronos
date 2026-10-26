@@ -15,6 +15,7 @@ import {
 } from "@equuscronos/shared";
 import { RealTimeGateway } from "./real-time.gateway";
 import { LeaderboardService } from "../leaderboard/leaderboard.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class ControlClosureScheduler {
@@ -24,6 +25,7 @@ export class ControlClosureScheduler {
     private readonly dataSource: DataSource,
     private readonly realTimeGateway: RealTimeGateway,
     private readonly leaderboardService: LeaderboardService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -63,6 +65,7 @@ export class ControlClosureScheduler {
     ];
 
     for (const comp of activeCompetitions) {
+      let completed = false;
       // Perform transaction to atomically update stuck entries and transition competition status
       await this.dataSource.transaction(async (manager) => {
         // Double check status with lock
@@ -134,6 +137,7 @@ export class ControlClosureScheduler {
         if (isControlExpired || allEntriesTerminal) {
           lockedComp.status = CompetitionStatus.COMPLETED;
           await manager.save(Competition, lockedComp);
+          completed = true;
 
           // Emit WebSocket notification about closure
           this.realTimeGateway.emitRaceClosed(lockedComp.id);
@@ -146,6 +150,22 @@ export class ControlClosureScheduler {
           );
         }
       });
+
+      // Push post-commit (sin await: nunca demora ni afecta el cierre de control)
+      if (completed) {
+        this.notificationsService
+          .sendCompetitionPushNotificationOnce(
+            `completed:${comp.id}`,
+            comp.id,
+            ["STATUS_CHANGE", "OFFICIAL_RESULTS"],
+            "🏆 Competencia finalizada",
+            `${comp.name} terminó. Los resultados ya están disponibles.`,
+            { status: CompetitionStatus.COMPLETED },
+          )
+          .catch((err) =>
+            this.logger.error(`Push de finalización falló para ${comp.id}: ${err?.message ?? err}`),
+          );
+      }
     }
   }
 

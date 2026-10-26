@@ -18,6 +18,17 @@ export type NotificationEventType =
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
+  /** Claves ya notificadas en este proceso (evita duplicados por concurrencia). */
+  private readonly sentKeys = new Set<string>();
+
+  /** Columna de preferencia de la suscripción para cada tipo de evento. */
+  private static readonly EVENT_COLUMN: Record<NotificationEventType, string> = {
+    STATUS_CHANGE: "sub.notify_status_change",
+    STAGE_START: "sub.notify_stage_start",
+    VET_GATE: "sub.notify_vet_gate",
+    OFFICIAL_RESULTS: "sub.notify_official_results",
+  };
+
   constructor(
     @InjectRepository(UserDeviceToken)
     private readonly tokenRepo: Repository<UserDeviceToken>,
@@ -135,15 +146,35 @@ export class NotificationsService {
   }
 
   /**
-   * Motor de disparo masivo de notificaciones push vía Expo API
+   * Igual que sendCompetitionPushNotification, pero envía una sola vez por
+   * `key` dentro del proceso (p. ej. "stage-start:<stageId>").
    */
-  async sendCompetitionPushNotification(
+  async sendCompetitionPushNotificationOnce(
+    key: string,
     competitionId: string,
-    eventType: NotificationEventType,
+    eventType: NotificationEventType | NotificationEventType[],
     title: string,
     body: string,
     dataPayload: Record<string, any> = {},
   ) {
+    if (this.sentKeys.has(key)) return;
+    this.sentKeys.add(key);
+    return this.sendCompetitionPushNotification(competitionId, eventType, title, body, dataPayload);
+  }
+
+  /**
+   * Motor de disparo masivo de notificaciones push vía Expo API.
+   * Con varios tipos de evento, notifica a quien tenga activado cualquiera de ellos.
+   */
+  async sendCompetitionPushNotification(
+    competitionId: string,
+    eventType: NotificationEventType | NotificationEventType[],
+    title: string,
+    body: string,
+    dataPayload: Record<string, any> = {},
+  ) {
+    const eventTypes = Array.isArray(eventType) ? eventType : [eventType];
+    const eventLabel = eventTypes.join("|");
     try {
       // 1. Obtener todas las suscripciones activas para la competencia y el tipo de evento
       const query = this.subRepo
@@ -152,32 +183,28 @@ export class NotificationsService {
         .where("sub.competition_id = :competitionId", { competitionId })
         .andWhere("dt.is_active = true");
 
-      if (eventType === "STATUS_CHANGE") {
-        query.andWhere("sub.notify_status_change = true");
-      } else if (eventType === "STAGE_START") {
-        query.andWhere("sub.notify_stage_start = true");
-      } else if (eventType === "VET_GATE") {
-        query.andWhere("sub.notify_vet_gate = true");
-      } else if (eventType === "OFFICIAL_RESULTS") {
-        query.andWhere("sub.notify_official_results = true");
-      }
+      const flagColumns = eventTypes.map((t) => `${NotificationsService.EVENT_COLUMN[t]} = true`);
+      query.andWhere(`(${flagColumns.join(" OR ")})`);
 
       const subscriptions = await query.getMany();
       if (subscriptions.length === 0) {
-        this.logger.log(`No active subscriptions found for competition ${competitionId} (${eventType})`);
+        this.logger.log(`No active subscriptions found for competition ${competitionId} (${eventLabel})`);
         return;
       }
 
+      // Expo emite tokens con prefijo "ExponentPushToken[" (estándar) o "ExpoPushToken["
       const expoTokens = subscriptions
         .map((s) => s.deviceToken?.deviceToken)
-        .filter((t): t is string => Boolean(t && t.startsWith("ExpoPushToken[")));
+        .filter((t): t is string =>
+          Boolean(t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken["))),
+        );
 
       if (expoTokens.length === 0) {
         this.logger.log(`No valid Expo push tokens found among ${subscriptions.length} subscriptions.`);
         return;
       }
 
-      this.logger.log(`Sending Push Notification [${eventType}] to ${expoTokens.length} devices...`);
+      this.logger.log(`Sending Push Notification [${eventLabel}] to ${expoTokens.length} devices...`);
 
       // 2. Formatear mensajes para Expo Push Service API
       const messages = expoTokens.map((token) => ({
@@ -188,16 +215,17 @@ export class NotificationsService {
         data: {
           ...dataPayload,
           competitionId,
-          eventType,
+          eventType: eventTypes[0],
           timestamp: new Date().toISOString(),
         },
       }));
 
       // 3. Enviar peticiones en bloques (Expo acepta hasta 100 por lote)
       const chunkSize = 100;
+      let failed = 0;
       for (let i = 0; i < messages.length; i += chunkSize) {
         const chunk = messages.slice(i, i + chunkSize);
-        await fetch("https://exp.host/--/api/v2/push/send", {
+        const res = await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -206,9 +234,28 @@ export class NotificationsService {
           },
           body: JSON.stringify(chunk),
         });
+
+        // Expo responde 200 aunque fallen tickets individuales: revisar cada uno
+        const payload: any = await res.json().catch(() => null);
+        if (!res.ok) {
+          failed += chunk.length;
+          this.logger.error(`Expo Push HTTP ${res.status}: ${JSON.stringify(payload)}`);
+          continue;
+        }
+        const tickets: any[] = Array.isArray(payload?.data) ? payload.data : [];
+        tickets.forEach((ticket, idx) => {
+          if (ticket?.status === "error") {
+            failed++;
+            this.logger.warn(
+              `Expo ticket error for ${chunk[idx]?.to}: ${ticket.message} (${ticket.details?.error ?? "unknown"})`,
+            );
+          }
+        });
       }
 
-      this.logger.log(`Successfully dispatched ${messages.length} push notifications for event ${eventType}`);
+      this.logger.log(
+        `Dispatched ${messages.length - failed}/${messages.length} push notifications for event ${eventLabel}`,
+      );
     } catch (err: any) {
       this.logger.error(`Error sending push notifications: ${err?.message || err}`);
     }

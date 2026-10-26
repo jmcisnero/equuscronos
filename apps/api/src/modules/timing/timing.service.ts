@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   OnModuleInit,
   OnModuleDestroy,
+  Logger,
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { TimingRecord } from "../competitions/entities/timing-record.entity";
@@ -22,15 +23,21 @@ import {
 } from "@equuscronos/shared";
 import { TimeCalculationService } from "./services/time-calculation.service";
 import { VetInspection } from "../vet-inspections/entities/vet-inspection.entity";
+import { NotificationsService } from "../notifications/notifications.service";
+
+/** Espera antes de confirmar (post-commit) que la largada de etapa quedó persistida. */
+const STAGE_START_NOTICE_DELAY_MS = 5000;
 
 @Injectable()
 export class TimingService implements OnModuleInit, OnModuleDestroy {
   private scannerInterval: NodeJS.Timeout;
+  private readonly logger = new Logger(TimingService.name);
 
   constructor(
     // Inyectamos DataSource para controlar transacciones seguras
     private readonly dataSource: DataSource,
     private readonly timeCalcService: TimeCalculationService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -249,7 +256,16 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
           isAutomatic: dto.isAutomatic ?? false,
         });
 
+        // Largada manual de etapa: ¿es el primer binomio que larga esta etapa?
+        const isFirstStageStart =
+          dto.recordType === TimeRecordType.START &&
+          (await this.isFirstStartOfStage(manager, dto.stageId));
+
         const savedRecord = await manager.save(newRecord);
+
+        if (isFirstStageStart) {
+          this.scheduleStageStartNotice(dto.stageId);
+        }
 
         // 6. Sincronización del Estado del Competidor
         await this.syncEntryState(manager, entry, dto, isLateVetIn);
@@ -981,6 +997,8 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
     nextStage: Stage,
     startTime: Date,
   ): Promise<void> {
+    const isFirstStageStart = await this.isFirstStartOfStage(manager, nextStage.id);
+
     const automaticStart = manager.create(TimingRecord, {
       tenant: entry.tenant,
       entry,
@@ -992,12 +1010,61 @@ export class TimingService implements OnModuleInit, OnModuleDestroy {
     });
     await manager.save(automaticStart);
 
+    if (isFirstStageStart) {
+      this.scheduleStageStartNotice(nextStage.id);
+    }
+
     entry.status = ParticipantStatus.IN_RACE;
     entry.currentStage = nextStage;
     await manager.save(CompetitionEntry, entry);
 
     console.log(
       `[Auto Start] LARGADA AUTOMÁTICA REGISTRADA: Dorsal ${entry.bibNumber} inició la Etapa ${nextStage.stageNumber} a las ${startTime.toISOString()}.`,
+    );
+  }
+
+  /** True si aún no existe ninguna largada (START válida) registrada para la etapa. */
+  private async isFirstStartOfStage(manager: EntityManager, stageId: string): Promise<boolean> {
+    const count = await manager.count(TimingRecord, {
+      where: { stage: { id: stageId }, recordType: TimeRecordType.START, isVoid: false },
+    });
+    return count === 0;
+  }
+
+  /**
+   * Aviso push "Etapa N en curso" (una vez por etapa, desde la Etapa 2; la
+   * Etapa 1 la notifica la largada oficial). Se difiere y se verifica fuera de
+   * la transacción: si la largada se revirtió, no se envía nada.
+   */
+  private scheduleStageStartNotice(stageId: string): void {
+    if (process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined) return;
+    setTimeout(() => {
+      this.dispatchStageStartNotice(stageId).catch((err) =>
+        this.logger.error(`Push de inicio de etapa falló (${stageId}): ${err?.message ?? err}`),
+      );
+    }, STAGE_START_NOTICE_DELAY_MS);
+  }
+
+  private async dispatchStageStartNotice(stageId: string): Promise<void> {
+    const stage = await this.dataSource.manager.findOne(Stage, {
+      where: { id: stageId },
+      relations: ["competition"],
+    });
+    if (!stage?.competition || stage.stageNumber <= 1) return;
+
+    const committedStarts = await this.dataSource.manager.count(TimingRecord, {
+      where: { stage: { id: stageId }, recordType: TimeRecordType.START, isVoid: false },
+    });
+    if (committedStarts === 0) return;
+
+    const n = stage.stageNumber;
+    await this.notificationsService.sendCompetitionPushNotificationOnce(
+      `stage-start:${stageId}`,
+      stage.competition.id,
+      "STAGE_START",
+      `🏁 Etapa ${n} en curso`,
+      `${stage.competition.name}: comenzó la Etapa ${n} (${Number(stage.distanceKm)} km).`,
+      { stageNumber: n },
     );
   }
 
