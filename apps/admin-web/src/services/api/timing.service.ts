@@ -89,6 +89,15 @@ export const TimingService = {
       throw new Error("Error al cargar las competencias activas.");
     }
     const all = await response.json();
-    return all.filter((c: any) => ["ACTIVE", "PLANNED"].includes(c.status));
+    // La API no garantiza el orden de las etapas: se ordenan por número para que
+    // los selectores muestren (y preseleccionen) la Etapa 1 primero.
+    return all
+      .filter((c: any) => ["ACTIVE", "PLANNED"].includes(c.status))
+      .map((c: any) => ({
+        ...c,
+        stages: [...(c.stages ?? [])].sort(
+          (a: any, b: any) => a.stageNumber - b.stageNumber,
+        ),
+      }));
   },
 };
