@@ -43,8 +43,18 @@ function localNowHHMMSS(): string {
 }
 
 function buildIsoFromTimeInput(hhmmss: string): string {
-  const today = new Date().toISOString().substring(0, 10);
-  return new Date(`${today}T${hhmmss}`).toISOString();
+  // La hora ingresada es local: se combina con la fecha LOCAL (no la UTC).
+  // Usar toISOString() para la fecha desplazaba +24 h los registros cargados
+  // después de las 21:00 en UTC-3 (la fecha UTC ya es la del día siguiente).
+  const [h, m, s] = hhmmss.split(":").map((p) => parseInt(p, 10) || 0);
+  const d = new Date();
+  d.setHours(h, m, s || 0, 0);
+  // Si la hora queda más de 12 h en el futuro, corresponde al día anterior
+  // (registro cargado pasada la medianoche).
+  if (d.getTime() - Date.now() > 12 * 3600 * 1000) {
+    d.setDate(d.getDate() - 1);
+  }
+  return d.toISOString();
 }
 
 function checkpointLabel(stage: Stage, type: "ARRIVAL" | "VET_IN"): string {
