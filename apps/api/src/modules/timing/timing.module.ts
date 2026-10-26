@@ -13,6 +13,7 @@ import { Penalty } from "../competitions/entities/penalty.entity";
 import { AdminContingencyController } from "./admin-contingency.controller";
 import { AdminContingencyService } from "./admin-contingency.service";
 import { LeaderboardModule } from "../leaderboard/leaderboard.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
@@ -24,6 +25,8 @@ import { LeaderboardModule } from "../leaderboard/leaderboard.module";
       Penalty,
     ]),
     LeaderboardModule,
+    // Push de inicio de etapa y de competencia finalizada
+    NotificationsModule,
   ],
   controllers: [TimingController, AdminContingencyController],
   providers: [

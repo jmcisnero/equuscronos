@@ -4,11 +4,14 @@ import { CompetitionsService } from "./competitions.service";
 import { CompetitionsController } from "./competitions.controller";
 import { Competition } from "./entities/competition.entity";
 import { Stage } from "./entities/stage.entity";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
     // Registramos las entidades principales de este dominio (bounded context)
     TypeOrmModule.forFeature([Competition, Stage]),
+    // Push a suscriptores al cambiar el estado de la competencia (largada)
+    NotificationsModule,
   ],
   controllers: [CompetitionsController],
   providers: [CompetitionsService],

@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
@@ -20,13 +21,17 @@ import {
 } from "@equuscronos/shared";
 import { TimingRecord } from "./entities/timing-record.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class CompetitionsService {
+  private readonly logger = new Logger(CompetitionsService.name);
+
   constructor(
     @InjectRepository(Competition)
     private readonly compRepository: Repository<Competition>,
     private readonly dataSource: DataSource,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createCompetitionWithStages(
@@ -547,6 +552,20 @@ export class CompetitionsService {
       }
 
       await queryRunner.commitTransaction();
+
+      // Push a suscriptores (fuera de la transacción y sin await: un fallo de
+      // Expo nunca debe bloquear ni revertir la largada oficial)
+      this.notificationsService
+        .sendCompetitionPushNotification(
+          competition.id,
+          "STATUS_CHANGE",
+          "🏇 ¡Largada oficial!",
+          `${competition.name} está en curso. Seguí los tiempos en vivo.`,
+          { status: CompetitionStatus.ACTIVE },
+        )
+        .catch((err) =>
+          this.logger.error(`Push de largada falló para ${competition.id}: ${err?.message ?? err}`),
+        );
 
       // Retornar la competencia actualizada
       return await this.findOne(competition.id);
