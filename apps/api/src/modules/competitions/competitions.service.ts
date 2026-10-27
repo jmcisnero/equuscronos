@@ -22,6 +22,10 @@ import {
 import { TimingRecord } from "./entities/timing-record.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
 import { NotificationsService } from "../notifications/notifications.service";
+import {
+  RealTimeGateway,
+  CompetitionBroadcastPayload,
+} from "../timing/real-time.gateway";
 
 @Injectable()
 export class CompetitionsService {
@@ -32,7 +36,33 @@ export class CompetitionsService {
     private readonly compRepository: Repository<Competition>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly realTimeGateway: RealTimeGateway,
   ) {}
+
+  /** Proyección pública mínima para difusión por WebSocket. */
+  private toBroadcast(c: Competition): CompetitionBroadcastPayload {
+    return {
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      competitionDate: c.competitionDate,
+      startTime: c.startTime ?? null,
+      location: c.location ?? null,
+      isFederated: c.isFederated,
+      tenant: c.tenant ? { id: c.tenant.id, name: c.tenant.name } : null,
+    };
+  }
+
+  /** Notifica a los clientes en tiempo real; nunca propaga errores. */
+  private safeEmit(kind: "created" | "updated", c: Competition): void {
+    try {
+      const payload = this.toBroadcast(c);
+      if (kind === "created") this.realTimeGateway.emitCompetitionCreated(payload);
+      else this.realTimeGateway.emitCompetitionUpdated(payload);
+    } catch (err) {
+      this.logger.warn(`WS emit competition:${kind} falló: ${(err as Error)?.message}`);
+    }
+  }
 
   async createCompetitionWithStages(
     dto: CreateCompetitionDto,
@@ -90,7 +120,17 @@ export class CompetitionsService {
       await queryRunner.commitTransaction();
 
       // Retornar la competencia con sus etapas incluidas
-      return this.findOne(savedCompetition.id);
+      const created = await this.findOne(savedCompetition.id);
+
+      // Tiempo real + push (post-commit, sin bloquear la respuesta)
+      this.safeEmit("created", created);
+      this.notificationsService
+        .broadcastNewCompetition(created)
+        .catch((err) =>
+          this.logger.error(`Push de nueva competencia falló para ${created.id}: ${err?.message ?? err}`),
+        );
+
+      return created;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(
@@ -122,7 +162,7 @@ export class CompetitionsService {
     updateDto: UpdateCompetitionDto,
     currentUser?: any,
   ): Promise<Competition> {
-    return await this.dataSource.transaction(async (manager) => {
+    const updated = await this.dataSource.transaction(async (manager) => {
       const competition = await manager.findOne(Competition, {
         where: { id },
         relations: ["tenant", "stages"],
@@ -196,6 +236,8 @@ export class CompetitionsService {
         relations: ["stages", "tenant", "competitionType"],
       });
     });
+    if (updated) this.safeEmit("updated", updated);
+    return updated;
   }
 
   async remove(id: string): Promise<void> {
@@ -568,7 +610,9 @@ export class CompetitionsService {
         );
 
       // Retornar la competencia actualizada
-      return await this.findOne(competition.id);
+      const started = await this.findOne(competition.id);
+      this.safeEmit("updated", started);
+      return started;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       if (

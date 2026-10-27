@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     fetchCompetitions,
     selectCompetition,
     isLoading,
+    isRefreshing,
     statusFilter,
     setStatusFilter,
     searchQuery,
@@ -32,8 +33,13 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const styles = useThemedStyles(createStyles);
 
   useEffect(() => {
-    fetchCompetitions();
+    // Coalescido con la carga de App.tsx (no duplica la petición)
+    fetchCompetitions("initial");
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    fetchCompetitions("refresh");
+  }, [fetchCompetitions]);
 
   const handleSelect = async (comp: Competition) => {
     await selectCompetition(comp.id);
@@ -127,8 +133,8 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             )}
             refreshControl={
               <RefreshControl
-                refreshing={isLoading}
-                onRefresh={fetchCompetitions}
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
                 tintColor={colors.primary}
                 colors={[colors.primary]}
                 progressBackgroundColor={colors.surface}
@@ -141,7 +147,7 @@ export const ExplorerScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   <Text style={styles.emptySub}>{competitionsError}</Text>
                   <TouchableOpacity
                     style={styles.retryBtn}
-                    onPress={fetchCompetitions}
+                    onPress={handleRefresh}
                     accessibilityRole="button"
                   >
                     <Text style={styles.retryText}>Reintentar</Text>

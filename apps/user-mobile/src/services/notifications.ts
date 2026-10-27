@@ -69,6 +69,21 @@ export function addNotificationListeners(handlers: {
   };
 }
 
+/**
+ * Datos de la notificación que abrió la app desde estado "cerrada" (cold start).
+ * null si no aplica / Expo Go.
+ */
+export async function getInitialNotificationData(): Promise<Record<string, unknown> | null> {
+  const Notifications = getNotifications();
+  if (!Notifications) return null;
+  try {
+    const last = await Notifications.getLastNotificationResponseAsync();
+    return (last?.notification.request.content.data ?? null) as Record<string, unknown> | null;
+  } catch {
+    return null;
+  }
+}
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

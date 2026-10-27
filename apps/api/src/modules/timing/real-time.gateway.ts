@@ -40,4 +40,26 @@ export class RealTimeGateway
       });
     }
   }
+
+  /** Evento global: nueva competencia publicada (listado del Explorer). */
+  emitCompetitionCreated(payload: CompetitionBroadcastPayload) {
+    this.server?.emit("competition:created", payload);
+  }
+
+  /** Evento global: cambio de datos/estado de una competencia existente. */
+  emitCompetitionUpdated(payload: CompetitionBroadcastPayload) {
+    this.server?.emit("competition:updated", payload);
+  }
+}
+
+/** Datos públicos mínimos difundidos a clientes anónimos (sin datos sensibles). */
+export interface CompetitionBroadcastPayload {
+  id: string;
+  name: string;
+  status: string;
+  competitionDate: string | Date;
+  startTime?: string | null;
+  location?: string | null;
+  isFederated?: boolean;
+  tenant?: { id: string; name: string } | null;
 }

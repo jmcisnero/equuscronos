@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { UserDeviceToken } from "./entities/user-device-token.entity";
 import { UserCompetitionSubscription } from "./entities/user-competition-subscription.entity";
 import { RegisterTokenDto } from "./dto/register-token.dto";
@@ -13,6 +13,25 @@ export type NotificationEventType =
   | "STAGE_START"
   | "VET_GATE"
   | "OFFICIAL_RESULTS";
+
+interface ExpoPushMessage {
+  to: string;
+  sound: "default";
+  title: string;
+  body: string;
+  channelId: string;
+  data: Record<string, unknown>;
+}
+
+interface ExpoPushTicket {
+  status?: "ok" | "error";
+  message?: string;
+  details?: { error?: string };
+}
+
+const EXPO_TOKEN_PREFIXES = ["ExponentPushToken[", "ExpoPushToken["];
+const isExpoToken = (t: string | null | undefined): t is string =>
+  Boolean(t && EXPO_TOKEN_PREFIXES.some((p) => t.startsWith(p)));
 
 @Injectable()
 export class NotificationsService {
@@ -193,11 +212,9 @@ export class NotificationsService {
       }
 
       // Expo emite tokens con prefijo "ExponentPushToken[" (estándar) o "ExpoPushToken["
-      const expoTokens = subscriptions
-        .map((s) => s.deviceToken?.deviceToken)
-        .filter((t): t is string =>
-          Boolean(t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken["))),
-        );
+      const expoTokens = [
+        ...new Set(subscriptions.map((s) => s.deviceToken?.deviceToken).filter(isExpoToken)),
+      ];
 
       if (expoTokens.length === 0) {
         this.logger.log(`No valid Expo push tokens found among ${subscriptions.length} subscriptions.`);
@@ -206,25 +223,95 @@ export class NotificationsService {
 
       this.logger.log(`Sending Push Notification [${eventLabel}] to ${expoTokens.length} devices...`);
 
-      // 2. Formatear mensajes para Expo Push Service API
-      const messages = expoTokens.map((token) => ({
-        to: token,
-        sound: "default",
-        title,
-        body,
-        data: {
-          ...dataPayload,
-          competitionId,
-          eventType: eventTypes[0],
-          timestamp: new Date().toISOString(),
-        },
-      }));
+      await this.dispatchExpo(expoTokens, title, body, {
+        ...dataPayload,
+        competitionId,
+        eventType: eventTypes[0],
+      }, eventLabel);
+    } catch (err: unknown) {
+      this.logger.error(`Error sending push notifications: ${(err as Error)?.message ?? err}`);
+    }
+  }
 
-      // 3. Enviar peticiones en bloques (Expo acepta hasta 100 por lote)
-      const chunkSize = 100;
-      let failed = 0;
-      for (let i = 0; i < messages.length; i += chunkSize) {
-        const chunk = messages.slice(i, i + chunkSize);
+  /**
+   * Difusión de una competencia recién publicada a TODOS los dispositivos
+   * activos (incluye invitados/anónimos). Una competencia nueva aún no tiene
+   * suscriptores, por eso no puede usarse el envío por suscripción.
+   * Clave idempotente por competencia para evitar duplicados.
+   */
+  async broadcastNewCompetition(competition: {
+    id: string;
+    name: string;
+    competitionDate: string | Date;
+    location?: string | null;
+  }): Promise<void> {
+    const key = `competition-created:${competition.id}`;
+    if (this.sentKeys.has(key)) return;
+    this.sentKeys.add(key);
+
+    try {
+      const rows = await this.tokenRepo.find({
+        where: { isActive: true, pushProvider: "expo" },
+        select: ["deviceToken"],
+      });
+      const tokens = [...new Set(rows.map((r) => r.deviceToken).filter(isExpoToken))];
+      if (tokens.length === 0) {
+        this.logger.log(`Broadcast competition ${competition.id}: no active devices.`);
+        return;
+      }
+
+      const date =
+        typeof competition.competitionDate === "string"
+          ? competition.competitionDate.substring(0, 10)
+          : competition.competitionDate.toISOString().substring(0, 10);
+      const where = competition.location ? ` · ${competition.location}` : "";
+
+      await this.dispatchExpo(
+        tokens,
+        `🐎 Nueva competencia: ${competition.name}`,
+        `${date}${where}. Tocá para ver los detalles.`,
+        {
+          competitionId: competition.id,
+          eventType: "COMPETITION_CREATED",
+          name: competition.name,
+          competitionDate: date,
+          location: competition.location ?? null,
+        },
+        "COMPETITION_CREATED",
+      );
+    } catch (err: unknown) {
+      this.logger.error(`Error broadcasting new competition: ${(err as Error)?.message ?? err}`);
+    }
+  }
+
+  /**
+   * Envía mensajes vía Expo Push API en lotes de 100, registra errores por
+   * ticket y desactiva los tokens que Expo reporta como no registrados.
+   */
+  private async dispatchExpo(
+    tokens: string[],
+    title: string,
+    body: string,
+    data: Record<string, unknown>,
+    label: string,
+  ): Promise<void> {
+    const timestamp = new Date().toISOString();
+    const messages: ExpoPushMessage[] = tokens.map((to) => ({
+      to,
+      sound: "default",
+      title,
+      body,
+      channelId: "default",
+      data: { ...data, timestamp },
+    }));
+
+    const chunkSize = 100;
+    let failed = 0;
+    const invalidTokens: string[] = [];
+
+    for (let i = 0; i < messages.length; i += chunkSize) {
+      const chunk = messages.slice(i, i + chunkSize);
+      try {
         const res = await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
           headers: {
@@ -236,28 +323,35 @@ export class NotificationsService {
         });
 
         // Expo responde 200 aunque fallen tickets individuales: revisar cada uno
-        const payload: any = await res.json().catch(() => null);
+        const payload = (await res.json().catch(() => null)) as { data?: ExpoPushTicket[] } | null;
         if (!res.ok) {
           failed += chunk.length;
           this.logger.error(`Expo Push HTTP ${res.status}: ${JSON.stringify(payload)}`);
           continue;
         }
-        const tickets: any[] = Array.isArray(payload?.data) ? payload.data : [];
+        const tickets = Array.isArray(payload?.data) ? payload.data : [];
         tickets.forEach((ticket, idx) => {
-          if (ticket?.status === "error") {
-            failed++;
-            this.logger.warn(
-              `Expo ticket error for ${chunk[idx]?.to}: ${ticket.message} (${ticket.details?.error ?? "unknown"})`,
-            );
-          }
+          if (ticket?.status !== "error") return;
+          failed++;
+          const code = ticket.details?.error ?? "unknown";
+          this.logger.warn(`Expo ticket error for ${chunk[idx]?.to}: ${ticket.message} (${code})`);
+          if (code === "DeviceNotRegistered" && chunk[idx]) invalidTokens.push(chunk[idx].to);
         });
+      } catch (err: unknown) {
+        failed += chunk.length;
+        this.logger.error(`Expo Push batch failed: ${(err as Error)?.message ?? err}`);
       }
-
-      this.logger.log(
-        `Dispatched ${messages.length - failed}/${messages.length} push notifications for event ${eventLabel}`,
-      );
-    } catch (err: any) {
-      this.logger.error(`Error sending push notifications: ${err?.message || err}`);
     }
+
+    if (invalidTokens.length > 0) {
+      await this.tokenRepo
+        .update({ deviceToken: In(invalidTokens) }, { isActive: false })
+        .catch((err: Error) => this.logger.warn(`Token cleanup failed: ${err.message}`));
+      this.logger.log(`Deactivated ${invalidTokens.length} unregistered push tokens.`);
+    }
+
+    this.logger.log(
+      `Dispatched ${messages.length - failed}/${messages.length} push notifications for event ${label}`,
+    );
   }
 }
