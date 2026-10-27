@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { Competition, LeaderboardEntry, CompetitionSubscription } from "../types";
 import { api } from "../services/api";
+import type { CompetitionBroadcast } from "../services/socket";
+
+type FetchMode = "initial" | "refresh" | "silent";
+
+/** Mismo orden que el backend (findAll: competitionDate DESC). */
+const sortByDateDesc = (list: Competition[]) =>
+  [...list].sort((a, b) => (b.competitionDate ?? "").localeCompare(a.competitionDate ?? ""));
+
+/** Petición en curso compartida: evita ráfagas (socket + AppState + pull). */
+let inflightFetch: Promise<void> | null = null;
 
 interface CompetitionState {
   competitions: Competition[];
@@ -9,6 +19,8 @@ interface CompetitionState {
   leaderboard: LeaderboardEntry[];
   subscriptions: CompetitionSubscription[];
   isLoading: boolean;
+  /** Pull-to-refresh en curso (no oculta la lista). */
+  isRefreshing: boolean;
   isLeaderboardLoading: boolean;
   isLiveSocket: boolean;
   isClosed: boolean;
@@ -20,7 +32,14 @@ interface CompetitionState {
   leaderboardError: string | null;
 
   // Actions
-  fetchCompetitions: () => Promise<void>;
+  /**
+   * initial: muestra spinner solo si la lista está vacía.
+   * refresh: pull-to-refresh (indicador nativo).
+   * silent: sin indicadores (AppState / reconexión / socket).
+   */
+  fetchCompetitions: (mode?: FetchMode) => Promise<void>;
+  /** Inserta o actualiza una competencia recibida por WebSocket. */
+  upsertCompetition: (c: CompetitionBroadcast) => void;
   selectCompetition: (id: string) => Promise<void>;
   setLeaderboard: (data: LeaderboardEntry[]) => void;
   setIsLiveSocket: (isLive: boolean) => void;
@@ -42,6 +61,7 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
   leaderboard: [],
   subscriptions: [],
   isLoading: false,
+  isRefreshing: false,
   isLeaderboardLoading: false,
   isLiveSocket: false,
   isClosed: false,
@@ -50,24 +70,74 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
   competitionsError: null,
   leaderboardError: null,
 
-  fetchCompetitions: async () => {
-    set({ isLoading: true, competitionsError: null });
-    try {
-      const data = await api.getCompetitions();
-      set({ competitions: data || [], isLoading: false });
-
-      // Auto seleccionar la primera activa si no hay seleccionada
-      if (!get().activeCompetitionId && data.length > 0) {
-        const activeComp = data.find((c) => c.status === "ACTIVE") || data[0];
-        get().selectCompetition(activeComp.id);
-      }
-    } catch (error) {
-      if (__DEV__) console.warn("[CompetitionStore] Error fetching competitions:", error);
-      set({
-        isLoading: false,
-        competitionsError: "No se pudo conectar con el servidor. Verifica tu conexión.",
-      });
+  fetchCompetitions: async (mode: FetchMode = "initial") => {
+    if (mode === "refresh") set({ isRefreshing: true });
+    if (inflightFetch) {
+      await inflightFetch;
+      if (mode === "refresh") set({ isRefreshing: false });
+      return;
     }
+
+    const showSpinner = mode === "initial" && get().competitions.length === 0;
+    set({ isLoading: showSpinner, competitionsError: null });
+
+    inflightFetch = (async () => {
+      try {
+        const data = (await api.getCompetitions()) || [];
+        set({ competitions: data, isLoading: false });
+
+        // Auto seleccionar la primera activa si no hay seleccionada
+        if (!get().activeCompetitionId && data.length > 0) {
+          const activeComp = data.find((c) => c.status === "ACTIVE") || data[0];
+          get().selectCompetition(activeComp.id);
+        }
+      } catch (error) {
+        if (__DEV__) console.warn("[CompetitionStore] Error fetching competitions:", error);
+        // En modo silencioso conserva la lista actual sin mostrar error
+        set({
+          isLoading: false,
+          competitionsError:
+            mode === "silent" && get().competitions.length > 0
+              ? get().competitionsError
+              : "No se pudo conectar con el servidor. Verifica tu conexión.",
+        });
+      }
+    })();
+
+    try {
+      await inflightFetch;
+    } finally {
+      inflightFetch = null;
+      if (mode === "refresh") set({ isRefreshing: false });
+    }
+  },
+
+  upsertCompetition: (incoming: CompetitionBroadcast) => {
+    const patch: Partial<Competition> & Pick<Competition, "id"> = {
+      id: incoming.id,
+      name: incoming.name,
+      status: incoming.status as Competition["status"],
+      competitionDate: incoming.competitionDate,
+      startTime: incoming.startTime ?? undefined,
+      location: incoming.location ?? undefined,
+      isFederated: incoming.isFederated,
+      ...(incoming.tenant ? { tenant: incoming.tenant } : {}),
+    };
+
+    const { competitions, activeCompetition } = get();
+    const idx = competitions.findIndex((c) => c.id === incoming.id);
+    const next =
+      idx >= 0
+        ? competitions.map((c, i) => (i === idx ? { ...c, ...patch } : c))
+        : sortByDateDesc([patch as Competition, ...competitions]);
+
+    set({
+      competitions: next,
+      competitionsError: null,
+      ...(activeCompetition?.id === incoming.id
+        ? { activeCompetition: { ...activeCompetition, ...patch } }
+        : {}),
+    });
   },
 
   selectCompetition: async (id: string) => {

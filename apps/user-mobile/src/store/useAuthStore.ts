@@ -12,7 +12,9 @@ import { Platform } from "react-native";
  * - Las acciones de engagement (seguir binomio, alertas de carrera) exigen login
  *   (ver ProgressiveProfilingModal / requireAuth).
  * - La sesión del aficionado se persiste en expo-secure-store.
- * - El token push se solicita y se registra en el backend SOLO tras un login exitoso.
+ * - El token push se registra en el arranque también para invitados (anónimo,
+ *   sin userId) para recibir avisos de nuevas competencias; tras el login el
+ *   mismo token se vincula al usuario.
  */
 
 const SESSION_KEY = "equuscronos.session.v1";
@@ -111,6 +113,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // Sin sesión: modo invitado anónimo (solo lectura pública).
       api.setToken(null);
       set({ user: null, token: null, isGuest: true, isLoading: false });
+      // Registro anónimo del dispositivo (avisos de nuevas competencias)
+      get().registerPushForCurrentUser();
     },
 
     loginGoogle: async (googleId, email, name, optInMarketing = true) => {
@@ -147,7 +151,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     registerPushForCurrentUser: async () => {
       const { user, isGuest } = get();
-      if (isGuest || !user) return null;
 
       const deviceToken = await registerForPushNotificationsAsync();
       set({ deviceToken });
@@ -156,7 +159,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       try {
         await api.registerDeviceToken({
           deviceToken,
-          userId: user.id,
+          userId: isGuest || !user ? undefined : user.id,
           platform: Platform.OS,
           pushProvider: "expo",
         });

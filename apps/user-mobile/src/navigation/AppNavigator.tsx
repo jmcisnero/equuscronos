@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import {
   NavigationContainer,
+  createNavigationContainerRef,
   DarkTheme as NavDarkTheme,
   DefaultTheme as NavLightTheme,
   Theme as NavigationTheme,
@@ -14,14 +15,25 @@ import { NotificationSettingsScreen } from "../screens/NotificationSettingsScree
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
 
-const Tab = createBottomTabNavigator();
+export type RootTabParamList = {
+  ExplorerTab: undefined;
+  LiveTab: undefined;
+  NotificationsTab: undefined;
+  ProfileTab: undefined;
+  ResultsTab: undefined;
+};
+
+/** Ref global para navegar desde fuera del árbol (p. ej. tap en push). */
+export const navigationRef = createNavigationContainerRef<RootTabParamList>();
+
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 /** Consulta histórica: misma pantalla de clasificación, sin tiempo real. */
 const ResultsScreen: React.FC<{ navigation: any }> = (props) => (
   <LiveLeaderboardScreen {...props} mode="results" />
 );
 
-export const AppNavigator: React.FC = () => {
+export const AppNavigator: React.FC<{ onReady?: () => void }> = ({ onReady }) => {
   const { isDark, colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -45,7 +57,7 @@ export const AppNavigator: React.FC = () => {
   }, [isDark, colors]);
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme} onReady={onReady}>
       <Tab.Navigator
         backBehavior="history"
         screenOptions={({ route, navigation }) => {
