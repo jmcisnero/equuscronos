@@ -212,7 +212,8 @@ export const useCompetitionStore = create<CompetitionState>((set, get) => ({
           competitionId,
           notifyStatusChange: true,
           notifyStageStart: true,
-          notifyVetGate: true,
+          // Canal de alta frecuencia retirado de la app de aficionados
+          notifyVetGate: false,
           notifyOfficialResults: true,
         });
       }

@@ -11,6 +11,7 @@ import {
   formatHHMMSS,
   formatSpeed,
   formatTime,
+  getDisplayPulse,
   isTerminalStatus,
 } from "../utils/raceFormat";
 
@@ -23,6 +24,8 @@ interface LeaderboardRowProps {
   isTrophyWinner?: boolean;
   /** Modalidad con chips RFID: muestra el límite de ingreso a Vet Gate */
   isRfidMode?: boolean;
+  /** Raid FEU: desde la Etapa 2 se muestra el pulso de la neutralización de Etapa 1 */
+  isFeuRaid?: boolean;
 }
 
 /** Texto de progresión en vivo según el estado del binomio. */
@@ -34,8 +37,8 @@ function getLiveProgress(entry: LeaderboardEntry): { icon: string; text: string 
         : { icon: "🏇", text: "En ruta" };
     case "VET_CHECK":
       return entry.vetInTime
-        ? { icon: "🩺", text: `En Vet Gate · ingresó ${formatHHMMSS(entry.vetInTime)}` }
-        : { icon: "🩺", text: "En Vet Gate" };
+        ? { icon: "🩺", text: `Toma de Pulso ${formatHHMMSS(entry.vetInTime)}` }
+        : { icon: "🩺", text: "Toma de Pulso" };
     case "RESTING":
       return entry.nextStageDepartureTime
         ? { icon: "⏱️", text: `Neutralización · larga ${formatHHMMSS(entry.nextStageDepartureTime)}` }
@@ -49,9 +52,24 @@ function getLiveProgress(entry: LeaderboardEntry): { icon: string; text: string 
   }
 }
 
+const NO_TIME = "--:--:--";
+
+/**
+ * Hora de llegada a la etapa en disputa. Prioriza el desglose por etapa; en
+ * Vet Gate el binomio ya arribó a la etapa actual, por lo que `arrivalTime`
+ * es un respaldo válido. Sin registro: "--:--:--".
+ */
+function getCurrentStageArrival(entry: LeaderboardEntry): string {
+  const stageArrival = entry.stages?.find((s) => s.stageNumber === entry.currentStage)?.arrivalTime;
+  const fallback = entry.status === "VET_CHECK" ? entry.arrivalTime : undefined;
+  const value = stageArrival || fallback;
+  return value ? formatHHMMSS(value).replace(/^--$/, NO_TIME) : NO_TIME;
+}
+
 /**
  * Tarjeta de binomio. Dos modos, alineados con public-web:
- *  - En curso (LeaderboardTable): etapa en disputa, progresión, última llegada.
+ *  - En curso (LeaderboardTable): llegada a la etapa en disputa, progresión,
+ *    tiempo neto, diferencia y velocidad. El club se muestra solo en el detalle.
  *  - Finalizada (FinalResultsTable): puesto, tiempo total, velocidad media y
  *    pulso de Etapa 1 (base del Trofeo al Menor Pulso, Art. 42).
  * Al tocarla se abre el desglose por etapas.
@@ -63,6 +81,7 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
   isClosed = false,
   isTrophyWinner = false,
   isRfidMode = false,
+  isFeuRaid = false,
 }) => {
   const { isDark } = useTheme();
   const tones = useMemo(() => getRaceTones(isDark), [isDark]);
@@ -77,16 +96,15 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
   const gap = formatGap(entry.gapToLeaderMs, entry.totalRaceTimeMs);
   const tenant = entry.representedTenant;
 
-  // Finalizada: pulso de Etapa 1 (criterio del Trofeo). En curso: último pulso.
-  const stage1 = isClosed ? entry.stages?.find((s) => s.stageNumber === 1) : undefined;
-  const pulse = isClosed ? stage1?.heartRate : entry.heartRate;
-  const isRecheck = isClosed ? stage1?.isRecheck ?? entry.isRecheck : entry.isRecheck;
-  const recheckStatus = isClosed
-    ? stage1?.recheckStatus ?? entry.recheckStatus
-    : entry.recheckStatus;
+  // Finalizada o raid FEU en Etapa 2+: pulso de Etapa 1. Resto: último pulso.
+  const { pulse, isRecheck, recheckStatus } = getDisplayPulse(entry, {
+    isClosed,
+    feuRaid: isFeuRaid,
+  });
 
   const progress = !isClosed && !isOut ? getLiveProgress(entry) : null;
-  const lastArrival = entry.lastArrivalTime || entry.arrivalTime;
+  const currentArrival = isClosed ? NO_TIME : getCurrentStageArrival(entry);
+  const hasArrived = currentArrival !== NO_TIME;
 
   // Finalizada: diferencia en formato planilla y hora de llegada a meta (última etapa)
   const finalGap = formatGapHMS(entry.gapToLeaderMs, entry.totalRaceTimeMs);
@@ -124,7 +142,8 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
         <RaceStatusBadge status={entry.status} />
       </View>
 
-      {/* Binomio: jinete / 🐴 caballo / club (cada uno en su línea).
+      {/* Binomio: jinete / 🐴 caballo. El club se omite en la lista (como en
+          la vista móvil web) y se muestra en el desglose al tocar la tarjeta.
           En finalizada el pulso de Etapa 1 acompaña al binomio para liberar
           el ancho completo a las 4 métricas. */}
       <View style={styles.identityRow}>
@@ -135,11 +154,6 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
           <Text style={styles.horse} numberOfLines={1} ellipsizeMode="tail">
             🐴 {entry.horseName}
           </Text>
-          {!!tenant?.name && (
-            <Text style={styles.club} numberOfLines={1} ellipsizeMode="tail">
-              {tenant.name}
-            </Text>
-          )}
         </View>
         {isClosed && (
           <View style={styles.pulseCol}>
@@ -184,7 +198,13 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
       ) : (
         <View style={styles.liveRow}>
           <View style={styles.grid}>
-            <Metric label="Etapa en disputa" value={`Etapa ${entry.currentStage}`} styles={styles} strong />
+            <Metric
+              label={`Llegada E${entry.currentStage}`}
+              value={currentArrival}
+              styles={styles}
+              color={hasArrived ? tones.timeAccent : undefined}
+              strong
+            />
             <Metric label="Tiempo Neto" value={formatTime(entry.totalRaceTimeMs)} styles={styles} strong />
             <Metric
               label="Diferencia"
@@ -194,15 +214,6 @@ const LeaderboardRowBase: React.FC<LeaderboardRowProps> = ({
               strong
             />
             <Metric label="Velocidad" value={formatSpeed(entry.averageSpeed)} styles={styles} />
-            {!!lastArrival && (
-              <Metric
-                label="Última llegada"
-                value={formatHHMMSS(lastArrival)}
-                styles={styles}
-                color={tones.timeAccent}
-                strong
-              />
-            )}
             {isRfidMode && !!entry.nextVetControlTime && (
               <Metric
                 label="Límite Vet Gate"
@@ -311,12 +322,11 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) =>
     bib: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
     bibText: { fontSize: 13, fontWeight: "900", fontVariant: ["tabular-nums"] },
 
-    // Identidad: jinete / caballo (14 · 600) / club en línea propia
+    // Identidad: jinete / caballo (14 · 600). El club vive en StageBreakdownModal.
     identityRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     identity: { flex: 1, gap: 2, minWidth: 0 },
     rider: { color: colors.textStrong, fontSize: 13, fontWeight: "600" },
     horse: { color: colors.text, fontSize: 14, fontWeight: "600" },
-    club: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
 
     progress: {
       alignSelf: "flex-start",
