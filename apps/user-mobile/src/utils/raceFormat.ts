@@ -160,9 +160,61 @@ export function computeTrophyWinnerBib(leaderboard: LeaderboardEntry[]): number 
   return tied[0]?.bibNumber ?? null;
 }
 
-/** Etapas ya disputadas (para el historial clínico). */
+/**
+ * Etapas ya disputadas (para el historial clínico). Una etapa cuenta como
+ * disputada si quedó atrás (< etapa en curso), si el binomio terminó, o si
+ * tiene hora de llegada registrada. Esto último cubre a los eliminados en la
+ * neutralización (F.C.A., claudicación, retiro): siguen con currentStage en la
+ * misma etapa pero ya la completaron en ruta.
+ */
 export function getPreviousStages(entry: LeaderboardEntry) {
-  return (entry.stages || []).filter(
-    (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED",
-  );
+  return (entry.stages || [])
+    .filter(
+      (s) => s.stageNumber < entry.currentStage || entry.status === "FINISHED" || !!s.arrivalTime,
+    )
+    .sort((a, b) => a.stageNumber - b.stageNumber);
+}
+
+/**
+ * Raid federado FEU: competencia federada de hasta 2 etapas (si el plan no
+ * está cargado, basta con la marca de federada). La toma de pulso clínica es
+ * única, al cierre de la Etapa 1; en la Etapa 2 no hay pulso en meta.
+ * Enduro multi-etapa (Vet Gate en cada fase) queda fuera de esta regla.
+ */
+export function isFeuRaid(competition?: Competition | null): boolean {
+  if (competition?.isFederated !== true) return false;
+  const stageCount = competition.stages?.length ?? 0;
+  return stageCount === 0 || stageCount <= 2;
+}
+
+export interface DisplayPulse {
+  pulse?: number;
+  isRecheck?: boolean;
+  recheckStatus?: LeaderboardEntry["recheckStatus"];
+}
+
+/**
+ * Pulso a mostrar en la tarjeta del listado:
+ *  - Finalizada: pulso de Etapa 1 (Trofeo al Menor Pulso, Art. 42).
+ *  - Raid FEU desde la Etapa 2: pulso de la neutralización de Etapa 1, vigente
+ *    para el resto de la prueba (fallback: último pulso del binomio).
+ *  - Resto (Etapa 1 o enduro por fases): último pulso registrado.
+ */
+export function getDisplayPulse(
+  entry: LeaderboardEntry,
+  opts: { isClosed: boolean; feuRaid: boolean },
+): DisplayPulse {
+  const useStage1 =
+    opts.isClosed ||
+    (opts.feuRaid && (entry.currentStage >= 2 || entry.status === "FINISHED" || entry.status === "FINISHED_PROVISIONAL"));
+  if (!useStage1) {
+    return { pulse: entry.heartRate, isRecheck: entry.isRecheck, recheckStatus: entry.recheckStatus };
+  }
+  const s1 = entry.stages?.find((s) => s.stageNumber === 1);
+  return {
+    // Finalizada: estrictamente Etapa 1 (criterio del Trofeo), sin fallback
+    pulse: s1?.heartRate ?? (opts.isClosed ? undefined : entry.heartRate),
+    isRecheck: s1?.isRecheck ?? entry.isRecheck,
+    recheckStatus: s1?.recheckStatus ?? entry.recheckStatus,
+  };
 }

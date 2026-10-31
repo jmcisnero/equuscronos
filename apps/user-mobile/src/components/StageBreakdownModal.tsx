@@ -19,6 +19,7 @@ import {
   formatSpeed,
   formatTime,
   getPreviousStages,
+  getRaceStatusInfo,
   getStagePlan,
   isTerminalStatus,
 } from "../utils/raceFormat";
@@ -84,6 +85,26 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
     entry.rank === 1 || entry.rank === 2 || entry.rank === 3
       ? tones.podium[entry.rank]
       : tones.podium.other;
+
+  // Eliminación reglamentaria (F.C.A., CLAUD., RET., ...): código FEU + motivo.
+  // Ocurre en la etapa en curso del binomio (p. ej. neutralización de E1).
+  const isEliminated = isTerminalStatus(entry.status);
+  const elimination = isEliminated ? getRaceStatusInfo(entry.status) : null;
+  const eliminationStage = entry.currentStage;
+  const outTone = tones.status.out;
+  const eliminationBadge = elimination ? (
+    <View style={[styles.elimBadge, { backgroundColor: outTone.bg, borderColor: outTone.border }]}>
+      <Text style={[styles.elimCode, { color: outTone.text }]}>
+        {elimination.icon} {elimination.label}
+      </Text>
+      {!!elimination.description && (
+        <Text style={[styles.elimReason, { color: outTone.text }]}>{elimination.description}</Text>
+      )}
+    </View>
+  ) : null;
+  // ¿La etapa de la eliminación tiene tarjeta en el desglose?
+  const eliminationHasCard =
+    !!elimination && stages.some((s) => s.stageNumber === eliminationStage);
 
   /**
    * Reglamento FEU: la llegada de la última etapa es la meta final; no hay
@@ -172,6 +193,18 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
 
             <Text style={styles.sectionTitle}>DESGLOSE POR ETAPA</Text>
 
+            {/* Estado general: solo subtítulo contextual. El detalle (código +
+                motivo) se muestra una única vez en la tarjeta de la etapa; si esa
+                etapa no tiene tarjeta (eliminado en ruta, sin llegada), aquí. */}
+            {elimination && (
+              <View style={styles.elimBanner}>
+                <Text style={styles.elimBannerTitle}>
+                  Eliminado en Etapa {eliminationStage}
+                </Text>
+                {!eliminationHasCard && eliminationBadge}
+              </View>
+            )}
+
             {stages.length > 0 ? (
               stages.map((stage) => {
                 const isFinal = isFinalFeuStage(stage.stageNumber);
@@ -210,10 +243,17 @@ export const StageBreakdownModal: React.FC<StageBreakdownModalProps> = ({
                       )}
                       <GridItem label="VEL. PROM." value={formatSpeed(stage.averageSpeed)} styles={styles} highlight />
                     </View>
+
+                    {/* Etapa donde ocurrió la eliminación */}
+                    {elimination && stage.stageNumber === eliminationStage && (
+                      <View style={styles.elimStageSlot}>{eliminationBadge}</View>
+                    )}
                   </View>
                 );
               })
             ) : (
+              // Solo si no hay llegada registrada en la Etapa 1
+              // (p. ej. abandono / descalificación en los primeros km).
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
                   Aún no hay etapas completadas para este binomio.
@@ -440,6 +480,25 @@ const createStyles = ({ colors, isDark }: Theme) =>
     padding: 20,
     alignItems: "center",
   },
+  elimBanner: {
+    marginBottom: 10,
+    gap: 6,
+  },
+  elimBannerTitle: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  elimBadge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 2,
+  },
+  elimCode: { fontSize: 13, fontWeight: "900" },
+  elimReason: { fontSize: 11, fontWeight: "600" },
+  elimStageSlot: { marginTop: 10 },
   emptyText: {
     color: colors.textMuted,
     textAlign: "center",

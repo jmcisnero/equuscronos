@@ -30,10 +30,9 @@ export const NotificationSettingsScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [loadingCompId, setLoadingCompId] = useState<string | null>(null);
 
-  // Canales globales
+  // Canales globales (Neutralización / Vet Gate se excluyen: alta frecuencia)
   const [notifyStatusChange, setNotifyStatusChange] = useState(true);
   const [notifyStageStart, setNotifyStageStart] = useState(true);
-  const [notifyVetGate, setNotifyVetGate] = useState(true);
   const [notifyFinalResults, setNotifyFinalResults] = useState(true);
 
   useEffect(() => {
@@ -109,8 +108,10 @@ export const NotificationSettingsScreen: React.FC = () => {
         <View style={styles.channelsCard}>
           <View style={styles.channelRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.channelTitle}>Cambio de Estado a 'ACTIVE'</Text>
-              <Text style={styles.channelSub}>Aviso al iniciar la competencia de raid</Text>
+              <Text style={styles.channelTitle}>Inicio de Competencia</Text>
+              <Text style={styles.channelSub}>
+                Recibe un aviso cuando la competencia haya comenzado.
+              </Text>
             </View>
             <Switch
               value={notifyStatusChange}
@@ -124,7 +125,7 @@ export const NotificationSettingsScreen: React.FC = () => {
           <View style={styles.channelRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.channelTitle}>Largadas de Etapa</Text>
-              <Text style={styles.channelSub}>Alertas de salida a pista de jinetes</Text>
+              <Text style={styles.channelSub}>Recibe un aviso cuando se inicie una etapa.</Text>
             </View>
             <Switch
               value={notifyStageStart}
@@ -137,24 +138,10 @@ export const NotificationSettingsScreen: React.FC = () => {
 
           <View style={styles.channelRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.channelTitle}>Neutralización y Vet Gate</Text>
-              <Text style={styles.channelSub}>
-                Entradas a control veterinario y frecuencias cardíacas
-              </Text>
-            </View>
-            <Switch
-              value={notifyVetGate}
-              onValueChange={setNotifyVetGate}
-              {...switchProps(notifyVetGate)}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.channelRow}>
-            <View style={{ flex: 1 }}>
               <Text style={styles.channelTitle}>Resultados Finales</Text>
-              <Text style={styles.channelSub}>Publicación de podio y planilla final</Text>
+              <Text style={styles.channelSub}>
+                Recibe un aviso cuando se finalice la competencia.
+              </Text>
             </View>
             <Switch
               value={notifyFinalResults}

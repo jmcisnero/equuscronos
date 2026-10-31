@@ -17,7 +17,7 @@ import { useCompetitionStore } from "../store/useCompetitionStore";
 import { useLiveLeaderboardMobile } from "../hooks/useLiveLeaderboardMobile";
 import { LeaderboardEntry } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
-import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE } from "../utils/raceFormat";
+import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE, isFeuRaid } from "../utils/raceFormat";
 import { useIsFocused } from "@react-navigation/native";
 
 const CONCLUDED_STATUSES = ["COMPLETED", "OFFICIAL"];
@@ -76,6 +76,7 @@ export const LiveLeaderboardScreen: React.FC<{
 
   const maxHeartRate = activeCompetition?.maxHeartRate || DEFAULT_MAX_HEART_RATE;
   const isRfidMode = activeCompetition?.enableRfidChips === true;
+  const feuRaid = isFeuRaid(activeCompetition);
 
   const handleRowPress = useCallback((entry: LeaderboardEntry) => {
     setSelectedEntry(entry);
@@ -108,9 +109,10 @@ export const LiveLeaderboardScreen: React.FC<{
         isClosed={isClosed}
         isTrophyWinner={item.bibNumber === trophyBib}
         isRfidMode={isRfidMode}
+        isFeuRaid={feuRaid}
       />
     ),
-    [handleRowPress, maxHeartRate, isClosed, trophyBib, isRfidMode],
+    [handleRowPress, maxHeartRate, isClosed, trophyBib, isRfidMode, feuRaid],
   );
 
   const listHeader = (
