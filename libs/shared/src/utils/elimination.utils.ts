@@ -127,6 +127,25 @@ export function getEliminationDisplayLabel(
   }
 }
 
+export const TERMINAL_PARTICIPANT_STATUSES: ParticipantStatus[] = [
+  ParticipantStatus.FINISHED,
+  ParticipantStatus.FINISHED_PROVISIONAL,
+  ParticipantStatus.DQ,
+  ParticipantStatus.DNF,
+  ParticipantStatus.WD,
+  ParticipantStatus.NO_COMPLETED,
+  ParticipantStatus.ELIMINATED_TR,
+  ParticipantStatus.ELIMINATED_PP,
+  ParticipantStatus.ELIMINATED_GAIT,
+  ParticipantStatus.FAIL_WEIGHT,
+  ParticipantStatus.DQ_ROUTE,
+  ParticipantStatus.DQ_ASSISTANCE,
+  ParticipantStatus.DQ_DISMOUNTED,
+  ParticipantStatus.DQ_VET_ROUTE,
+  ParticipantStatus.DQ_OVERTIME,
+  ParticipantStatus.DQ_OLYMPIC,
+];
+
 export function isTerminalStatus(status?: string | null): boolean {
   if (!status) return false;
   const s = String(status).toUpperCase();

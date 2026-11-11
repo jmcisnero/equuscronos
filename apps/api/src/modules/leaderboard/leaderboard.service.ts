@@ -166,6 +166,7 @@ export class LeaderboardService {
       if (
         isCompetitionActive &&
         !isTerminalStatus(entry.status) &&
+        !entry.disqualificationReason &&
         entry.status !== ParticipantStatus.FINISHED &&
         entry.status !== ParticipantStatus.FINISHED_PROVISIONAL &&
         arrivalTime &&
@@ -198,10 +199,15 @@ export class LeaderboardService {
             lastFinalInsp?.gaitStatus === GaitStatus.APPROVED ||
             lastFinalInsp?.gaitStatus === GaitStatus.OBSERVATION;
 
+          const isWaitingLegitimateRecheck =
+            (lastFinalInsp?.requiresRecheck || lastFinalInsp?.isRecheckRequired) &&
+            lastFinalInsp?.nextCheckTime &&
+            now.getTime() <= new Date(lastFinalInsp.nextCheckTime).getTime();
+
           const hasApprovedInspection =
             entry.status === ParticipantStatus.RESTING ||
             entry.status === ParticipantStatus.IN_RACE ||
-            entry.status === ParticipantStatus.VET_CHECK ||
+            isWaitingLegitimateRecheck ||
             (lastFinalInsp &&
               isGaitAcceptable &&
               lastFinalInsp.heartRate <= maxHr &&
@@ -211,10 +217,11 @@ export class LeaderboardService {
               (r) =>
                 r.recordType === TimeRecordType.VET_IN &&
                 r.stage?.stageNumber === calculatedCurrentStage &&
+                !r.isAutomatic &&
                 r.isApproved,
             );
 
-          if (!hasApprovedInspection) {
+          if (!hasApprovedInspection && !isWaitingLegitimateRecheck) {
             // Expirado! Mutamos a ELIMINATED_TR en la base de datos
             console.log(
               `[LeaderboardService DEBUG] Competidor ${entry.bibNumber} (entry ${entry.id}) superó tiempo de neutralización. hasApprovedInspection=${hasApprovedInspection}, entry.status=${entry.status}, calculatedCurrentStage=${calculatedCurrentStage}, stageInspsCount=${stageInsps.length}, lastFinalInsp=${JSON.stringify(lastFinalInsp)}. Mutando a ELIMINATED_TR.`,
