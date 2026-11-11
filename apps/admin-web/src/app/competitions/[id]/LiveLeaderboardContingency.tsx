@@ -487,12 +487,17 @@ export default function LiveLeaderboardContingency({
                         </td>
                         <td className="py-4 px-4">
                           {(() => {
-                            if (isOut) {
-                              const info = getEliminationDisplayLabel(entry.status);
+                            const effectiveStatus =
+                              entry.disqualificationReason || entry.status;
+                            const isEffectivelyOut =
+                              isOut || Boolean(entry.disqualificationReason);
+
+                            if (isEffectivelyOut) {
+                              const info = getEliminationDisplayLabel(effectiveStatus);
                               const icon =
-                                entry.status === "NO_COMPLETED"
+                                effectiveStatus === "NO_COMPLETED"
                                   ? "❌"
-                                  : ["DNF", "RET", "WD", "FAIL_WEIGHT"].includes(entry.status)
+                                  : ["DNF", "RET", "WD", "FAIL_WEIGHT"].includes(effectiveStatus)
                                     ? "⚠️"
                                     : "🛑";
                               return (

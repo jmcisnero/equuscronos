@@ -12,6 +12,8 @@ import {
   TimeRecordType,
   EliminationCode,
   GaitStatus,
+  isTerminalStatus,
+  TERMINAL_PARTICIPANT_STATUSES,
 } from "@equuscronos/shared";
 import { RealTimeGateway } from "./real-time.gateway";
 import { LeaderboardService } from "../leaderboard/leaderboard.service";
@@ -96,7 +98,11 @@ export class ControlClosureScheduler {
 
         const stuckEntries = activeEntries.filter((entry) => {
           // Exclude any participant who is already in a final / finished / eliminated state
-          if (finalStatuses.includes(entry.status)) {
+          if (
+            TERMINAL_PARTICIPANT_STATUSES.includes(entry.status) ||
+            isTerminalStatus(entry.status) ||
+            entry.disqualificationReason
+          ) {
             return false;
           }
 
@@ -131,7 +137,12 @@ export class ControlClosureScheduler {
         // Re-evaluate if all entries are terminal after updating stuck entries
         const allEntriesTerminal =
           activeEntries.length > 0 &&
-          activeEntries.every((entry) => finalStatuses.includes(entry.status));
+          activeEntries.every(
+            (entry) =>
+              TERMINAL_PARTICIPANT_STATUSES.includes(entry.status) ||
+              isTerminalStatus(entry.status) ||
+              Boolean(entry.disqualificationReason),
+          );
 
         // Mark competition as COMPLETED if control time expired OR all participants are terminal
         if (isControlExpired || allEntriesTerminal) {
@@ -224,8 +235,12 @@ export class ControlClosureScheduler {
         let updatedAny = false;
 
         for (const entry of entries) {
-          if (finalStatuses.includes(entry.status)) {
-            continue; // Idempotencia: omitir binomios con estado terminal
+          if (
+            TERMINAL_PARTICIPANT_STATUSES.includes(entry.status) ||
+            isTerminalStatus(entry.status) ||
+            Boolean(entry.disqualificationReason)
+          ) {
+            continue; // Idempotencia y protección arbitral: omitir binomios con estado terminal o descalificados por jurado
           }
 
           const activeRecords = (entry.timingRecords || []).filter(
@@ -283,6 +298,8 @@ export class ControlClosureScheduler {
               }
 
               let hasApprovedInspection = false;
+              let isWaitingLegitimateRecheck = false;
+
               if (stageInspections.length > 0) {
                 const lastInsp =
                   stageInspections.filter((vi) => vi.isFinalDecision).pop() ||
@@ -299,15 +316,25 @@ export class ControlClosureScheduler {
                   lastInsp.heartRate <= effectiveMaxHr
                 ) {
                   hasApprovedInspection = true;
+                } else if (
+                  (lastInsp.requiresRecheck || lastInsp.isRecheckRequired) &&
+                  lastInsp.nextCheckTime &&
+                  now.getTime() <= new Date(lastInsp.nextCheckTime).getTime()
+                ) {
+                  // Aún está dentro de la ventana concedida para el rechequeo (Art. 21 y 31 FEU)
+                  isWaitingLegitimateRecheck = true;
                 }
               }
 
               if (
                 entry.status === ParticipantStatus.RESTING ||
-                entry.status === ParticipantStatus.IN_RACE ||
-                entry.status === ParticipantStatus.VET_CHECK
+                entry.status === ParticipantStatus.IN_RACE
               ) {
                 hasApprovedInspection = true;
+              }
+
+              if (isWaitingLegitimateRecheck) {
+                continue;
               }
 
               if (missingVetIn || !hasApprovedInspection) {

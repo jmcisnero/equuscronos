@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -42,7 +43,7 @@ export class AdminContingencyController {
     @Body("recordedAt") recordedAt: string,
   ) {
     if (!recordedAt) {
-      throw new Error("El campo recordedAt es obligatorio.");
+      throw new BadRequestException("El campo recordedAt es obligatorio.");
     }
     return await this.contingencyService.updateTimingRecord(id, recordedAt);
   }
@@ -74,7 +75,7 @@ export class AdminContingencyController {
     @Body("notes") notes?: string,
   ) {
     if (heartRate === undefined || !gaitStatus) {
-      throw new Error("Los campos heartRate y gaitStatus son obligatorios.");
+      throw new BadRequestException("Los campos heartRate y gaitStatus son obligatorios.");
     }
     return await this.contingencyService.updateVetInspection(
       id,
@@ -109,7 +110,7 @@ export class AdminContingencyController {
     @Body("reason") reason: string,
   ) {
     if (!entryId || !stageId || timePenaltySeconds === undefined || !reason) {
-      throw new Error(
+      throw new BadRequestException(
         "Todos los campos (entryId, stageId, timePenaltySeconds, reason) son obligatorios.",
       );
     }
@@ -133,7 +134,7 @@ export class AdminContingencyController {
     @Body("reason") reason: string,
   ) {
     if (timePenaltySeconds === undefined || !reason) {
-      throw new Error(
+      throw new BadRequestException(
         "Los campos timePenaltySeconds y reason son obligatorios.",
       );
     }
