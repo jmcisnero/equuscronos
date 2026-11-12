@@ -17,7 +17,7 @@ import { useCompetitionStore } from "../store/useCompetitionStore";
 import { useLiveLeaderboardMobile } from "../hooks/useLiveLeaderboardMobile";
 import { LeaderboardEntry } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
-import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE, isFeuRaid } from "../utils/raceFormat";
+import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE, isFeuRaid, isTerminalStatus } from "../utils/raceFormat";
 import { useIsFocused } from "@react-navigation/native";
 
 const CONCLUDED_STATUSES = ["COMPLETED", "OFFICIAL"];
@@ -100,6 +100,36 @@ export const LiveLeaderboardScreen: React.FC<{
     [isClosed, leaderboard],
   );
 
+  // Estadísticas derivadas en vivo a partir del leaderboard cargado
+  const liveEntryStats = useMemo(() => {
+    if (!leaderboard || leaderboard.length === 0) {
+      return activeCompetition?.entryStats;
+    }
+    let inRace = 0;
+    let resting = 0;
+    let vetCheck = 0;
+    let finished = 0;
+    let eliminated = 0;
+
+    for (const entry of leaderboard) {
+      const st = entry.status;
+      if (st === "IN_RACE") inRace++;
+      else if (st === "RESTING") resting++;
+      else if (st === "VET_CHECK") vetCheck++;
+      else if (st === "FINISHED" || st === "FINISHED_PROVISIONAL") finished++;
+      else if (isTerminalStatus(st)) eliminated++;
+    }
+
+    return {
+      total: leaderboard.length,
+      inRace,
+      resting,
+      vetCheck,
+      finished,
+      eliminated,
+    };
+  }, [leaderboard, activeCompetition?.entryStats]);
+
   const renderItem = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
       <LeaderboardRow
@@ -136,6 +166,7 @@ export const LiveLeaderboardScreen: React.FC<{
         competition={activeCompetition}
         maxHeartRate={maxHeartRate}
         isClosed={isClosed}
+        entryStats={liveEntryStats}
       />
 
       {/* Buscador de binomios */}
@@ -275,7 +306,7 @@ const createStyles = ({ colors, isDark }: Theme) =>
       alignItems: "center",
       gap: 12,
       marginHorizontal: 16,
-      marginTop: 10,
+      marginTop: 6,
     },
     backText: { color: colors.primary, fontSize: 14, fontWeight: "800" },
     resultsTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
@@ -285,9 +316,9 @@ const createStyles = ({ colors, isDark }: Theme) =>
       backgroundColor: colors.surface,
       borderRadius: 12,
       marginHorizontal: 16,
-      marginTop: 4,
+      marginTop: 2,
       paddingHorizontal: 12,
-      height: 46,
+      height: 44,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -299,7 +330,7 @@ const createStyles = ({ colors, isDark }: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       marginHorizontal: 16,
-      marginTop: 16,
+      marginTop: 10,
       marginBottom: 4,
     },
     sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "900" },

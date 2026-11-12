@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Competition } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
+import { EntryStatsSummary } from "./race/EntryStatsSummary";
 
 interface CompetitionCardProps {
   competition: Competition;
@@ -70,6 +71,13 @@ export const CompetitionCard: React.FC<CompetitionCardProps> = ({
       <Text style={styles.title} numberOfLines={2}>
         {competition.name}
       </Text>
+
+      {/* Resumen estadístico de binomios */}
+      <EntryStatsSummary
+        status={competition.status}
+        entryStats={competition.entryStats}
+        compact
+      />
 
       {/* Fila inferior: fecha | tipo (FEDERADA/SOCIAL) | estado */}
       <View style={styles.footerRow}>
@@ -157,7 +165,7 @@ const createStyles = ({ colors, cardShadow }: Theme) =>
       color: colors.text,
       fontSize: 16,
       fontWeight: "800",
-      marginBottom: 10,
+      marginBottom: 6,
     },
     footerRow: {
       flexDirection: "row",
