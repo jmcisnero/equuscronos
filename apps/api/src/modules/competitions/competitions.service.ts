@@ -18,6 +18,8 @@ import {
   ParticipantStatus,
   TimeRecordType,
   UserRole,
+  CompetitionEntryStats,
+  isTerminalStatus,
 } from "@equuscronos/shared";
 import { TimingRecord } from "./entities/timing-record.entity";
 import { CompetitionEntry } from "../competition-entries/entities/competition-entry.entity";
@@ -150,11 +152,76 @@ export class CompetitionsService {
     return comp;
   }
 
-  async findAll(): Promise<Competition[]> {
-    return this.compRepository.find({
+  async findAll(): Promise<any[]> {
+    const competitions = await this.compRepository.find({
       order: { competitionDate: "DESC" },
       relations: ["stages", "tenant", "competitionType"],
     });
+
+    if (competitions.length === 0) {
+      return [];
+    }
+
+    // Calcular estadísticas agrupadas de entries por competencia en una sola consulta
+    const compIds = competitions.map((c) => c.id);
+    const entryRows = await this.dataSource
+      .createQueryBuilder()
+      .select("ce.competition_id", "competitionId")
+      .addSelect("ce.status", "status")
+      .addSelect("COUNT(*)", "count")
+      .from("competition_entries", "ce")
+      .where("ce.competition_id IN (:...compIds)", { compIds })
+      .groupBy("ce.competition_id")
+      .addGroupBy("ce.status")
+      .getRawMany();
+
+    const statsMap = new Map<string, CompetitionEntryStats>();
+    for (const id of compIds) {
+      statsMap.set(id, {
+        total: 0,
+        inRace: 0,
+        resting: 0,
+        vetCheck: 0,
+        finished: 0,
+        eliminated: 0,
+      });
+    }
+
+    for (const row of entryRows) {
+      const stats = statsMap.get(row.competitionId);
+      if (!stats) continue;
+
+      const cnt = parseInt(row.count, 10) || 0;
+      const st = row.status as ParticipantStatus;
+      stats.total += cnt;
+
+      if (st === ParticipantStatus.IN_RACE) {
+        stats.inRace += cnt;
+      } else if (st === ParticipantStatus.RESTING) {
+        stats.resting += cnt;
+      } else if (st === ParticipantStatus.VET_CHECK) {
+        stats.vetCheck += cnt;
+      } else if (
+        st === ParticipantStatus.FINISHED ||
+        st === ParticipantStatus.FINISHED_PROVISIONAL
+      ) {
+        stats.finished += cnt;
+      } else if (isTerminalStatus(st)) {
+        stats.eliminated += cnt;
+      }
+    }
+
+    return competitions.map((comp) => ({
+      ...comp,
+      entryStats: statsMap.get(comp.id) || {
+        total: 0,
+        inRace: 0,
+        resting: 0,
+        vetCheck: 0,
+        finished: 0,
+        eliminated: 0,
+      },
+    }));
   }
 
   async update(

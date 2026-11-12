@@ -17,7 +17,7 @@ import { useCompetitionStore } from "../store/useCompetitionStore";
 import { useLiveLeaderboardMobile } from "../hooks/useLiveLeaderboardMobile";
 import { LeaderboardEntry } from "../types";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
-import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE, isFeuRaid } from "../utils/raceFormat";
+import { computeTrophyWinnerBib, DEFAULT_MAX_HEART_RATE, isFeuRaid, isTerminalStatus } from "../utils/raceFormat";
 import { useIsFocused } from "@react-navigation/native";
 
 const CONCLUDED_STATUSES = ["COMPLETED", "OFFICIAL"];
@@ -100,6 +100,36 @@ export const LiveLeaderboardScreen: React.FC<{
     [isClosed, leaderboard],
   );
 
+  // Estadísticas derivadas en vivo a partir del leaderboard cargado
+  const liveEntryStats = useMemo(() => {
+    if (!leaderboard || leaderboard.length === 0) {
+      return activeCompetition?.entryStats;
+    }
+    let inRace = 0;
+    let resting = 0;
+    let vetCheck = 0;
+    let finished = 0;
+    let eliminated = 0;
+
+    for (const entry of leaderboard) {
+      const st = entry.status;
+      if (st === "IN_RACE") inRace++;
+      else if (st === "RESTING") resting++;
+      else if (st === "VET_CHECK") vetCheck++;
+      else if (st === "FINISHED" || st === "FINISHED_PROVISIONAL") finished++;
+      else if (isTerminalStatus(st)) eliminated++;
+    }
+
+    return {
+      total: leaderboard.length,
+      inRace,
+      resting,
+      vetCheck,
+      finished,
+      eliminated,
+    };
+  }, [leaderboard, activeCompetition?.entryStats]);
+
   const renderItem = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
       <LeaderboardRow
@@ -136,6 +166,7 @@ export const LiveLeaderboardScreen: React.FC<{
         competition={activeCompetition}
         maxHeartRate={maxHeartRate}
         isClosed={isClosed}
+        entryStats={liveEntryStats}
       />
 
       {/* Buscador de binomios */}

@@ -1,3 +1,7 @@
+import { CompetitionEntryStats } from "@equuscronos/shared";
+
+export type { CompetitionEntryStats };
+
 export interface Tenant {
   id: string;
   name: string;
@@ -28,6 +32,7 @@ export interface Competition {
   tenant?: Tenant;
   stagesCount?: number;
   stages?: CompetitionStage[];
+  entryStats?: CompetitionEntryStats;
 }
 
 export interface StageDetail {

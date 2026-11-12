@@ -9,11 +9,13 @@ import {
   formatStartTime,
   getStagePlan,
 } from "../../utils/raceFormat";
+import { EntryStatsSummary } from "./EntryStatsSummary";
 
 interface RaceSummaryCardProps {
   competition: Competition | null;
   maxHeartRate: number;
   isClosed: boolean;
+  entryStats?: any;
 }
 
 /**
@@ -24,6 +26,7 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
   competition,
   maxHeartRate,
   isClosed,
+  entryStats,
 }) => {
   const styles = useThemedStyles(createStyles);
 
@@ -39,6 +42,7 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
   const { stages, totalKm } = getStagePlan(competition);
   const tenant = competition.tenant;
   const sede = competition.location || tenant?.location;
+  const stats = entryStats ?? competition.entryStats;
 
   return (
     <View style={styles.card}>
@@ -120,6 +124,15 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
           </View>
         </View>
       </View>
+
+      {/* Resumen estadístico de binomios (Opción 7: al pie del cabezal) */}
+      {!!stats && stats.total > 0 && (
+        <EntryStatsSummary
+          status={competition.status}
+          entryStats={stats}
+          compact
+        />
+      )}
     </View>
   );
 };
