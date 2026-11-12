@@ -18,8 +18,7 @@ interface RaceSummaryCardProps {
 
 /**
  * Bloque de resumen del Raid (equivalente al hero de leaderboard/[id]/page.tsx):
- * nombre, fecha DD/MM/AAAA, hora de largada, organizador/sede, distancia total,
- * desglose por etapas con neutralización (Art. 28/52) y límite Vet Gate (Art. 31).
+ * Versión compacta optimizada para pantallas móviles.
  */
 export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
   competition,
@@ -31,7 +30,6 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
   if (!competition) {
     return (
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>SEGUIMIENTO EN VIVO</Text>
         <Text style={styles.title}>Selecciona una competencia</Text>
         <Text style={styles.muted}>Elige una prueba en la pestaña Explorar.</Text>
       </View>
@@ -44,31 +42,31 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.eyebrow}>
-        {isClosed ? "RESULTADOS FINALES" : "SEGUIMIENTO EN VIVO"}
-      </Text>
-      <Text style={styles.title} accessibilityRole="header">
-        {competition.name}
-      </Text>
+      {/* Cuadrante 1: Título y Estado */}
+      <View style={styles.titleRow}>
+        <Text style={styles.title} numberOfLines={2} accessibilityRole="header">
+          🏆 {competition.name}
+        </Text>
+      </View>
 
-      {/* Fecha y hora de largada */}
+      {/* Cuadrante 2: Fila Resumen: Fecha, Largada, Distancia */}
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Fecha</Text>
           <Text style={styles.metaValue}>{formatDateDMY(competition.competitionDate)}</Text>
         </View>
-        <View style={styles.metaItem}>
+        <View style={[styles.metaItem, styles.metaItemBorder]}>
           <Text style={styles.metaLabel}>Largada</Text>
           <Text style={styles.metaValue}>{formatStartTime(competition.startTime)} hs</Text>
         </View>
-        <View style={styles.metaItem}>
+        <View style={[styles.metaItem, styles.metaItemBorder]}>
           <Text style={styles.metaLabel}>Distancia</Text>
           <Text style={styles.metaValue}>{totalKm > 0 ? formatKm(totalKm) : "--"}</Text>
         </View>
       </View>
 
-      {/* Organizador / Sede */}
-      <View style={styles.organizer}>
+      {/* Cuadrante 3: Información del Club Organizador */}
+      <View style={styles.organizerRow}>
         {tenant?.jerseyImageUrl ? (
           <Image source={{ uri: tenant.jerseyImageUrl }} style={styles.jersey} />
         ) : (
@@ -78,28 +76,32 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
             </Text>
           </View>
         )}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.metaLabel}>Organizador</Text>
+        <View style={styles.organizerTextCol}>
           <Text style={styles.organizerName} numberOfLines={1}>
             {tenant?.name || "Club no registrado"}
           </Text>
           {!!sede && (
-            <Text style={styles.muted} numberOfLines={1}>
+            <Text style={styles.sedeText} numberOfLines={1}>
               📍 {sede}
             </Text>
           )}
         </View>
       </View>
 
-      {/* Desglose de etapas (Art. 28 / 52) + Límite Vet Gate (Art. 31/54) en la misma fila */}
-      <View style={styles.stages}>
+      {/* Cuadrante 4: Tarjetas de Etapas y Parámetros FEU */}
+      <View style={styles.stagesRow}>
         {stages.map((s, i) => (
           <View key={s.stageNumber} style={styles.stageChip}>
-            <Text style={styles.stageTitle}>Etapa {s.stageNumber}</Text>
-            <Text style={styles.stageKm}>{formatKm(s.distanceKm)}</Text>
-            {i < stages.length - 1 && s.neutralizationMinutes > 0 && (
-              <Text style={styles.stageNeut}>Neut. {s.neutralizationMinutes} min</Text>
-            )}
+            <View style={styles.stageContent}>
+              <Text style={styles.stageKmText}>
+                E{s.stageNumber} - {formatKm(s.distanceKm)}
+              </Text>
+              {i < stages.length - 1 && s.neutralizationMinutes > 0 && (
+                <Text style={styles.stageNeutText}>
+                  Neut. {s.neutralizationMinutes} min
+                </Text>
+              )}
+            </View>
           </View>
         ))}
         <View
@@ -107,12 +109,14 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
           accessible
           accessibilityLabel={`Límite Vet Gate: hasta ${maxHeartRate} pulsaciones por minuto`}
         >
-          <Text style={styles.stageTitle}>Límite ppm</Text>
-          <View style={styles.vetHeader}>
-            <Text style={styles.vetHeart} allowFontScaling={false}>♥</Text>
-            <Text style={styles.stageKm} numberOfLines={1}>
-              ≤ {maxHeartRate}
-            </Text>
+          <View style={styles.stageContent}>
+            <Text style={styles.stageTitleText}>LÍMITE PPM</Text>
+            <View style={styles.vetValueRow}>
+              <Text style={styles.vetHeart} allowFontScaling={false}>
+                ❤️
+              </Text>
+              <Text style={styles.vetLimitText}>≤ {maxHeartRate}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -121,7 +125,6 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
 };
 
 const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
-  // Tono verde de contraste para separar el resumen de la lista de binomios
   const summaryBg = colors.summarySurface;
   const summaryBorder = colors.summaryBorder;
   const innerBg = colors.summaryInner;
@@ -130,70 +133,167 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
   return StyleSheet.create({
     card: {
       backgroundColor: summaryBg,
-      borderRadius: 18,
-      padding: 16,
+      borderRadius: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
       marginHorizontal: 16,
-      marginTop: 12,
-      marginBottom: 8,
+      marginTop: 8,
+      marginBottom: 6,
       borderWidth: 1,
       borderColor: summaryBorder,
-      gap: 12,
+      gap: 7,
       ...cardShadow,
     },
-    eyebrow: { color: colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
-    title: { color: colors.text, fontSize: 20, fontWeight: "900", lineHeight: 25, marginTop: -6 },
-    muted: { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    title: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "900",
+      lineHeight: 20,
+    },
+    muted: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
+
+    // Cuadrante 2: Fila Resumen
     metaRow: {
       flexDirection: "row",
       backgroundColor: innerBg,
-      borderRadius: 12,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: innerBorder,
-      paddingVertical: 10,
+      paddingVertical: 5,
     },
-    metaItem: { flex: 1, alignItems: "center" },
+    metaItem: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    metaItemBorder: {
+      borderLeftWidth: 1,
+      borderLeftColor: innerBorder,
+    },
     metaLabel: {
       color: colors.textMuted,
-      fontSize: 9,
+      fontSize: 8.5,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.6,
+      letterSpacing: 0.5,
     },
     metaValue: {
       color: colors.text,
-      fontSize: 15,
-      fontWeight: "800",
+      fontSize: 13,
+      fontWeight: "900",
       fontVariant: ["tabular-nums"],
-      marginTop: 2,
+      marginTop: 1,
     },
-    organizer: { flexDirection: "row", alignItems: "center", gap: 10 },
-    jersey: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+
+    // Cuadrante 3: Organizador
+    organizerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: innerBg,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: innerBorder,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      gap: 8,
+    },
+    jersey: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
     jerseyFallback: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       backgroundColor: colors.surfaceMuted,
       alignItems: "center",
       justifyContent: "center",
     },
-    jerseyFallbackText: { color: colors.textStrong, fontWeight: "900", fontSize: 12 },
-    organizerName: { color: colors.text, fontSize: 14, fontWeight: "800" },
-    stages: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    jerseyFallbackText: {
+      color: colors.textStrong,
+      fontWeight: "900",
+      fontSize: 10,
+    },
+    organizerTextCol: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    organizerName: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: "800",
+      lineHeight: 15,
+    },
+    sedeText: {
+      color: colors.textSecondary,
+      fontSize: 10.5,
+      fontWeight: "600",
+      lineHeight: 14,
+    },
+
+    // Cuadrante 4: Etapas y Límite PPM
+    stagesRow: {
+      flexDirection: "row",
+      gap: 6,
+    },
     stageChip: {
-      flexGrow: 1,
-      flexBasis: "30%",
-      minWidth: 0,
+      flex: 1,
       backgroundColor: innerBg,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
+      borderRadius: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 4.5,
       borderWidth: 1,
       borderColor: innerBorder,
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: 38,
     },
-    stageTitle: { color: colors.textMuted, fontSize: 9, fontWeight: "900", textTransform: "uppercase" },
-    stageKm: { color: colors.text, fontSize: 15, fontWeight: "900", fontVariant: ["tabular-nums"] },
-    stageNeut: { color: colors.warning, fontSize: 10, fontWeight: "700", marginTop: 1 },
-    vetHeader: { flexDirection: "row", alignItems: "center", gap: 4 },
-    vetHeart: { color: getRaceTones(isDark).heartOk, fontSize: 14 },
+    stageContent: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stageKmText: {
+      color: colors.text,
+      fontSize: 11.5,
+      fontWeight: "900",
+      fontVariant: ["tabular-nums"],
+    },
+    stageNeutText: {
+      color: colors.warning,
+      fontSize: 8.5,
+      fontWeight: "800",
+      marginTop: 0.5,
+    },
+    stageTitleText: {
+      color: colors.textMuted,
+      fontSize: 8,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    vetValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      marginTop: 1,
+    },
+    vetHeart: {
+      fontSize: 9,
+    },
+    vetLimitText: {
+      color: colors.text,
+      fontSize: 11.5,
+      fontWeight: "900",
+      fontVariant: ["tabular-nums"],
+    },
   });
 };
