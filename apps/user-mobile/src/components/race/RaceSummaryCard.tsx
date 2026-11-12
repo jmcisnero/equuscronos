@@ -45,7 +45,7 @@ export const RaceSummaryCard: React.FC<RaceSummaryCardProps> = ({
       {/* Cuadrante 1: Título y Estado */}
       <View style={styles.titleRow}>
         <Text style={styles.title} numberOfLines={2} accessibilityRole="header">
-          🏆 {competition.name}
+          {competition.name}
         </Text>
       </View>
 
@@ -195,25 +195,21 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
     organizerRow: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: innerBg,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: innerBorder,
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      gap: 8,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      gap: 10,
     },
     jersey: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
     jerseyFallback: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       backgroundColor: colors.surfaceMuted,
       alignItems: "center",
       justifyContent: "center",
@@ -221,7 +217,7 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
     jerseyFallbackText: {
       color: colors.textStrong,
       fontWeight: "900",
-      fontSize: 10,
+      fontSize: 11,
     },
     organizerTextCol: {
       flex: 1,
@@ -229,15 +225,16 @@ const createStyles = ({ colors, cardShadow, isDark }: Theme) => {
     },
     organizerName: {
       color: colors.text,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "800",
-      lineHeight: 15,
+      lineHeight: 16,
     },
     sedeText: {
       color: colors.textSecondary,
-      fontSize: 10.5,
+      fontSize: 11,
       fontWeight: "600",
-      lineHeight: 14,
+      lineHeight: 15,
+      marginTop: 1,
     },
 
     // Cuadrante 4: Etapas y Límite PPM
