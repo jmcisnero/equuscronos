@@ -27,20 +27,23 @@
     "eas-build-post-install": "node -e \"const fs = require('fs'); const cp = require('child_process'); const path = fs.existsSync('libs/shared') ? 'libs/shared' : '../../libs/shared'; cp.execSync('npm run build --prefix ' + path, { stdio: 'inherit' });\""
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "prettier": "^3.0.0",
-    "typescript": "^5.0.0",
+    "@react-native-community/netinfo": "11.5.2",
     "eslint": "^9.0.0",
+    "expo-secure-store": "~55.0.18",
+    "prettier": "^3.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.10",
-    "react-native-screens": "~4.23.0",
     "react-native-safe-area-context": "~5.6.2",
-    "@react-native-community/netinfo": "11.5.2",
-    "expo-secure-store": "~55.0.18"
+    "react-native-screens": "~4.23.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "expo-font": "55.0.8"
   }
 }

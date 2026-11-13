@@ -1,5 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { useNavigation, useNavigationState } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { useCompetitionStore } from "../store/useCompetitionStore";
 import { Theme, useTheme, useThemedStyles } from "../theme/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,11 +10,39 @@ const LOGO = require("../../assets/logo_isotipo.png");
 /** Proporción nativa del recorte del isotipo (740x600) */
 const LOGO_ASPECT = 740 / 600;
 
-export const HeaderBrand: React.FC = () => {
+interface HeaderBrandProps {
+  /** Fuerza la visualización o callback del botón volver */
+  showBackButton?: boolean;
+  onBackPress?: () => void;
+}
+
+export const HeaderBrand: React.FC<HeaderBrandProps> = ({
+  showBackButton,
+  onBackPress,
+}) => {
+  const navigation = useNavigation<any>();
+  const currentRouteName = useNavigationState((state) => {
+    if (!state) return undefined;
+    const route = state.routes[state.index];
+    return route?.name;
+  });
+
   const { isLiveSocket, isClosed } = useCompetitionStore();
-  const { isDark, setPreference } = useTheme();
+  const { isDark, setPreference, colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
+
+  // En la pantalla raíz "ExplorerTab", NUNCA se muestra la flecha de retroceso.
+  const isRootExplorer = currentRouteName === "ExplorerTab";
+  const canGoBack = !isRootExplorer && (showBackButton ?? (navigation?.canGoBack ? navigation.canGoBack() : false));
+
+  const handleBack = () => {
+    if (onBackPress) {
+      onBackPress();
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
 
   // Estado de conexión del feed. Nunca se rotula como "oficial":
   // EquusCronos no es un canal emitido por la federación.
@@ -25,6 +55,18 @@ export const HeaderBrand: React.FC = () => {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.titleRow}>
+        {canGoBack && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a la pantalla anterior"
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+        )}
+
         <View style={styles.logoTile}>
           <Image
             source={LOGO}
@@ -82,6 +124,14 @@ const createStyles = ({ colors, isDark }: Theme) =>
       alignItems: "center",
       gap: 10,
       flexShrink: 1,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: -2,
     },
     // Tile claro en ambos modos: el isotipo es verde oscuro y perdería
     // contraste directamente sobre el fondo slate del modo oscuro.

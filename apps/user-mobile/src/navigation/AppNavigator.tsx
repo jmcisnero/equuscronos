@@ -93,6 +93,21 @@ export const AppNavigator: React.FC<{ onReady?: () => void }> = ({ onReady }) =>
           name="ExplorerTab"
           component={ExplorerScreen}
           options={{ title: "Explorar" }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              // Si estamos volviendo o pulsando en Explorar, reseteamos la pila al tab raíz
+              // para eliminar ResultsTab u otras rutas del historial
+              const state = navigation.getState();
+              const currentRoute = state?.routes?.[state.index]?.name;
+              if (currentRoute !== "ExplorerTab") {
+                e.preventDefault();
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "ExplorerTab" }],
+                });
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="LiveTab"

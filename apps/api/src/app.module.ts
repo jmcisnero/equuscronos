@@ -104,6 +104,14 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
           synchronize: syncFlag,
           dropSchema: dropSchemaFlag,
           logging: isProd ? ["error"] : ["query", "error"],
+          extra: {
+            max: parseInt(process.env.DB_POOL_MAX, 10) || 20,
+            connectionTimeoutMillis: 5000,
+            idleTimeoutMillis: 30000,
+            statement_timeout: 30000,
+            lock_timeout: 10000,
+            idle_in_transaction_session_timeout: 30000,
+          },
         };
       },
     }),

@@ -207,6 +207,8 @@ export class ControlClosureScheduler {
     ];
 
     for (const comp of activeCompetitions) {
+      let updatedAny = false;
+
       await this.dataSource.transaction(async (manager) => {
         const stages = await manager.find(Stage, {
           where: { competition: { id: comp.id } },
@@ -231,8 +233,6 @@ export class ControlClosureScheduler {
           comp.maxHeartRate ??
           (comp.competitionType as any)?.defaultRules?.max_heart_rate ??
           65;
-
-        let updatedAny = false;
 
         for (const entry of entries) {
           if (
@@ -364,19 +364,21 @@ export class ControlClosureScheduler {
             }
           }
         }
-
-        if (updatedAny) {
-          try {
-            const leaderboard =
-              await this.leaderboardService.getLiveLeaderboard(comp.id);
-            this.realTimeGateway.emitLeaderboardUpdate(comp.id, leaderboard);
-          } catch (err: any) {
-            this.logger.error(
-              `[Control Closure] Error emitiendo leaderboard tras descalificaciones por neutralización: ${err.message}`,
-            );
-          }
-        }
       });
+
+      // Emitir actualización de leaderboard FUERA de la transacción para evitar
+      // auto-bloqueo (self-deadlock) de conexiones entre el manager transaccional y el pool global
+      if (updatedAny) {
+        try {
+          const leaderboard =
+            await this.leaderboardService.getLiveLeaderboard(comp.id);
+          this.realTimeGateway.emitLeaderboardUpdate(comp.id, leaderboard);
+        } catch (err: any) {
+          this.logger.error(
+            `[Control Closure] Error emitiendo leaderboard tras descalificaciones por neutralización: ${err.message}`,
+          );
+        }
+      }
     }
   }
 }

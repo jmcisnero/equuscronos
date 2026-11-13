@@ -87,8 +87,8 @@ export const CompetitionCard: React.FC<CompetitionCardProps> = ({
           </Text>
         </View>
         <View style={styles.footerCenter}>
-          <View style={[styles.pill, isFederated ? styles.federatedPill : styles.socialPill]}>
-            <Text style={[styles.pillText, { color: isFederated ? colors.warning : colors.textSecondary }]}>
+          <View style={[styles.pill, styles.typePill]}>
+            <Text style={styles.typePillText}>
               {isFederated ? "FEDERADA" : "SOCIAL"}
             </Text>
           </View>
@@ -192,13 +192,15 @@ const createStyles = ({ colors, cardShadow }: Theme) =>
       borderRadius: 6,
       borderWidth: 1,
     },
-    federatedPill: {
-      backgroundColor: colors.warningSoft,
-      borderColor: colors.warningBorder,
-    },
-    socialPill: {
+    typePill: {
       backgroundColor: colors.neutralSoft,
       borderColor: colors.neutralBorder,
+    },
+    typePillText: {
+      color: colors.textSecondary,
+      fontSize: 9,
+      fontWeight: "900",
+      letterSpacing: 0.4,
     },
     pillText: {
       fontSize: 9,

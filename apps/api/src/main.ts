@@ -15,6 +15,11 @@ async function bootstrap() {
   // Servir archivos estáticos subidos localmente
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+  // Endpoint liviano de Healthcheck para Docker / Reverse Proxy (exento de Guards y Throttler)
+  app.getHttpAdapter().get("/health", (_req: any, res: any) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // 2. Activar validaciones globales de DTOs
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 

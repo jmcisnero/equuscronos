@@ -293,6 +293,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     if (!AuditSubscriber.fallbackTenant) {
       try {
         AuditSubscriber.fallbackTenant = await event.manager.findOne(Tenant, {
+          where: {},
           order: { name: "ASC" },
         });
       } catch (err) {
