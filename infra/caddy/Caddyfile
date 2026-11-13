@@ -5,20 +5,67 @@
 
 # 1. Web Informativa (Static Site)
 equuscronos.com, www.equuscronos.com {
-    reverse_proxy web-informativa:80
+    encode zstd gzip
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    reverse_proxy web-informativa:80 {
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 15s
+        }
+    }
 }
 
 # 2. Web de Administración Next.js
 app.equuscronos.com {
-    reverse_proxy admin-web:3001
+    encode zstd gzip
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    reverse_proxy admin-web:3001 {
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 15s
+        }
+    }
 }
 
 # 3. Web Pública Next.js (Leaderboard, etc.)
 live.equuscronos.com {
-    reverse_proxy public-web:3002
+    encode zstd gzip
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    reverse_proxy public-web:3002 {
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 15s
+        }
+    }
 }
 
 # 4. API NestJS
 api.equuscronos.com {
-    reverse_proxy api:3000
+    encode zstd gzip
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    reverse_proxy api:3000 {
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 15s
+        }
+    }
 }

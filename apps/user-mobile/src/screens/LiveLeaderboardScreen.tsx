@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  BackHandler,
 } from "react-native";
 import { HeaderBrand } from "../components/HeaderBrand";
 import { LeaderboardRow } from "../components/LeaderboardRow";
@@ -145,23 +146,28 @@ export const LiveLeaderboardScreen: React.FC<{
     [handleRowPress, maxHeartRate, isClosed, trophyBib, isRfidMode, feuRaid],
   );
 
+  const isFromExplorer = mode === "results";
+  const handleBackToExplorer = useCallback(() => {
+    // Reseteo limpio al tab raíz Explorar
+    navigation?.reset({
+      index: 0,
+      routes: [{ name: "ExplorerTab" }],
+    });
+  }, [navigation]);
+
+  // Manejador del botón físico "Atrás" en Android cuando se consulta desde Explorar
+  useEffect(() => {
+    if (!isFromExplorer || !isFocused) return;
+    const onBackPress = () => {
+      handleBackToExplorer();
+      return true; // Evita el comportamiento por defecto
+    };
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [isFromExplorer, isFocused, handleBackToExplorer]);
+
   const listHeader = (
     <View>
-      {mode === "results" && (
-        <View style={styles.resultsBar}>
-          <TouchableOpacity
-            onPress={() => navigation?.navigate("ExplorerTab")}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Volver a Explorar"
-          >
-            <Text style={styles.backText}>‹ Explorar</Text>
-          </TouchableOpacity>
-          <Text style={styles.resultsTitle} accessibilityRole="header">
-            Resultados Finales
-          </Text>
-        </View>
-      )}
       <RaceSummaryCard
         competition={activeCompetition}
         maxHeartRate={maxHeartRate}
@@ -232,7 +238,10 @@ export const LiveLeaderboardScreen: React.FC<{
 
   return (
     <View style={styles.container}>
-      <HeaderBrand />
+      <HeaderBrand
+        showBackButton={isFromExplorer}
+        onBackPress={handleBackToExplorer}
+      />
 
       {isLoading || (showNoLiveState && !!liveCompetition) ? (
         <View style={styles.loadingContainer}>
@@ -301,15 +310,6 @@ const createStyles = ({ colors, isDark }: Theme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     listContent: { paddingBottom: 24 },
-    resultsBar: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      marginHorizontal: 16,
-      marginTop: 6,
-    },
-    backText: { color: colors.primary, fontSize: 14, fontWeight: "800" },
-    resultsTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",

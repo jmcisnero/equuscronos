@@ -49,9 +49,10 @@ export const EntryStatsSummary: React.FC<EntryStatsSummaryProps> = ({
     return (
       <View style={[styles.container, compact && styles.compactContainer]}>
         <View style={styles.metricsRow}>
-          {/* Total: solo emoji y número en negrita */}
+          {/* Total: con etiqueta explícita Total: */}
           <View style={styles.item}>
             <Text style={styles.emoji} allowFontScaling={false}>🐎</Text>
+            <Text style={styles.label}>Total: </Text>
             <Text style={styles.totalValue}>{total}</Text>
           </View>
 
@@ -66,9 +67,9 @@ export const EntryStatsSummary: React.FC<EntryStatsSummaryProps> = ({
 
           <View style={styles.divider} />
 
-          {/* Eliminados / Retirados */}
+          {/* Eliminados / Retirados - Icono atenuado en finalizadas */}
           <View style={styles.item}>
-            <Text style={styles.emoji} allowFontScaling={false}>🛑</Text>
+            <Text style={[styles.emoji, styles.mutedEmoji]} allowFontScaling={false}>🛑</Text>
             <Text style={styles.redText}>Elim./Ret.: </Text>
             <Text style={[styles.value, styles.redText]}>{eliminated}</Text>
           </View>
@@ -188,7 +189,7 @@ const createStyles = ({ colors, isDark }: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       paddingVertical: 5.5,
-      paddingHorizontal: 9,
+      paddingHorizontal: 8,
     },
     item: {
       flexDirection: "row",
@@ -198,6 +199,9 @@ const createStyles = ({ colors, isDark }: Theme) =>
       fontSize: 11,
       marginRight: 3,
       lineHeight: 14,
+    },
+    mutedEmoji: {
+      opacity: 0.55,
     },
     totalValue: {
       color: colors.text,

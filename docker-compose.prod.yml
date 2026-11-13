@@ -16,10 +16,24 @@ services:
     shm_size: 256mb
     restart: always
     logging: *default-logging
+    command:
+      - "postgres"
+      - "-c"
+      - "lock_timeout=10000"
+      - "-c"
+      - "idle_in_transaction_session_timeout=30000"
+      - "-c"
+      - "statement_timeout=30000"
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
       POSTGRES_DB: ${DB_NAME:-equuscronos}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-equuscronos}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Inicialización automática del esquema base
@@ -33,6 +47,12 @@ services:
     container_name: equuscronos-cache
     restart: always
     logging: *default-logging
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - equus-network
 
@@ -46,16 +66,28 @@ services:
     logging: *default-logging
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=768"
       TYPEORM_SYNCHRONIZE: "false"
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-equus_secure_pass_2026}
       DB_NAME: ${DB_NAME:-equuscronos}
+      DB_POOL_MAX: "20"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-equus_jwt_secret_2026_super_secure}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     depends_on:
       - db
       - redis
@@ -73,8 +105,13 @@ services:
     restart: always
     logging: *default-logging
     environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_ADMIN:-https://api.equuscronos.com/admin}
       PORT: 3001
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     depends_on:
       - api
     networks:
@@ -91,8 +128,13 @@ services:
     restart: always
     logging: *default-logging
     environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_LIVE:-https://api.equuscronos.com}
       PORT: 3002
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     depends_on:
       - api
     networks:
